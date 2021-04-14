@@ -88,9 +88,9 @@ grid::grid(const parser &solParam, parallel &parallelData): inputParams(solParam
 
     thBeta = inputParams.betaX, inputParams.betaY, inputParams.betaZ;
 
-    dXi = 1.0/real(globalSize(0) - 1);
-    dEt = 1.0/real(globalSize(1) - 1);
-    dZt = 1.0/real(globalSize(2) - 1);
+    dXi = 1.0/real(globalSize(0));
+    dEt = 1.0/real(globalSize(1));
+    dZt = 1.0/real(globalSize(2));
 
 #ifdef PLANAR
     // IS IT OKAY TO SET BELOW VALUE AS 1 EVEN WHEN inputParams.dScheme IS NOT 1?
@@ -162,7 +162,7 @@ void grid::makeSizeArray() {
 
     sizeArray.resize(maxIndex);
     for (int i=0; i < maxIndex; i++) {
-        sizeArray(i) = int(pow(2, i)) + 1;
+        sizeArray(i) = int(pow(2, i));
     }
 
     sizeArray(0) = 1;
@@ -200,11 +200,11 @@ void grid::computeGlobalLimits() {
     // THIS HAPPENS WHEN THERE ARE NO DIVISIONS ALONG AN AXIS AS ALONG Z-DIRECTION
 
     // ALONG XI-DIRECTION
-    xiSt = rankData.xRank*(localNx - 1);
+    xiSt = rankData.xRank*localNx;
     xiEn = xiSt + localNx - 1;
 
     // ALONG ETA-DIRECTION
-    etSt = rankData.yRank*(localNy - 1);
+    etSt = rankData.yRank*localNy;
     etEn = etSt + localNy - 1;
 
     // ALONG ZETA-DIRECTION
@@ -260,9 +260,9 @@ void grid::resizeGrid() {
     blitz::Range xRange, yRange, zRange;
 
     // FIRST SET RANGES TO RESIZE GLOBAL ARRAYS
-    xRange = blitz::Range(-padWidths(0), globalSize(0));
-    yRange = blitz::Range(-padWidths(1), globalSize(1));
-    zRange = blitz::Range(-padWidths(2), globalSize(2));
+    xRange = blitz::Range(-padWidths(0), globalSize(0) + padWidths(0) - 1);
+    yRange = blitz::Range(-padWidths(1), globalSize(1) + padWidths(1) - 1);
+    zRange = blitz::Range(-padWidths(2), globalSize(2) + padWidths(2) - 1);
 
     // LOCAL GRID POINTS AND THEIR METRICS
     xGlobal.resize(xRange);
@@ -316,17 +316,17 @@ void grid::createXiEtaZeta() {
 
     // ALONG XI-DIRECTION
     for (i = -padWidths(0); i < globalSize(0) + padWidths(0); i++) {
-        xiGlo(i) = real(i)*dXi;
+        xiGlo(i) = real(2*i + 1)*dXi/2;
     }
 
     // ALONG ETA-DIRECTION
     for (i = -padWidths(1); i < globalSize(1) + padWidths(1); i++) {
-        etGlo(i) = real(i)*dEt;
+        etGlo(i) = real(2*i + 1)*dEt/2;
     }
 
     // ALONG ZETA-DIRECTION
     for (i = -padWidths(2); i < globalSize(2) + padWidths(2); i++) {
-        ztGlo(i) = real(i)*dZt;
+        ztGlo(i) = real(2*i + 1)*dZt/2;
     }
 
     // SET LOCAL TRANSFORMED GRID AS SLICES FROM THE GLOBAL TRANSFORMED GRID GENERATED ABOVE
@@ -432,7 +432,7 @@ void grid::createTanHypGrid(int dim) {
         }
 
         lftPts = blitz::Range(-padWidths(0), -1, 1);
-        rgtPts = blitz::Range(globalSize(0) - padWidths(0) - 1, globalSize(0) - 2, 1);
+        rgtPts = blitz::Range(globalSize(0) - padWidths(0), globalSize(0) - 1, 1);
 
         xGlobal(lftPts) = xGlobal(rgtPts) - xLen;
         df_x(lftPts) = df_x(rgtPts);
@@ -440,7 +440,7 @@ void grid::createTanHypGrid(int dim) {
         dfx2(lftPts) = dfx2(rgtPts);
 
         rgtPts = blitz::Range(globalSize(0), globalSize(0) + padWidths(0) - 1, 1);
-        lftPts = blitz::Range(1, padWidths(0), 1);
+        lftPts = blitz::Range(0, padWidths(0) - 1, 1);
 
         xGlobal(rgtPts) = xLen + xGlobal(lftPts);
         df_x(rgtPts) = df_x(lftPts);
@@ -468,7 +468,7 @@ void grid::createTanHypGrid(int dim) {
         }
 
         lftPts = blitz::Range(-padWidths(1), -1, 1);
-        rgtPts = blitz::Range(globalSize(1) - padWidths(1) - 1, globalSize(1) - 2, 1);
+        rgtPts = blitz::Range(globalSize(1) - padWidths(1), globalSize(1) - 1, 1);
 
         yGlobal(lftPts) = yGlobal(rgtPts) - yLen;
         df_x(lftPts) = df_x(rgtPts);
@@ -476,7 +476,7 @@ void grid::createTanHypGrid(int dim) {
         dfx2(lftPts) = dfx2(rgtPts);
 
         rgtPts = blitz::Range(globalSize(1), globalSize(1) + padWidths(1) - 1, 1);
-        lftPts = blitz::Range(1, padWidths(1), 1);
+        lftPts = blitz::Range(0, padWidths(1) - 1, 1);
 
         yGlobal(rgtPts) = yLen + yGlobal(lftPts);
         df_x(rgtPts) = df_x(lftPts);
@@ -504,7 +504,7 @@ void grid::createTanHypGrid(int dim) {
         }
 
         lftPts = blitz::Range(-padWidths(2), -1, 1);
-        rgtPts = blitz::Range(globalSize(2) - padWidths(2) - 1, globalSize(2) - 2, 1);
+        rgtPts = blitz::Range(globalSize(2) - padWidths(2), globalSize(2) - 1, 1);
 
         zGlobal(lftPts) = zGlobal(rgtPts) - zLen;
         df_x(lftPts) = df_x(rgtPts);
@@ -512,7 +512,7 @@ void grid::createTanHypGrid(int dim) {
         dfx2(lftPts) = dfx2(rgtPts);
 
         rgtPts = blitz::Range(globalSize(2), globalSize(2) + padWidths(2) - 1, 1);
-        lftPts = blitz::Range(1, padWidths(2), 1);
+        lftPts = blitz::Range(0, padWidths(2) - 1, 1);
 
         zGlobal(rgtPts) = zLen + zGlobal(lftPts);
         df_x(rgtPts) = df_x(lftPts);

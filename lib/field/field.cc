@@ -49,8 +49,8 @@
  *          The field class decides the limits necessary for a 3D array to store the
  *          data as per the specified grid staggering details.
  *          It initializes and stores necessary RectDomain objects for getting the
- *          core slice and bulk slice.
- *          Moreover, various offset slices of both core and bulk, used for performing
+ *          core slice.
+ *          Moreover, various offset slices of the core slice, used for performing
  *          finite difference operations, are also defined in this class.
  *          The upper and lower bounds of the array are calculated based on the directions
  *          along which the variable is staggered (or half-indexed).
@@ -74,8 +74,6 @@ field::field(const grid &gridData, std::string fieldName):
     mpiHandle = new mpidata(F, gridData.rankData);
 
     setCoreSlice();
-    setBulkSlice();
-
     setWallSlices();
 
     mpiHandle->createSubarrays(fSize, cuBound + 1, gridData.padWidths);
@@ -111,7 +109,6 @@ blitz::RectDomain<3> field::shift(int dim, blitz::RectDomain<3> core, int steps)
  *
  *          The core and full slices of the field differentiates the domain into the computational sub-domain and
  *          the ghost point/pad point regions which play only an auxilliary role in computing the derivatives.
- *          The core slice defined here also includes the walls of the domain.
  *          The core slice is also offset in all the directions for ease in computation of numerical derivatives.
  *
  ********************************************************************************************************************************************
@@ -130,48 +127,6 @@ void field::setCoreSlice() {
 
     fCBot = shift(2, fCore, -1);
     fCTop = shift(2, fCore,  1);
-}
-
-/**
- ********************************************************************************************************************************************
- * \brief   Function to create the bulk slice and its offset views
- *
- *          The bulk and wall slices of the field differentiates the domain into the bulk of the fluid and the walls of the domain.
- *          The bulk slice is used in two places - i) to set wall slices - walls are considered to be the points just outside bulk,
- *                                                ii) the limits of all iterative solvers are set to bulk limits.
- *
- ********************************************************************************************************************************************
- */
-void field::setBulkSlice() {
-    blitz::TinyVector<int, 3> blBound;
-    blitz::TinyVector<int, 3> buBound;
-
-    blBound = gridData.coreDomain.lbound();
-    buBound = gridData.coreDomain.ubound();
-
-    // Bulk and core slices are different only for the boundary sub-domains.
-    // That difference in limits is imposed in the following lines.
-    // Only in the interior sub-domains, are the bulk and core slices identical.
-    // However, in periodic problems, bulk and core slices are identical for all sub-domains.
-    if (gridData.rankData.xRank == 0 and not gridData.inputParams.xPer) blBound(0) += 1;
-
-    if (gridData.rankData.xRank == gridData.rankData.npX - 1 and not gridData.inputParams.xPer) buBound(0) -= 1;
-
-    if (gridData.rankData.yRank == 0 and not gridData.inputParams.yPer) blBound(1) += 1;
-
-    if (gridData.rankData.yRank == gridData.rankData.npY - 1 and not gridData.inputParams.yPer) buBound(1) -= 1;
-
-    if (not gridData.inputParams.zPer) {
-        blBound(2) += 1;
-        buBound(2) -= 1;
-    }
-
-#ifdef PLANAR
-    blBound(1) = 0;
-    buBound(1) = 0;
-#endif
-
-    fBulk = blitz::RectDomain<3>(blBound, buBound);
 }
 
 /**
@@ -211,26 +166,26 @@ void field::setWallSlices() {
         wuBound(i) = F.ubound();
     }
 
-    // The bulk slice corresponds to the part of the fluid within which all variables are computed at each time step.
-    // Correspondingly, the boundary conditions are imposed on the layer just outside the bulk
+    // The core slice corresponds to the part of the fluid within which all variables are computed at each time step.
+    // Correspondingly, the boundary conditions are imposed on the layer just outside the core
 
     // UPPER BOUNDS OF LEFT WALL
-    wlBound(0)(0) = wuBound(0)(0) = fBulk.lbound(0) - 1;
+    wlBound(0)(0) = wuBound(0)(0) = fCore.lbound(0) - 1;
 
     // LOWER BOUNDS OF RIGHT WALL
-    wuBound(1)(0) = wlBound(1)(0) = fBulk.ubound(0) + 1;
+    wuBound(1)(0) = wlBound(1)(0) = fCore.ubound(0) + 1;
 
     // UPPER BOUNDS OF FRONT WALL
-    wlBound(2)(1) = wuBound(2)(1) = fBulk.lbound(1) - 1;
+    wlBound(2)(1) = wuBound(2)(1) = fCore.lbound(1) - 1;
 
     // LOWER BOUNDS OF BACK WALL
-    wuBound(3)(1) = wlBound(3)(1) = fBulk.ubound(1) + 1;
+    wuBound(3)(1) = wlBound(3)(1) = fCore.ubound(1) + 1;
 
     // UPPER BOUNDS OF BOTTOM WALL
-    wlBound(4)(2) = wuBound(4)(2) = fBulk.lbound(2) - 1;
+    wlBound(4)(2) = wuBound(4)(2) = fCore.lbound(2) - 1;
 
     // LOWER BOUNDS OF TOP WALL
-    wuBound(5)(2) = wlBound(5)(2) = fBulk.ubound(2) + 1;
+    wuBound(5)(2) = wlBound(5)(2) = fCore.ubound(2) + 1;
 
     for (int i=0; i<6; i++) {
         fWalls(i) = blitz::RectDomain<3>(wlBound(i), wuBound(i));

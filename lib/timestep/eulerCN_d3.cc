@@ -288,9 +288,9 @@ void eulerCN_d3::solveVx(vfield &V, plainvf &nseRHS) {
 
     while (true) {
 #pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(nseRHS) shared(tempVx)
-        for (int iX = V.Vx.fBulk.lbound(0); iX <= V.Vx.fBulk.ubound(0); iX++) {
-            for (int iY = V.Vx.fBulk.lbound(1); iY <= V.Vx.fBulk.ubound(1); iY++) {
-                for (int iZ = V.Vx.fBulk.lbound(2); iZ <= V.Vx.fBulk.ubound(2); iZ++) {
+        for (int iX = V.Vx.fCore.lbound(0); iX <= V.Vx.fCore.ubound(0); iX++) {
+            for (int iY = V.Vx.fCore.lbound(1); iY <= V.Vx.fCore.ubound(1); iY++) {
+                for (int iZ = V.Vx.fCore.lbound(2); iZ <= V.Vx.fCore.ubound(2); iZ++) {
                     tempVx(iX, iY, iZ) = ((hy2hz2 * mesh.xix2(iX) * (V.Vx.F(iX+1, iY, iZ) + V.Vx.F(iX-1, iY, iZ)) +
                                            hz2hx2 * mesh.ety2(iY) * (V.Vx.F(iX, iY+1, iZ) + V.Vx.F(iX, iY-1, iZ)) +
                                            hx2hy2 * mesh.ztz2(iZ) * (V.Vx.F(iX, iY, iZ+1) + V.Vx.F(iX, iY, iZ-1))) *
@@ -305,9 +305,9 @@ void eulerCN_d3::solveVx(vfield &V, plainvf &nseRHS) {
         V.imposeVxBC();
 
 #pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(tempVx)
-        for (int iX = V.Vx.fBulk.lbound(0); iX <= V.Vx.fBulk.ubound(0); iX++) {
-            for (int iY = V.Vx.fBulk.lbound(1); iY <= V.Vx.fBulk.ubound(1); iY++) {
-                for (int iZ = V.Vx.fBulk.lbound(2); iZ <= V.Vx.fBulk.ubound(2); iZ++) {
+        for (int iX = V.Vx.fCore.lbound(0); iX <= V.Vx.fCore.ubound(0); iX++) {
+            for (int iY = V.Vx.fCore.lbound(1); iY <= V.Vx.fCore.ubound(1); iY++) {
+                for (int iZ = V.Vx.fCore.lbound(2); iZ <= V.Vx.fCore.ubound(2); iZ++) {
                     tempVx(iX, iY, iZ) = V.Vx.F(iX, iY, iZ) - 0.5 * dt * nu * (
                               mesh.xix2(iX) * (V.Vx.F(iX+1, iY, iZ) - 2.0 * V.Vx.F(iX, iY, iZ) + V.Vx.F(iX-1, iY, iZ)) / (hx2) +
                               mesh.ety2(iY) * (V.Vx.F(iX, iY+1, iZ) - 2.0 * V.Vx.F(iX, iY, iZ) + V.Vx.F(iX, iY-1, iZ)) / (hy2) +
@@ -316,9 +316,9 @@ void eulerCN_d3::solveVx(vfield &V, plainvf &nseRHS) {
             }
         }
 
-        tempVx(V.Vx.fBulk) = abs(tempVx(V.Vx.fBulk) - nseRHS.Vx(V.Vx.fBulk));
+        tempVx(V.Vx.fCore) = abs(tempVx(V.Vx.fCore) - nseRHS.Vx(V.Vx.fCore));
 
-        locMax = blitz::max(tempVx(V.Vx.fBulk));
+        locMax = blitz::max(tempVx(V.Vx.fCore));
         MPI_Allreduce(&locMax, &gloMax, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);
         if (gloMax < mesh.inputParams.cnTolerance) {
             break;
@@ -358,9 +358,9 @@ void eulerCN_d3::solveVy(vfield &V, plainvf &nseRHS) {
 
     while (true) {
 #pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(nseRHS) shared(tempVy)
-        for (int iX = V.Vy.fBulk.lbound(0); iX <= V.Vy.fBulk.ubound(0); iX++) {
-            for (int iY = V.Vy.fBulk.lbound(1); iY <= V.Vy.fBulk.ubound(1); iY++) {
-                for (int iZ = V.Vy.fBulk.lbound(2); iZ <= V.Vy.fBulk.ubound(2); iZ++) {
+        for (int iX = V.Vy.fCore.lbound(0); iX <= V.Vy.fCore.ubound(0); iX++) {
+            for (int iY = V.Vy.fCore.lbound(1); iY <= V.Vy.fCore.ubound(1); iY++) {
+                for (int iZ = V.Vy.fCore.lbound(2); iZ <= V.Vy.fCore.ubound(2); iZ++) {
                     tempVy(iX, iY, iZ) = ((hy2hz2 * mesh.xix2(iX) * (V.Vy.F(iX+1, iY, iZ) + V.Vy.F(iX-1, iY, iZ)) +
                                            hz2hx2 * mesh.ety2(iY) * (V.Vy.F(iX, iY+1, iZ) + V.Vy.F(iX, iY-1, iZ)) +
                                            hx2hy2 * mesh.ztz2(iZ) * (V.Vy.F(iX, iY, iZ+1) + V.Vy.F(iX, iY, iZ-1))) *
@@ -375,9 +375,9 @@ void eulerCN_d3::solveVy(vfield &V, plainvf &nseRHS) {
         V.imposeVyBC();
 
 #pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(tempVy)
-        for (int iX = V.Vy.fBulk.lbound(0); iX <= V.Vy.fBulk.ubound(0); iX++) {
-            for (int iY = V.Vy.fBulk.lbound(1); iY <= V.Vy.fBulk.ubound(1); iY++) {
-                for (int iZ = V.Vy.fBulk.lbound(2); iZ <= V.Vy.fBulk.ubound(2); iZ++) {
+        for (int iX = V.Vy.fCore.lbound(0); iX <= V.Vy.fCore.ubound(0); iX++) {
+            for (int iY = V.Vy.fCore.lbound(1); iY <= V.Vy.fCore.ubound(1); iY++) {
+                for (int iZ = V.Vy.fCore.lbound(2); iZ <= V.Vy.fCore.ubound(2); iZ++) {
                     tempVy(iX, iY, iZ) = V.Vy.F(iX, iY, iZ) - 0.5 * dt * nu * (
                               mesh.xix2(iX) * (V.Vy.F(iX+1, iY, iZ) - 2.0 * V.Vy.F(iX, iY, iZ) + V.Vy.F(iX-1, iY, iZ)) / (hx2) +
                               mesh.ety2(iY) * (V.Vy.F(iX, iY+1, iZ) - 2.0 * V.Vy.F(iX, iY, iZ) + V.Vy.F(iX, iY-1, iZ)) / (hy2) +
@@ -386,9 +386,9 @@ void eulerCN_d3::solveVy(vfield &V, plainvf &nseRHS) {
             }
         }
 
-        tempVy(V.Vy.fBulk) = abs(tempVy(V.Vy.fBulk) - nseRHS.Vy(V.Vy.fBulk));
+        tempVy(V.Vy.fCore) = abs(tempVy(V.Vy.fCore) - nseRHS.Vy(V.Vy.fCore));
 
-        locMax = blitz::max(tempVy(V.Vy.fBulk));
+        locMax = blitz::max(tempVy(V.Vy.fCore));
         MPI_Allreduce(&locMax, &gloMax, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);
         if (gloMax < mesh.inputParams.cnTolerance) {
             break;
@@ -428,9 +428,9 @@ void eulerCN_d3::solveVz(vfield &V, plainvf &nseRHS) {
 
     while (true) {
 #pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(nseRHS) shared(tempVz)
-        for (int iX = V.Vz.fBulk.lbound(0); iX <= V.Vz.fBulk.ubound(0); iX++) {
-            for (int iY = V.Vz.fBulk.lbound(1); iY <= V.Vz.fBulk.ubound(1); iY++) {
-                for (int iZ = V.Vz.fBulk.lbound(2); iZ <= V.Vz.fBulk.ubound(2); iZ++) {
+        for (int iX = V.Vz.fCore.lbound(0); iX <= V.Vz.fCore.ubound(0); iX++) {
+            for (int iY = V.Vz.fCore.lbound(1); iY <= V.Vz.fCore.ubound(1); iY++) {
+                for (int iZ = V.Vz.fCore.lbound(2); iZ <= V.Vz.fCore.ubound(2); iZ++) {
                     tempVz(iX, iY, iZ) = ((hy2hz2 * mesh.xix2(iX) * (V.Vz.F(iX+1, iY, iZ) + V.Vz.F(iX-1, iY, iZ)) +
                                            hz2hx2 * mesh.ety2(iY) * (V.Vz.F(iX, iY+1, iZ) + V.Vz.F(iX, iY-1, iZ)) +
                                            hx2hy2 * mesh.ztz2(iZ) * (V.Vz.F(iX, iY, iZ+1) + V.Vz.F(iX, iY, iZ-1))) *
@@ -445,9 +445,9 @@ void eulerCN_d3::solveVz(vfield &V, plainvf &nseRHS) {
         V.imposeVzBC();
 
 #pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(tempVz)
-        for (int iX = V.Vz.fBulk.lbound(0); iX <= V.Vz.fBulk.ubound(0); iX++) {
-            for (int iY = V.Vz.fBulk.lbound(1); iY <= V.Vz.fBulk.ubound(1); iY++) {
-                for (int iZ = V.Vz.fBulk.lbound(2); iZ <= V.Vz.fBulk.ubound(2); iZ++) {
+        for (int iX = V.Vz.fCore.lbound(0); iX <= V.Vz.fCore.ubound(0); iX++) {
+            for (int iY = V.Vz.fCore.lbound(1); iY <= V.Vz.fCore.ubound(1); iY++) {
+                for (int iZ = V.Vz.fCore.lbound(2); iZ <= V.Vz.fCore.ubound(2); iZ++) {
                     tempVz(iX, iY, iZ) = V.Vz.F(iX, iY, iZ) - 0.5 * dt * nu * (
                               mesh.xix2(iX) * (V.Vz.F(iX+1, iY, iZ) - 2.0 * V.Vz.F(iX, iY, iZ) + V.Vz.F(iX-1, iY, iZ)) / (hx2) +
                               mesh.ety2(iY) * (V.Vz.F(iX, iY+1, iZ) - 2.0 * V.Vz.F(iX, iY, iZ) + V.Vz.F(iX, iY-1, iZ)) / (hy2) +
@@ -456,9 +456,9 @@ void eulerCN_d3::solveVz(vfield &V, plainvf &nseRHS) {
             }
         }
 
-        tempVz(V.Vz.fBulk) = abs(tempVz(V.Vz.fBulk) - nseRHS.Vz(V.Vz.fBulk));
+        tempVz(V.Vz.fCore) = abs(tempVz(V.Vz.fCore) - nseRHS.Vz(V.Vz.fCore));
 
-        locMax = blitz::max(tempVz(V.Vz.fBulk));
+        locMax = blitz::max(tempVz(V.Vz.fCore));
         MPI_Allreduce(&locMax, &gloMax, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);
         if (gloMax < mesh.inputParams.cnTolerance) {
             break;
@@ -485,9 +485,9 @@ void eulerCN_d3::solveT(sfield &T, plainsf &tmpRHS) {
 
     while (true) {
 #pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(T) shared(tmpRHS) shared(tempT)
-        for (int iX = T.F.fBulk.lbound(0); iX <= T.F.fBulk.ubound(0); iX++) {
-            for (int iY = T.F.fBulk.lbound(1); iY <= T.F.fBulk.ubound(1); iY++) {
-                for (int iZ = T.F.fBulk.lbound(2); iZ <= T.F.fBulk.ubound(2); iZ++) {
+        for (int iX = T.F.fCore.lbound(0); iX <= T.F.fCore.ubound(0); iX++) {
+            for (int iY = T.F.fCore.lbound(1); iY <= T.F.fCore.ubound(1); iY++) {
+                for (int iZ = T.F.fCore.lbound(2); iZ <= T.F.fCore.ubound(2); iZ++) {
                     tempT(iX, iY, iZ) = ((hy2hz2 * mesh.xix2(iX) * (T.F.F(iX+1, iY, iZ) + T.F.F(iX-1, iY, iZ)) +
                                           hz2hx2 * mesh.ety2(iY) * (T.F.F(iX, iY+1, iZ) + T.F.F(iX, iY-1, iZ)) +
                                           hx2hy2 * mesh.ztz2(iZ) * (T.F.F(iX, iY, iZ+1) + T.F.F(iX, iY, iZ-1))) *
@@ -502,9 +502,9 @@ void eulerCN_d3::solveT(sfield &T, plainsf &tmpRHS) {
         T.imposeBCs();
 
 #pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(T) shared(tempT)
-        for (int iX = T.F.fBulk.lbound(0); iX <= T.F.fBulk.ubound(0); iX++) {
-            for (int iY = T.F.fBulk.lbound(1); iY <= T.F.fBulk.ubound(1); iY++) {
-                for (int iZ = T.F.fBulk.lbound(2); iZ <= T.F.fBulk.ubound(2); iZ++) {
+        for (int iX = T.F.fCore.lbound(0); iX <= T.F.fCore.ubound(0); iX++) {
+            for (int iY = T.F.fCore.lbound(1); iY <= T.F.fCore.ubound(1); iY++) {
+                for (int iZ = T.F.fCore.lbound(2); iZ <= T.F.fCore.ubound(2); iZ++) {
                     tempT(iX, iY, iZ) = T.F.F(iX, iY, iZ) - 0.5 * dt * kappa * (
                            mesh.xix2(iX) * (T.F.F(iX+1, iY, iZ) - 2.0 * T.F.F(iX, iY, iZ) + T.F.F(iX-1, iY, iZ)) / (hx2) +
                            mesh.ety2(iY) * (T.F.F(iX, iY+1, iZ) - 2.0 * T.F.F(iX, iY, iZ) + T.F.F(iX, iY-1, iZ)) / (hy2) +
@@ -513,9 +513,9 @@ void eulerCN_d3::solveT(sfield &T, plainsf &tmpRHS) {
             }
         }
 
-        tempT(T.F.fBulk) = abs(tempT(T.F.fBulk) - tmpRHS.F(T.F.fBulk));
+        tempT(T.F.fCore) = abs(tempT(T.F.fCore) - tmpRHS.F(T.F.fCore));
 
-        locMax = blitz::max(tempT(T.F.fBulk));
+        locMax = blitz::max(tempT(T.F.fCore));
         MPI_Allreduce(&locMax, &gloMax, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);
         if (gloMax < mesh.inputParams.cnTolerance) {
             break;

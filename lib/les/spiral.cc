@@ -142,11 +142,11 @@ real spiral::computeSG(plainvf &nseRHS, vfield &V) {
     // Set the array limits when looping over the domain to compute SG contribution.
     // Use only the cell centers like a collocated grid and compute T tensor.
     // Since interpolated U, V, and W data is available only in the core,
-    // the limits of fBulk are used so that the boundary points are excluded
+    // the limits of fCore are used so that the boundary points are excluded
     // while computing derivatives and structure functions.
-    xS = P.F.fBulk.lbound(0);       xE = P.F.fBulk.ubound(0);
-    yS = P.F.fBulk.lbound(1);       yE = P.F.fBulk.ubound(1);
-    zS = P.F.fBulk.lbound(2);       zE = P.F.fBulk.ubound(2);
+    xS = P.F.fCore.lbound(0);       xE = P.F.fCore.ubound(0);
+    yS = P.F.fCore.lbound(1);       yE = P.F.fCore.ubound(1);
+    zS = P.F.fCore.lbound(2);       zE = P.F.fCore.ubound(2);
 
     localSGKE = 0.0;
     for (int iX = xS; iX <= xE; iX++) {
@@ -308,11 +308,11 @@ real spiral::computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T) {
     // Set the array limits when looping over the domain to compute SG contribution.
     // Use only the cell centers like a collocated grid and compute T tensor.
     // Since interpolated U, V, and W data is available only in the core,
-    // the limits of fBulk are used so that the boundary points are excluded
+    // the limits of fCore are used so that the boundary points are excluded
     // to compute derivatives and structure functions correctly.
-    xS = P.F.fBulk.lbound(0);       xE = P.F.fBulk.ubound(0);
-    yS = P.F.fBulk.lbound(1);       yE = P.F.fBulk.ubound(1);
-    zS = P.F.fBulk.lbound(2);       zE = P.F.fBulk.ubound(2);
+    xS = P.F.fCore.lbound(0);       xE = P.F.fCore.ubound(0);
+    yS = P.F.fCore.lbound(1);       yE = P.F.fCore.ubound(1);
+    zS = P.F.fCore.lbound(2);       zE = P.F.fCore.ubound(2);
 
     localSGKE = 0.0;
     for (int iX = xS; iX <= xE; iX++) {
@@ -450,9 +450,9 @@ real spiral::computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T) {
 
     // Sum the components to get the divergence of scalar flux, and add its contribution
     // to the RHS of the temperature field equation provided as argument to the function
-    xS = T.F.fBulk.lbound(0);       xE = T.F.fBulk.ubound(0);
-    yS = T.F.fBulk.lbound(1);       yE = T.F.fBulk.ubound(1);
-    zS = T.F.fBulk.lbound(2);       zE = T.F.fBulk.ubound(2);
+    xS = T.F.fCore.lbound(0);       xE = T.F.fCore.ubound(0);
+    yS = T.F.fCore.lbound(1);       yE = T.F.fCore.ubound(1);
+    zS = T.F.fCore.lbound(2);       zE = T.F.fCore.ubound(2);
 
     for (int iX = xS; iX <= xE; iX++) {
         for (int iY = yS; iY <= yE; iY++) {

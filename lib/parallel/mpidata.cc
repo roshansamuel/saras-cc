@@ -100,77 +100,51 @@ void mpidata::createSubarrays(const blitz::TinyVector<int, 3> globSize,
     // CREATING SUBARRAYS FOR TRANSFER ACROSS THE 4 FACES OF EACH SUB-DOMAIN
 
     //*****************************************************! ALONG XI-DIRECTION !***************************************************//
-    // SEND SUB-ARRAY ON LEFT SIDE
-    saStarts = padWidth;
+    // LOCAL SIZE FOR DATA TRANSFER ALONG XI-DIRECTION
     loclSize = coreSize;            loclSize(0) = padWidth(0);
 
-    // STAGGERED GRID SHARE A POINT ACROSS SUB-DOMAIN BOUNDARIES,
-    // AND HENCE SENDS A SLIGHTLY DIFFERENT DATA-SET
-    saStarts(0) += 1;
-
+    // SEND SUB-ARRAY ON LEFT SIDE
+    saStarts = padWidth;
     MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &sendSubarrayX0);
     MPI_Type_commit(&sendSubarrayX0);
 
     // RECEIVE SUB-ARRAY ON LEFT SIDE
     saStarts = padWidth;            saStarts(0) = 0;
-    loclSize = coreSize;            loclSize(0) = padWidth(0);
-
     MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &recvSubarrayX0);
     MPI_Type_commit(&recvSubarrayX0);
 
     // SEND SUB-ARRAY ON RIGHT SIDE
     saStarts = padWidth;            saStarts(0) = coreSize(0);
-    loclSize = coreSize;            loclSize(0) = padWidth(0);
-
-    // STAGGERED GRID SHARE A POINT ACROSS SUB-DOMAIN BOUNDARIES,
-    // AND HENCE SENDS A SLIGHTLY DIFFERENT DATA-SET
-    saStarts(0) -= 1;
-
     MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &sendSubarrayX1);
     MPI_Type_commit(&sendSubarrayX1);
 
     // RECEIVE SUB-ARRAY ON RIGHT SIDE
     saStarts = padWidth;            saStarts(0) = coreSize(0) + padWidth(0);
-    loclSize = coreSize;            loclSize(0) = padWidth(0);
-
     MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &recvSubarrayX1);
     MPI_Type_commit(&recvSubarrayX1);
 
 
     //****************************************************! ALONG ETA-DIRECTION !***************************************************//
-    // SEND SUB-ARRAY ON FRONT SIDE
-    saStarts = padWidth;
+    // LOCAL SIZE FOR DATA TRANSFER ALONG ETA-DIRECTION
     loclSize = coreSize;            loclSize(1) = padWidth(1);
 
-    // STAGGERED GRID SHARE A POINT ACROSS SUB-DOMAIN BOUNDARIES,
-    // AND HENCE SENDS A SLIGHTLY DIFFERENT DATA-SET
-    saStarts(1) += 1;
-
+    // SEND SUB-ARRAY ON FRONT SIDE
+    saStarts = padWidth;
     MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &sendSubarrayY0);
     MPI_Type_commit(&sendSubarrayY0);
 
     // RECEIVE SUB-ARRAY ON FRONT SIDE
     saStarts = padWidth;            saStarts(1) = 0;
-    loclSize = coreSize;            loclSize(1) = padWidth(1);
-
     MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &recvSubarrayY0);
     MPI_Type_commit(&recvSubarrayY0);
 
     // SEND SUB-ARRAY ON REAR SIDE
     saStarts = padWidth;            saStarts(1) = coreSize(1);
-    loclSize = coreSize;            loclSize(1) = padWidth(1);
-
-    // STAGGERED GRID SHARE A POINT ACROSS SUB-DOMAIN BOUNDARIES
-    // AND HENCE SENDS A SLIGHTLY DIFFERENT DATA-SET
-    saStarts(1) -= 1;
-
     MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &sendSubarrayY1);
     MPI_Type_commit(&sendSubarrayY1);
 
     // RECEIVE SUB-ARRAY ON REAR SIDE
     saStarts = padWidth;            saStarts(1) = coreSize(1) + padWidth(1);
-    loclSize = coreSize;            loclSize(1) = padWidth(1);
-
     MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &recvSubarrayY1);
     MPI_Type_commit(&recvSubarrayY1);
 
@@ -178,41 +152,26 @@ void mpidata::createSubarrays(const blitz::TinyVector<int, 3> globSize,
     // CREATING SUBARRAYS FOR TRANSFER ACROSS THE 4 EDGES OF EACH SUB-DOMAIN
 
     //*****************************************************! ALONG LEFT-FACE !***************************************************//
-    // SEND SUB-ARRAY ON LEFT-FRONT SIDE
-    saStarts = padWidth;
+    // LOCAL SIZE OF SUB-ARRAY FOR EDGE TRANSFER IS SAME FOR ALL 4 EDGES
     loclSize = padWidth;            loclSize(2) = coreSize(2);
 
-    // STAGGERED GRID SHARE A POINT ACROSS SUB-DOMAIN BOUNDARIES,
-    // AND HENCE SENDS A SLIGHTLY DIFFERENT DATA-SET
-    saStarts(0) += 1;
-    saStarts(1) += 1;
-
+    // SEND SUB-ARRAY ON LEFT-FRONT SIDE
+    saStarts = padWidth;
     MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &sendSubarrayX0Y0);
     MPI_Type_commit(&sendSubarrayX0Y0);
 
     // RECEIVE SUB-ARRAY ON LEFT-FRONT SIDE
     saStarts = 0, 0, 0;             saStarts(2) = padWidth(2);
-    loclSize = padWidth;            loclSize(2) = coreSize(2);
-
     MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &recvSubarrayX0Y0);
     MPI_Type_commit(&recvSubarrayX0Y0);
 
     // SEND SUB-ARRAY ON LEFT-BACK SIDE
     saStarts = padWidth;            saStarts(1) = coreSize(1);
-    loclSize = padWidth;            loclSize(2) = coreSize(2);
-
-    // STAGGERED GRID SHARE A POINT ACROSS SUB-DOMAIN BOUNDARIES,
-    // AND HENCE SENDS A SLIGHTLY DIFFERENT DATA-SET
-    saStarts(0) += 1;
-    saStarts(1) -= 1;
-
     MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &sendSubarrayX0Y1);
     MPI_Type_commit(&sendSubarrayX0Y1);
 
     // RECEIVE SUB-ARRAY ON LEFT-BACK SIDE
     saStarts = 0, 0, 0;             saStarts(1) = coreSize(1) + padWidth(1);            saStarts(2) = padWidth(2);
-    loclSize = padWidth;            loclSize(2) = coreSize(2);
-
     MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &recvSubarrayX0Y1);
     MPI_Type_commit(&recvSubarrayX0Y1);
 
@@ -220,39 +179,21 @@ void mpidata::createSubarrays(const blitz::TinyVector<int, 3> globSize,
     //****************************************************! ALONG RIGHT-FACE !***************************************************//
     // SEND SUB-ARRAY ON RIGHT-FRONT SIDE
     saStarts = padWidth;            saStarts(0) = coreSize(0);
-    loclSize = padWidth;            loclSize(2) = coreSize(2);
-
-    // STAGGERED GRID SHARE A POINT ACROSS SUB-DOMAIN BOUNDARIES,
-    // AND HENCE SENDS A SLIGHTLY DIFFERENT DATA-SET
-    saStarts(0) -= 1;
-    saStarts(1) += 1;
-
     MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &sendSubarrayX1Y0);
     MPI_Type_commit(&sendSubarrayX1Y0);
 
     // RECEIVE SUB-ARRAY ON RIGHT-FRONT SIDE
     saStarts = 0, 0, 0;             saStarts(0) = coreSize(0) + padWidth(0);            saStarts(2) = padWidth(2);
-    loclSize = padWidth;            loclSize(2) = coreSize(2);
-
     MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &recvSubarrayX1Y0);
     MPI_Type_commit(&recvSubarrayX1Y0);
 
     // SEND SUB-ARRAY ON RIGHT-BACK SIDE
     saStarts = coreSize;            saStarts(2) = padWidth(2);
-    loclSize = padWidth;            loclSize(2) = coreSize(2);
-
-    // STAGGERED GRID SHARE A POINT ACROSS SUB-DOMAIN BOUNDARIES
-    // AND HENCE SENDS A SLIGHTLY DIFFERENT DATA-SET
-    saStarts(0) -= 1;
-    saStarts(1) -= 1;
-
     MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &sendSubarrayX1Y1);
     MPI_Type_commit(&sendSubarrayX1Y1);
 
     // RECEIVE SUB-ARRAY ON RIGHT-BACK SIDE
     saStarts = coreSize + padWidth; saStarts(2) = padWidth(2);
-    loclSize = padWidth;            loclSize(2) = coreSize(2);
-
     MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &recvSubarrayX1Y1);
     MPI_Type_commit(&recvSubarrayX1Y1);
 }
