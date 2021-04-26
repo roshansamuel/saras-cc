@@ -73,6 +73,9 @@ class grid {
         void createUniformGrid();
         void createTanHypGrid(int dim);
 
+        void mgGridMetrics();
+        void mgGridMetrics(int dim);
+
         void checkAnisotropy();
         void computeGlobalLimits();
 
@@ -156,6 +159,9 @@ class grid {
         //@{
         blitz::Array<real, 1> zt_z, ztzz, ztz2;
         //@}
+
+        /** Global metrics along all 3 directions for multi-grid solver, stored in a single array of arrays */
+        blitz::Array<blitz::Array<real, 1>, 1> globalMetrics;
 
         /*****************************************************************************************************************************************************/
 

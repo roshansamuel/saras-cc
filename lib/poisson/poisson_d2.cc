@@ -183,7 +183,7 @@ void multigrid_d2::solve() {
 
 
 void multigrid_d2::coarsen() {
-    real facePoints, vertPoints;
+    real vertPoints;
 
     int i2, k2;
     int pLevel;
@@ -191,29 +191,16 @@ void multigrid_d2::coarsen() {
     pLevel = vLevel;
     vLevel += 1;
 
-    // Full weighted restriction operation
-    // The residual computed at previous vLevel is stored in tmpDataArray.
-    // This data is read for coarsening and written into residualData array.
-
-    /*
-     * According to An Introduction to Multigrid Methods by P. Wesseling, Page 64 (Sec 5.2),
-     * Restriction can be performed at the edges and corners using the same stencil as in the bulk,
-     * But by assuming that values of the field outside the domain are all 0.
-     * Hence no special treatments at the corners and edges are needed.
-     */
-
     for (int i = 0; i <= xEnd(vLevel); ++i) {
         i2 = i*2;
         for (int k = 0; k <= zEnd(vLevel); ++k) {
             k2 = k*2;
-            facePoints = (tmpDataArray(pLevel)(i2 + 1, 0, k2) + tmpDataArray(pLevel)(i2 - 1, 0, k2) +
-                          tmpDataArray(pLevel)(i2, 0, k2 + 1) + tmpDataArray(pLevel)(i2, 0, k2 - 1))*0.125;
             vertPoints = (tmpDataArray(pLevel)(i2 + 1, 0, k2 + 1) +
                           tmpDataArray(pLevel)(i2 + 1, 0, k2 - 1) +
                           tmpDataArray(pLevel)(i2 - 1, 0, k2 + 1) +
                           tmpDataArray(pLevel)(i2 - 1, 0, k2 - 1))*0.0625;
 
-            residualData(vLevel)(i, 0, k) = facePoints + vertPoints + tmpDataArray(pLevel)(i2, 0, k2)*0.25;
+            residualData(vLevel)(i, 0, k) = vertPoints + tmpDataArray(pLevel)(i2, 0, k2)*0.25;
         }
     }
 }
@@ -230,25 +217,9 @@ void multigrid_d2::prolong() {
 
     for (int i = 0; i <= xEnd(vLevel); ++i) {
         i2 = i/2;
-        if (isOdd(i)) {
-            for (int k = 0; k <= zEnd(vLevel); ++k) {
-                k2 = k/2;
-                if (isOdd(k)) { // Both i and k are odd
-                    pressureData(vLevel)(i, 0, k) = (pressureData(pLevel)(i2, 0, k2)     + pressureData(pLevel)(i2, 0, k2 + 1) +
-                                                     pressureData(pLevel)(i2 + 1, 0, k2) + pressureData(pLevel)(i2 + 1, 0, k2 + 1))/4.0;
-                } else {        // Here i is odd, but k is even
-                    pressureData(vLevel)(i, 0, k) = (pressureData(pLevel)(i2, 0, k2) + pressureData(pLevel)(i2 + 1, 0, k2))/2.0;
-                }
-            }
-        } else {
-            for (int k = 0; k <= zEnd(vLevel); ++k) {
-                k2 = k/2;
-                if (isOdd(k)) { // Here i is even, but k is odd
-                    pressureData(vLevel)(i, 0, k) = (pressureData(pLevel)(i2, 0, k2) + pressureData(pLevel)(i2, 0, k2 + 1))/2.0;
-                } else {        // Both i and k are even
-                    pressureData(vLevel)(i, 0, k) = pressureData(pLevel)(i2, 0, k2);
-                }
-            }
+        for (int k = 0; k <= zEnd(vLevel); ++k) {
+            k2 = k/2;
+            pressureData(vLevel)(i, 0, k) = pressureData(pLevel)(i2, 0, k2);
         }
     }
 }
@@ -408,82 +379,82 @@ void multigrid_d2::imposeBC() {
         if (zeroBC) {
             if (mesh.rankData.xRank == 0) {
                 if (testNeumann) {
-                    pressureData(vLevel)(-1, 0, all) = pressureData(vLevel)(1, 0, all);
+                    pressureData(vLevel)(-1, 0, all) = pressureData(vLevel)(0, 0, all);
                 } else {
-                    pressureData(vLevel)(-1, 0, all) = -pressureData(vLevel)(1, 0, all);
+                    pressureData(vLevel)(-1, 0, all) = -pressureData(vLevel)(0, 0, all);
                 }
             }
 
             if (mesh.rankData.xRank == mesh.rankData.npX - 1) {
                 if (testNeumann) {
-                    pressureData(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = pressureData(vLevel)(stagCore(vLevel).ubound(0) - 1, 0, all);
+                    pressureData(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = pressureData(vLevel)(stagCore(vLevel).ubound(0), 0, all);
                 } else {
-                    pressureData(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = -pressureData(vLevel)(stagCore(vLevel).ubound(0) - 1, 0, all);
+                    pressureData(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = -pressureData(vLevel)(stagCore(vLevel).ubound(0), 0, all);
                 }
             }
         } else {
             if (mesh.rankData.xRank == 0) {
                 if (testNeumann) {
-                    pressureData(vLevel)(-1, 0, all) = 0.5*hx(vLevel) + pressureData(vLevel)(1, 0, all);
+                    pressureData(vLevel)(-1, 0, all) = 0.5*hx(vLevel) + pressureData(vLevel)(0, 0, all);
                 } else {
-                    pressureData(vLevel)(-1, 0, all) = 2.0*xWall(all) - pressureData(vLevel)(1, 0, all);
+                    pressureData(vLevel)(-1, 0, all) = 2.0*xWall(all) - pressureData(vLevel)(0, 0, all);
                 }
             }
 
             if (mesh.rankData.xRank == mesh.rankData.npX - 1) {
                 if (testNeumann) {
-                    pressureData(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = 0.5*hx(vLevel) + pressureData(vLevel)(stagCore(vLevel).ubound(0) - 1, 0, all);
+                    pressureData(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = 0.5*hx(vLevel) + pressureData(vLevel)(stagCore(vLevel).ubound(0), 0, all);
                 } else {
-                    pressureData(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = 2.0*xWall(all) - pressureData(vLevel)(stagCore(vLevel).ubound(0) - 1, 0, all);
+                    pressureData(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = 2.0*xWall(all) - pressureData(vLevel)(stagCore(vLevel).ubound(0), 0, all);
                 }
             }
         }
 #else
         // NEUMANN BOUNDARY CONDITION AT LEFT AND RIGHT WALLS
         if (mesh.rankData.xRank == 0) {
-            pressureData(vLevel)(-1, 0, all) = pressureData(vLevel)(1, 0, all);
+            pressureData(vLevel)(-1, 0, all) = pressureData(vLevel)(0, 0, all);
         }
 
         if (mesh.rankData.xRank == mesh.rankData.npX - 1) {
-            pressureData(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = pressureData(vLevel)(stagCore(vLevel).ubound(0) - 1, 0, all);
+            pressureData(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = pressureData(vLevel)(stagCore(vLevel).ubound(0), 0, all);
         }
 #endif
     } // PERIODIC BOUNDARY CONDITIONS ARE AUTOMATICALLY IMPOSED BY PERIODIC DATA TRANSFER ACROSS PROCESSORS THROUGH updatePads()
 
     if (inputParams.zPer) {
         // PERIODIC BOUNDARY CONDITION AT BOTTOM WALL
-        pressureData(vLevel)(all, 0, -1) = pressureData(vLevel)(all, 0, stagCore(vLevel).ubound(2) - 1);
+        pressureData(vLevel)(all, 0, -1) = pressureData(vLevel)(all, 0, stagCore(vLevel).ubound(2));
 
         // PERIODIC BOUNDARY CONDITION AT TOP WALL
-        pressureData(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = pressureData(vLevel)(all, 0, 1);
+        pressureData(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = pressureData(vLevel)(all, 0, 0);
 
     } else {
 #ifdef TEST_POISSON
         // DIRICHLET/NEUMANN BOUNDARY CONDITION AT BOTTOM AND TOP WALLS
         if (zeroBC) {
             if (testNeumann) {
-                pressureData(vLevel)(all, 0, -1) = pressureData(vLevel)(all, 0, 1);
+                pressureData(vLevel)(all, 0, -1) = pressureData(vLevel)(all, 0, 0);
             } else {
-                pressureData(vLevel)(all, 0, -1) = -pressureData(vLevel)(all, 0, 1);
+                pressureData(vLevel)(all, 0, -1) = -pressureData(vLevel)(all, 0, 0);
             }
 
             // WHETHER testNeumann IS ENABLED OR NOT, THE TOP WALL HAS DIRICHLET BC SINCE ALL 4 WALLS SHOULD NOT HAVE NEUMANN BC
-            pressureData(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = -pressureData(vLevel)(all, 0, stagCore(vLevel).ubound(2) - 1);
+            pressureData(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = -pressureData(vLevel)(all, 0, stagCore(vLevel).ubound(2));
         } else {
             if (testNeumann) {
-                pressureData(vLevel)(all, 0, -1) = 0.5*hz(vLevel) + pressureData(vLevel)(all, 0, 1);
+                pressureData(vLevel)(all, 0, -1) = 0.5*hz(vLevel) + pressureData(vLevel)(all, 0, 0);
             } else {
-                pressureData(vLevel)(all, 0, -1) = 2.0*zWall(all) - pressureData(vLevel)(all, 0, 1);
+                pressureData(vLevel)(all, 0, -1) = 2.0*zWall(all) - pressureData(vLevel)(all, 0, 0);
             }
 
             // WHETHER testNeumann IS ENABLED OR NOT, THE TOP WALL HAS DIRICHLET BC SINCE ALL 4 WALLS SHOULD NOT HAVE NEUMANN BC
-            pressureData(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = 2.0*zWall(all) - pressureData(vLevel)(all, 0, stagCore(vLevel).ubound(2) - 1);
+            pressureData(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = 2.0*zWall(all) - pressureData(vLevel)(all, 0, stagCore(vLevel).ubound(2));
         }
 #else
         // NEUMANN BOUNDARY CONDITION AT BOTTOM AND TOP WALLS
-        pressureData(vLevel)(all, 0, -1) = pressureData(vLevel)(all, 0, 1);
+        pressureData(vLevel)(all, 0, -1) = pressureData(vLevel)(all, 0, 0);
 
-        pressureData(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = pressureData(vLevel)(all, 0, stagCore(vLevel).ubound(2) - 1);
+        pressureData(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = pressureData(vLevel)(all, 0, stagCore(vLevel).ubound(2));
 #endif
     }
 }
@@ -502,126 +473,3 @@ void multigrid_d2::updatePads(blitz::Array<blitz::Array<real, 3>, 1> &data) {
     MPI_Waitall(2, recvRequest.dataFirst(), recvStatus.dataFirst());
 }
 
-
-real multigrid_d2::testProlong() {
-    vLevel = 0;
-
-    // Fill the residualData array with correct values expected after prolongation
-    residualData(vLevel) = 0.0;
-    for (int i = 0; i <= xEnd(vLevel); ++i) {
-        for (int k = 0; k <= zEnd(vLevel); ++k) {
-            residualData(vLevel)(i, 0, k) = (mesh.rankData.rank + 1)*100 + i*10 + k;
-        }
-    }
-
-    // After going one level down the V-Cycle, populate the pressureData array with values at the corresponding stride
-    vLevel += 1;
-    pressureData(vLevel) = 0.0;
-    for (int i = 0; i <= xEnd(vLevel); ++i) {
-        for (int k = 0; k <= zEnd(vLevel); ++k) {
-            pressureData(vLevel)(i, 0, k) = (mesh.rankData.rank + 1)*100 + i*10 + k;
-        }
-    }
-
-    // Perform prolongation
-    prolong();
-
-    pressureData(vLevel) -= residualData(vLevel - 1);
-
-    return blitz::max(fabs(pressureData(vLevel)));
-}
-
-
-real multigrid_d2::testTransfer() {
-    real maxVal = 0.0;
-
-    vLevel = 0;
-
-    pressureData(vLevel) = 0.0;
-    residualData(vLevel) = 0.0;
-
-    MPI_Barrier(MPI_COMM_WORLD);
-    for (int i = 0; i <= xEnd(vLevel); ++i) {
-        for (int k = 0; k <= zEnd(vLevel); ++k) {
-            pressureData(vLevel)(i, 0, k) = (mesh.rankData.rank + 1)*100 + i*10 + k;
-            residualData(vLevel)(i, 0, k) = pressureData(vLevel)(i, 0, k);
-        }
-    }
-
-    // EXPECTED VALUES IN THE PAD REGIONS IF DATA TRANSFER HAPPENS WITH NO HITCH
-    for (int n = 0; n <= inputParams.vcDepth; n++) {
-        for (int k = 0; k <= zEnd(n); ++k) {
-            residualData(n)(-1, 0, k) = (mesh.rankData.faceRanks(0) + 1)*100 + (xEnd(n) - 1)*10 + k;
-            residualData(n)(xEnd(n) + 1, 0, k) = (mesh.rankData.faceRanks(1) + 1)*100 + 10 + k;
-        }
-    }
-
-    for (int n=0; n<=inputParams.vcDepth; n++) {
-        updatePads(pressureData);
-        vLevel += 1;
-    }
-
-    pressureData(vLevel) -= residualData(vLevel);
-
-    for (int i = pressureData(vLevel).lbound(0); i <= pressureData(vLevel).ubound(0); i += 1) {
-        for (int k = 0; k <= zEnd(vLevel); k += 1) {
-            if (abs(pressureData(vLevel)(i, 0, k)) > maxVal) {
-                maxVal = abs(pressureData(vLevel)(i, 0, k));
-            }
-        }
-    }
-
-    return maxVal;
-}
-
-
-real multigrid_d2::testPeriodic() {
-    real xCoord = 0.0;
-    real zCoord = 0.0;
-
-    pressureData(0) = 0.0;
-    residualData(0) = 0.0;
-
-    for (int i = 0; i <= xEnd(0); ++i) {
-        for (int k = 0; k <= zEnd(0); ++k) {
-            pressureData(0)(i, 0, k) = sin(2.0*M_PI*mesh.x(i)/mesh.xLen)*
-                                       cos(2.0*M_PI*mesh.z(k)/mesh.zLen);
-            residualData(0)(i, 0, k) = pressureData(0)(i, 0, k);
-        }
-    }
-
-    // EXPECTED VALUES IN THE PAD REGIONS IF DATA TRANSFER HAPPENS WITH NO HITCH
-    for (int n = 0; n <= inputParams.vcDepth; n++) {
-        for (int k = 0; k <= zEnd(n); ++k) {
-            xCoord = mesh.x(0) - (mesh.x(strideValues(n)) - mesh.x(0));
-            residualData(n)(-1, 0, k) = sin(2.0*M_PI*xCoord/mesh.xLen)*
-                                        cos(2.0*M_PI*mesh.z(k)/mesh.zLen);
-
-            xCoord = mesh.x(xEnd(0)) + (mesh.x(xEnd(0)) - mesh.x(xEnd(0) - strideValues(n)));
-            residualData(n)(xEnd(n) + 1, 0, k) = sin(2.0*M_PI*xCoord/mesh.xLen)*
-                                                 cos(2.0*M_PI*mesh.z(k)/mesh.zLen);
-        }
-    }
-
-    for (int n = 0; n <= inputParams.vcDepth; n++) {
-        for (int i = 0; i <= xEnd(n); ++i) {
-            zCoord = mesh.z(0) - (mesh.z(strideValues(n)) - mesh.z(0));
-            residualData(n)(i, 0, -1) = sin(2.0*M_PI*mesh.x(i)/mesh.xLen)*
-                                        cos(2.0*M_PI*zCoord/mesh.zLen);
-
-            zCoord = mesh.z(zEnd(0)) + (mesh.z(zEnd(0)) - mesh.z(zEnd(0) - strideValues(n)));
-            residualData(n)(i, 0, zEnd(n) + 1) = sin(2.0*M_PI*mesh.x(i)/mesh.xLen)*
-                                                 cos(2.0*M_PI*zCoord/mesh.zLen);
-        }
-    }
-
-    vLevel = 0;
-    for (int n=0; n<=inputParams.vcDepth; n++) {
-        imposeBC();
-        vLevel += 1;
-    }
-
-    pressureData(vLevel) -= residualData(vLevel);
-
-    return blitz::max(fabs(pressureData(vLevel)));
-}

@@ -70,7 +70,7 @@ poisson::poisson(const grid &mesh, const parser &solParam): mesh(mesh), inputPar
 
     mgSizeArray.resize(maxIndex);
     for (int i=0; i < maxIndex; i++) {
-        mgSizeArray(i) = int(pow(2, i)) + 1;
+        mgSizeArray(i) = int(pow(2, i));
     }
 
     mgSizeArray(0) = 1;
@@ -80,17 +80,11 @@ poisson::poisson(const grid &mesh, const parser &solParam): mesh(mesh), inputPar
         strideValues(i) = int(pow(2, i));
     }
 
-    // GET THE localSizeIndex AS IT WILL BE USED TO SET THE FULL AND CORE LIMITS OF THE STAGGERED POINTS
-    setLocalSizeIndex();
-
-    // SET THE FULL AND CORE LIMTS SET ABOVE USING THE localSizeIndex VARIABLE SET ABOVE
+    // SET THE ARRAY LIMITS OF FULL AND CORE DOMAINS
     setStagBounds();
 
     // SET VALUES OF COEFFICIENTS USED FOR COMPUTING LAPLACIAN
     setCoefficients();
-
-    // COPY THE STAGGERED GRID COORDINATES TO LOCAL ARRAYS
-    copyGrids();
 
     // COPY THE STAGGERED GRID DERIVATIVES TO LOCAL ARRAYS
     copyDerivs();
@@ -210,7 +204,7 @@ void poisson::mgSolve(plainsf &inFn, const plainsf &rhs) {
         // WHEN USING NEUMANN BC ON ALL SIDES, THERE ARE INFINTELY MANY SOLUTIONS.
         // SUBTRACT THE MEAN OF THE SOLUTION SO THAT THE PRESSURE CORRECTION HAS ZERO MEAN.
         // THIS CAN ENSURE THAT THE PRESSURE DOESN'T DRIFT WILDLY AS THE SIMULATION EVOLVES.
-        real localMean = blitz::sum(pressureData(0)(meanCore))/mesh.totalPoints;
+        real localMean = blitz::sum(pressureData(0)(stagCore(0)))/mesh.totalPoints;
         real globalAvg = 0.0;
 
         MPI_Allreduce(&localMean, &globalAvg, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
@@ -352,6 +346,7 @@ void poisson::initializeArrays() {
  ********************************************************************************************************************************************
  */
 void poisson::setStagBounds() {
+    blitz::TinyVector<int, 3> localSizeIndex;
     blitz::TinyVector<int, 3> loBound, upBound;
 
     stagFull.resize(inputParams.vcDepth + 1);
@@ -360,6 +355,24 @@ void poisson::setStagBounds() {
     xEnd.resize(inputParams.vcDepth + 1);
     yEnd.resize(inputParams.vcDepth + 1);
     zEnd.resize(inputParams.vcDepth + 1);
+
+    /**
+     ********************************************************************************************************************************************
+     *  For the multi-grid solver, the number of grid points (cell-centers) must be \f$ 2^N \f$ to perform V-Cycles.
+     *  The domain decomposition is also done such that each sub-domain will also have \f$ 2^M \f$ cells.
+     *  As a result, the number of processors in each direction must be a power of 2.
+     *  Then \f$ M = N - log_2(np) \f$ where \f$ np \f$ is the number of processors along the direction.
+     ********************************************************************************************************************************************
+     */
+#ifdef PLANAR
+    localSizeIndex = blitz::TinyVector<int, 3>(mesh.sizeIndex(0) - int(log2(inputParams.npX)),
+                                               mesh.sizeIndex(1),
+                                               mesh.sizeIndex(2));
+#else
+    localSizeIndex = blitz::TinyVector<int, 3>(mesh.sizeIndex(0) - int(log2(inputParams.npX)),
+                                               mesh.sizeIndex(1) - int(log2(inputParams.npY)),
+                                               mesh.sizeIndex(2));
+#endif
 
     for (int i=0; i<=inputParams.vcDepth; i++) {
         // LOWER BOUND AND UPPER BOUND OF STAGGERED CORE - USED TO CONSTRUCT THE CORE SLICE
@@ -391,43 +404,6 @@ void poisson::setStagBounds() {
 
     int locPoints = (xEnd(0) + 1)*(yEnd(0) + 1)*(zEnd(0) + 1);
     MPI_Allreduce(&locPoints, &pointCount, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-
-    // SET THE VIEW OF THE ARRAYS SUCH THAT COMMON POINTS AT SUB-DOMAIN BOUNDARIES
-    // ARE COUNTED ONLY IN ONE DOMAIN - THIS IS USED WHEN COMPUTING MEAN FOR THE
-    // COMPATIBILITY CONDITION, SO THAT POINTS ARE NOT DOUBLE-COUNTED
-    int mcUBx = xEnd(0);
-    int mcUBy = yEnd(0);
-    if (mesh.rankData.xRank < mesh.rankData.npX - 1) --mcUBx;
-    if (mesh.rankData.yRank < mesh.rankData.npY - 1) --mcUBy;
-
-    loBound = 0, 0, 0;
-    upBound = mcUBx, mcUBy, zEnd(0);
-    meanCore = blitz::RectDomain<3>(loBound, upBound);
-};
-
-
-/**
- ********************************************************************************************************************************************
- * \brief   Function to calculate the local size indices of sub-domains after MPI domain decomposition
- *
- *          For the multi-grid solver, the number of grid nodes must be \f$ 2^N + 1 \f$ to perform V-Cycles
- *          The domain decomposition is also done in such a way that each sub-domain will also have \f$ 2^M + 1 \f$ points.
- *          As a result, the number of processors in each direction must be a power of 2.
- *          In this case, the the value \f$ M \f$ of \f$ 2^M + 1 \f$ can be computed as \f$ M = N - log_2(np) \f$
- *          where \f$ np \f$ is the number of processors along the direction under consideration.
- *
- ********************************************************************************************************************************************
- */
-void poisson::setLocalSizeIndex() {
-#ifdef PLANAR
-    localSizeIndex = blitz::TinyVector<int, 3>(mesh.sizeIndex(0) - int(log2(inputParams.npX)),
-                                               mesh.sizeIndex(1),
-                                               mesh.sizeIndex(2));
-#else
-    localSizeIndex = blitz::TinyVector<int, 3>(mesh.sizeIndex(0) - int(log2(inputParams.npX)),
-                                               mesh.sizeIndex(1) - int(log2(inputParams.npY)),
-                                               mesh.sizeIndex(2));
-#endif
 };
 
 
@@ -540,6 +516,13 @@ void poisson::copyDerivs() {
 
         /////////////////// (d xi / d x)^2 terms ///////////////////
 
+    if (mesh.rankData.rank == 0) std::cout << mesh.rankData.rank << mesh.subarrayStarts << std::endl;
+    if (mesh.rankData.rank == 5) std::cout << mesh.rankData.rank << mesh.subarrayStarts << std::endl;
+    if (mesh.rankData.rank == 10) std::cout << mesh.rankData.rank << mesh.subarrayStarts << std::endl;
+    if (mesh.rankData.rank == 15) std::cout << mesh.rankData.rank << mesh.subarrayStarts << std::endl;
+    MPI_Finalize();
+    exit(0);
+
         xix2(n).resize(stagFull(n).ubound(0) - stagFull(n).lbound(0) + 1);
         xix2(n).reindexSelf(stagFull(n).lbound(0));
         xix2(n) = 0.0;
@@ -628,90 +611,6 @@ void poisson::copyDerivs() {
 
         ztz2(n)(-1) = ztz2(n)(1);
         ztz2(n)(stagCore(n).ubound(2) + 1) = ztz2(n)(stagCore(n).ubound(2) - 1);
-    }
-};
-
-
-/**
- ********************************************************************************************************************************************
- * \brief   Function to copy the staggered grid coordinates from grid class to local arrays
- *
- *          The grid-coordinates are required in Poisson solver only when non-uniform grid is used.
- *          The restriction and prolongation operations require appropriate weights when the grid is non-uniformly
- *          spaced.
- *          To compute these weights the non-uniform grid coordinates at different depths of the V-Cycle are
- *          stored in local arrays and this function performs this routine.
- *
- ********************************************************************************************************************************************
- */
-void poisson::copyGrids() {
-    // Points at the left and right pads of the MPI-subdomains need to be taken from
-    // neighbouring sub-domains, and these real values will be used to hold the coordinates
-    // temporarily during transfer along each axis
-    real recvPoint0, recvPoint1, sendPoint0, sendPoint1;
-    MPI_Status srStatus;
-
-    nuX.resize(inputParams.vcDepth + 1);
-#ifndef PLANAR
-    nuY.resize(inputParams.vcDepth + 1);
-#endif
-    nuZ.resize(inputParams.vcDepth + 1);
-
-    for(int n=0; n<=inputParams.vcDepth; ++n) {
-        nuX(n).resize(stagFull(n).ubound(0) - stagFull(n).lbound(0) + 1);
-        nuX(n).reindexSelf(stagFull(n).lbound(0));
-        nuX(n) = 0.0;
-        nuX(n)(blitz::Range(0, stagCore(n).ubound(0), 1)) = mesh.x(blitz::Range(0, stagCore(0).ubound(0), strideValues(n)));
-
-        // Assign points to be sent
-        sendPoint0 = nuX(n)(1);
-        sendPoint1 = nuX(n)(stagCore(n).ubound(0) - 1);
-
-        // Exchange the pad points across processors
-        MPI_Sendrecv(&sendPoint0, 1, MPI_FP_REAL, mesh.rankData.faceRanks(0), 1, &recvPoint1, 1, MPI_FP_REAL, mesh.rankData.faceRanks(1), 1, MPI_COMM_WORLD, &srStatus);
-        MPI_Sendrecv(&sendPoint1, 1, MPI_FP_REAL, mesh.rankData.faceRanks(1), 2, &recvPoint0, 1, MPI_FP_REAL, mesh.rankData.faceRanks(0), 2, MPI_COMM_WORLD, &srStatus);
-
-        // Assign received points to the grid
-        nuX(n)(-1) = recvPoint0;
-        nuX(n)(stagCore(n).ubound(0) + 1) = recvPoint1;
-
-        // Whether domain is periodic or not, left-most point and right-most points will be differently calculated
-        if (mesh.rankData.xRank == 0) nuX(n)(-1) = -nuX(n)(1);
-        if (mesh.rankData.xRank == mesh.rankData.npX - 1) nuX(n)(stagCore(n).ubound(0) + 1) = nuX(n)(stagCore(n).ubound(0)) +
-                                                         (nuX(n)(stagCore(n).ubound(0)) - nuX(n)(stagCore(n).ubound(0) - 1));
-
-#ifndef PLANAR
-        nuY(n).resize(stagFull(n).ubound(1) - stagFull(n).lbound(1) + 1);
-        nuY(n).reindexSelf(stagFull(n).lbound(1));
-        nuY(n) = 0.0;
-        nuY(n)(blitz::Range(0, stagCore(n).ubound(1), 1)) = mesh.y(blitz::Range(0, stagCore(0).ubound(1), strideValues(n)));
-
-        // Assign points to be sent
-        sendPoint0 = nuY(n)(1);
-        sendPoint1 = nuY(n)(stagCore(n).ubound(1) - 1);
-
-        // Exchange the pad points across processors
-        MPI_Sendrecv(&sendPoint0, 1, MPI_FP_REAL, mesh.rankData.faceRanks(2), 1, &recvPoint1, 1, MPI_FP_REAL, mesh.rankData.faceRanks(3), 1, MPI_COMM_WORLD, &srStatus);
-        MPI_Sendrecv(&sendPoint1, 1, MPI_FP_REAL, mesh.rankData.faceRanks(3), 2, &recvPoint0, 1, MPI_FP_REAL, mesh.rankData.faceRanks(2), 2, MPI_COMM_WORLD, &srStatus);
-
-        // Assign received points to the grid
-        nuY(n)(-1) = recvPoint0;
-        nuY(n)(stagCore(n).ubound(1) + 1) = recvPoint1;
-
-        // Whether domain is periodic or not, front-most point and rear-most points will be differently calculated
-        if (mesh.rankData.yRank == 0) nuY(n)(-1) = -nuY(n)(1);
-        if (mesh.rankData.yRank == mesh.rankData.npY - 1) nuY(n)(stagCore(n).ubound(1) + 1) = nuY(n)(stagCore(n).ubound(1)) +
-                                                         (nuY(n)(stagCore(n).ubound(1)) - nuY(n)(stagCore(n).ubound(1) - 1));
-#endif
-
-        nuZ(n).resize(stagFull(n).ubound(2) - stagFull(n).lbound(2) + 1);
-        nuZ(n).reindexSelf(stagFull(n).lbound(2));
-        nuZ(n) = 0.0;
-        nuZ(n)(blitz::Range(0, stagCore(n).ubound(2), 1)) = mesh.z(blitz::Range(0, stagCore(0).ubound(2), strideValues(n)));
-
-        nuZ(n)(-1) = -nuZ(n)(1);
-        nuZ(n)(stagCore(n).ubound(2) + 1) = nuZ(n)(stagCore(n).ubound(2)) +
-                                        (nuZ(n)(stagCore(n).ubound(2)) - nuZ(n)(stagCore(n).ubound(2) - 1));
     }
 };
 
@@ -825,41 +724,5 @@ void poisson::updatePads(blitz::Array<blitz::Array<real, 3>, 1> &data) { };
  */
 void poisson::createMGSubArrays() { };
 
-
-/**
- ********************************************************************************************************************************************
- * \brief   Function to test whether strided data transfer is performing as expected
- *
- *          The function populates the arrays with predetermined values at all locations.
- *          It then calls updatePads at different vLevels and checks is the data is being transferred along x and y directions
- *          This done by printing the contents of the arrays for visual inspection for now.
- *
- ********************************************************************************************************************************************
- */
-real poisson::testTransfer() { return 0; };
-
-/**
- ********************************************************************************************************************************************
- * \brief   Function to test whether prolongation operations are interpolating correctly
- *
- *          The function populates the arrays with predetermined values at all locations.
- *          It then calls prolong function at a lower vLevel and checks if the data is being interpolated correctly at higher vLevel
- *          This done by returning the average deviation from correct values as a real value
- *
- ********************************************************************************************************************************************
- */
-real poisson::testProlong() { return 0; };
-
-/**
- ********************************************************************************************************************************************
- * \brief   Function to test whether periodic BC is being implemented properly
- *
- *          The function populates the arrays with predetermined values at all locations.
- *          It then calls imposeBC function at different vLevels and checks if the correct values of the functions are imposed at boundaries
- *          This done by printing the contents of the arrays for visual inspection for now.
- *
- ********************************************************************************************************************************************
- */
-real poisson::testPeriodic() { return 0; };
 
 poisson::~poisson() { };

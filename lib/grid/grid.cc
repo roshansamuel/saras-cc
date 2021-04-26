@@ -114,6 +114,9 @@ grid::grid(const parser &solParam, parallel &parallelData): inputParams(solParam
     // CREATE UNIFORM GRID WHICH IS DEFAULT ALONG ALL THREE DIRECTIONS
     createUniformGrid();
 
+    // INITIALIZE THE GRID METRICS FOR DIFFERENT LEVELS OF MULTI-GRID V-CYCLE
+    mgGridMetrics();
+
     // FLAG TO CHECK FOR GRID ANISOTROPY - FALSE BY DEFAULT UNLESS NON-UNIFORM GRID IS CREATED
     bool gridCheck = false;
 
@@ -132,6 +135,10 @@ grid::grid(const parser &solParam, parallel &parallelData): inputParams(solParam
         createTanHypGrid(2);
         gridCheck = true;
     }
+
+    if (rankData.rank == 0) std::cout << globalMetrics << std::endl;
+    MPI_Finalize();
+    exit(0);
 
     x = xGlobal(blitz::Range(subarrayStarts(0) - padWidths(0), subarrayEnds(0) + padWidths(0)));
     y = yGlobal(blitz::Range(subarrayStarts(1) - padWidths(1), subarrayEnds(1) + padWidths(1)));
@@ -264,12 +271,12 @@ void grid::resizeGrid() {
     yRange = blitz::Range(-padWidths(1), globalSize(1) + padWidths(1) - 1);
     zRange = blitz::Range(-padWidths(2), globalSize(2) + padWidths(2) - 1);
 
-    // LOCAL GRID POINTS AND THEIR METRICS
+    // GLOBAL GRID POINTS AND THEIR METRICS
     xGlobal.resize(xRange);
     yGlobal.resize(yRange);
     zGlobal.resize(zRange);
 
-    // RANGE OF THE SUB-DOMAIN FOR STAGGERED AND COLLOCATED GRIDS: CONSTRUCTED FROM LOWER AND UPPER BOUNDS OF FULL SUB-DOMAIN
+    // RANGE OF THE SUB-DOMAIN FOR LOCAL GRIDS: CONSTRUCTED FROM LOWER AND UPPER BOUNDS OF FULL SUB-DOMAIN
     xRange = blitz::Range(fullDomain.lbound(0), fullDomain.ubound(0));
     yRange = blitz::Range(fullDomain.lbound(1), fullDomain.ubound(1));
     zRange = blitz::Range(fullDomain.lbound(2), fullDomain.ubound(2));
@@ -290,7 +297,7 @@ void grid::resizeGrid() {
 
     x = 1.0;        y = 1.0;        z = 1.0;
 
-    // BELOW ARE DEFAULT VALUES FOR A UNIFORM GRID OVER DOMAIN OF LENGTH 1.0
+    // DEFAULT VALUES FOR A UNIFORM GRID OVER DOMAIN OF LENGTH 1.0
     // THESE VALUES ARE OVERWRITTEN AS PER GRID TYPE
     xi_x = 1.0;     xixx = 0.0;     xix2 = 1.0;
     et_y = 1.0;     etyy = 0.0;     ety2 = 1.0;
@@ -426,8 +433,8 @@ void grid::createTanHypGrid(int dim) {
         for (i = 0; i < globalSize(0); i++) {
             xGlobal(i) = xLen*(1.0 - tanh(thBeta[0]*(1.0 - 2.0*xiGlo(i)))/tanh(thBeta[0]))/2.0;
 
-            df_x(i) = tanh(thBeta[0])/(thBeta[0]*xLen*(1.0 - pow((1.0 - 2.0*x(i)/xLen)*tanh(thBeta[0]), 2)));
-            dfxx(i) = -4.0*pow(tanh(thBeta[0]), 3)*(1.0 - 2.0*x(i)/xLen)/(thBeta[0]*xLen*xLen*pow(1.0 - pow(tanh(thBeta[0])*(1.0 - 2.0*x(i)/xLen), 2), 2));
+            df_x(i) = tanh(thBeta[0])/(thBeta[0]*xLen*(1.0 - pow((1.0 - 2.0*xGlobal(i)/xLen)*tanh(thBeta[0]), 2)));
+            dfxx(i) = -4.0*pow(tanh(thBeta[0]), 3)*(1.0 - 2.0*xGlobal(i)/xLen)/(thBeta[0]*xLen*xLen*pow(1.0 - pow(tanh(thBeta[0])*(1.0 - 2.0*xGlobal(i)/xLen), 2), 2));
             dfx2(i) = pow(df_x(i), 2.0);
         }
 
@@ -447,9 +454,20 @@ void grid::createTanHypGrid(int dim) {
         dfxx(rgtPts) = dfxx(lftPts);
         dfx2(rgtPts) = dfx2(lftPts);
 
+        globalMetrics(0) = xiGlo;
+        globalMetrics(1) = xGlobal;
+        globalMetrics(2) = df_x;
+        globalMetrics(3) = dfxx;
+        globalMetrics(4) = dfx2;
+        if (rankData.rank == 0) std::cout << xiGlo << xGlobal << globalMetrics(0).shape() << std::endl;
+        MPI_Finalize();
+        exit(0);
+
         xi_x = df_x(blitz::Range(subarrayStarts(0) - padWidths(0), subarrayEnds(0) + padWidths(0)));
         xixx = dfxx(blitz::Range(subarrayStarts(0) - padWidths(0), subarrayEnds(0) + padWidths(0)));
         xix2 = dfx2(blitz::Range(subarrayStarts(0) - padWidths(0), subarrayEnds(0) + padWidths(0)));
+
+        mgGridMetrics(dim);
     }
 
 #ifndef PLANAR
@@ -462,8 +480,8 @@ void grid::createTanHypGrid(int dim) {
         for (i = 0; i < globalSize(1); i++) {
             yGlobal(i) = yLen*(1.0 - tanh(thBeta[1]*(1.0 - 2.0*etGlo(i)))/tanh(thBeta[1]))/2.0;
 
-            df_x(i) = tanh(thBeta[1])/(thBeta[1]*yLen*(1.0 - pow((1.0 - 2.0*y(i)/yLen)*tanh(thBeta[1]), 2)));
-            dfxx(i) = -4.0*pow(tanh(thBeta[1]), 3)*(1.0 - 2.0*y(i)/yLen)/(thBeta[1]*yLen*yLen*pow(1.0 - pow(tanh(thBeta[1])*(1.0 - 2.0*y(i)/yLen), 2), 2));
+            df_x(i) = tanh(thBeta[1])/(thBeta[1]*yLen*(1.0 - pow((1.0 - 2.0*yGlobal(i)/yLen)*tanh(thBeta[1]), 2)));
+            dfxx(i) = -4.0*pow(tanh(thBeta[1]), 3)*(1.0 - 2.0*yGlobal(i)/yLen)/(thBeta[1]*yLen*yLen*pow(1.0 - pow(tanh(thBeta[1])*(1.0 - 2.0*yGlobal(i)/yLen), 2), 2));
             dfx2(i) = pow(df_x(i), 2.0);
         }
 
@@ -483,9 +501,17 @@ void grid::createTanHypGrid(int dim) {
         dfxx(rgtPts) = dfxx(lftPts);
         dfx2(rgtPts) = dfx2(lftPts);
 
+        globalMetrics(5) = etGlo;
+        globalMetrics(6) = yGlobal;
+        globalMetrics(7) = df_x;
+        globalMetrics(8) = dfxx;
+        globalMetrics(9) = dfx2;
+
         et_y = df_x(blitz::Range(subarrayStarts(1) - padWidths(1), subarrayEnds(1) + padWidths(1)));
         etyy = dfxx(blitz::Range(subarrayStarts(1) - padWidths(1), subarrayEnds(1) + padWidths(1)));
         ety2 = dfx2(blitz::Range(subarrayStarts(1) - padWidths(1), subarrayEnds(1) + padWidths(1)));
+
+        mgGridMetrics(dim);
     }
 #endif
 
@@ -498,8 +524,8 @@ void grid::createTanHypGrid(int dim) {
         for (i = 0; i < globalSize(2); i++) {
             zGlobal(i) = zLen*(1.0 - tanh(thBeta[2]*(1.0 - 2.0*ztGlo(i)))/tanh(thBeta[2]))/2.0;
 
-            df_x(i) = tanh(thBeta[2])/(thBeta[2]*zLen*(1.0 - pow((1.0 - 2.0*z(i)/zLen)*tanh(thBeta[2]), 2)));
-            dfxx(i) = -4.0*pow(tanh(thBeta[2]), 3)*(1.0 - 2.0*z(i)/zLen)/(thBeta[2]*zLen*zLen*pow(1.0 - pow(tanh(thBeta[2])*(1.0 - 2.0*z(i)/zLen), 2), 2));
+            df_x(i) = tanh(thBeta[2])/(thBeta[2]*zLen*(1.0 - pow((1.0 - 2.0*zGlobal(i)/zLen)*tanh(thBeta[2]), 2)));
+            dfxx(i) = -4.0*pow(tanh(thBeta[2]), 3)*(1.0 - 2.0*zGlobal(i)/zLen)/(thBeta[2]*zLen*zLen*pow(1.0 - pow(tanh(thBeta[2])*(1.0 - 2.0*zGlobal(i)/zLen), 2), 2));
             dfx2(i) = pow(df_x(i), 2.0);
         }
 
@@ -519,10 +545,116 @@ void grid::createTanHypGrid(int dim) {
         dfxx(rgtPts) = dfxx(lftPts);
         dfx2(rgtPts) = dfx2(lftPts);
 
+        globalMetrics(10) = ztGlo;
+        globalMetrics(11) = zGlobal;
+        globalMetrics(12) = df_x;
+        globalMetrics(13) = dfxx;
+        globalMetrics(14) = dfx2;
+
         zt_z = df_x(blitz::Range(subarrayStarts(2) - padWidths(2), subarrayEnds(2) + padWidths(2)));
         ztzz = dfxx(blitz::Range(subarrayStarts(2) - padWidths(2), subarrayEnds(2) + padWidths(2)));
         ztz2 = dfx2(blitz::Range(subarrayStarts(2) - padWidths(2), subarrayEnds(2) + padWidths(2)));
+
+        mgGridMetrics(dim);
     }
+}
+
+
+/**
+ ********************************************************************************************************************************************
+ * \brief   Function to initialize the globalMetrics array
+ *
+ *          The globalMetrics array contain the grid metric terms for the full domain along all 3 directions,
+ *          for all the grids of the mult-grid V-Cycle.
+ *          This array is used by the multi-grid Poisson solver to access grid-metric terms deep inside the
+ *          neighbouring sub-domains at the coarsest levels of the V-Cycle.
+ ********************************************************************************************************************************************
+ */
+void grid::mgGridMetrics() {
+    blitz::Range xRange, yRange, zRange;
+    int numLevels = blitz::min(sizeIndex);
+
+    // FOR EACH LEVEL, THERE ARE 15 ONE-DIMENSIONAL ARRAYS:
+    // xi, x, xi_x, xixx, xix2,
+    // et, y, et_y, etyy, ety2,
+    // zt, z, zt_z, ztzz, ztz2
+    globalMetrics.resize(15*numLevels);
+
+    for (int i=0; i<numLevels; i++) {
+        // FIRST SET THE RANGES TO RESIZE ARRAYS
+        xRange = blitz::Range(-1, int(std::pow(2, inputParams.xInd - i)));
+        yRange = blitz::Range(-1, int(std::pow(2, inputParams.yInd - i)));
+        zRange = blitz::Range(-1, int(std::pow(2, inputParams.zInd - i)));
+
+        // START INDEX FOR LEVEL
+        int ls = 15*i;
+
+        // It has 9 arrays - xi_x, xixx, xix2, et_y, etyy, ety2, zt_z, ztzz, ztz2 in that order.
+        for (int j=0;  j<5;  j++) globalMetrics(ls + j).resize(xRange);
+        for (int j=5;  j<10; j++) globalMetrics(ls + j).resize(yRange);
+        for (int j=10; j<15; j++) globalMetrics(ls + j).resize(zRange);
+
+        // DEFAULT VALUES FOR UNIFORM GRID
+        // THESE VALUES ARE OVERWRITTEN IF NON-UNIFORM GRID IS USED
+        globalMetrics(ls +  2) = 1.0/xLen;     globalMetrics(ls +  3) = 0.0;     globalMetrics(ls +  4) = pow(globalMetrics(ls +  2), 2.0);
+        globalMetrics(ls +  7) = 1.0/yLen;     globalMetrics(ls +  8) = 0.0;     globalMetrics(ls +  9) = pow(globalMetrics(ls +  7), 2.0);
+        globalMetrics(ls + 12) = 1.0/zLen;     globalMetrics(ls + 13) = 0.0;     globalMetrics(ls + 14) = pow(globalMetrics(ls + 12), 2.0);
+    }
+}
+
+
+/**
+ ********************************************************************************************************************************************
+ * \brief   Function to update the globalMetrics array for non-uniform grid
+ *
+ *          The overloaded version of this function is called by createTanHypGrid function when non-uniform
+ *          grid is generated along a given direction.
+ *          The function accordingly updates the global metrics with non-uniform grid values.
+ ********************************************************************************************************************************************
+ */
+void grid::mgGridMetrics(int dim) {
+    blitz::TinyVector<int, 3> sInd;
+    sInd = inputParams.xInd, inputParams.yInd, inputParams.zInd;
+    //blitz::Array<real, 1> df_x, dfxx, dfx2;
+
+    /*
+    if (dim == 0) {
+        for (int vLev=1; vLev<numLevels; vLev++) {
+            // GENERATE X-GRID POINTS FROM UNIFORM XI-GRID POINTS AND THEIR METRICS
+            df_x.resize(blitz::Range(-1, int(std::pow(2, inputParams.sInd(dim) - vLev))));
+            dfxx.resize(blitz::Range(-1, int(std::pow(2, inputParams.sInd(dim) - vLev))));
+            dfx2.resize(blitz::Range(-1, int(std::pow(2, inputParams.sInd(dim) - vLev))));
+
+            for (i = 0; i < globalSize(0); i++) {
+                xGlobal(i) = xLen*(1.0 - tanh(thBeta[0]*(1.0 - 2.0*xiGlo(i)))/tanh(thBeta[0]))/2.0;
+
+                df_x(i) = tanh(thBeta[0])/(thBeta[0]*xLen*(1.0 - pow((1.0 - 2.0*xGlobal(i)/xLen)*tanh(thBeta[0]), 2)));
+                dfxx(i) = -4.0*pow(tanh(thBeta[0]), 3)*(1.0 - 2.0*xGlobal(i)/xLen)/(thBeta[0]*xLen*xLen*pow(1.0 - pow(tanh(thBeta[0])*(1.0 - 2.0*xGlobal(i)/xLen), 2), 2));
+                dfx2(i) = pow(df_x(i), 2.0);
+            }
+
+            lftPts = blitz::Range(-padWidths(0), -1, 1);
+            rgtPts = blitz::Range(globalSize(0) - padWidths(0), globalSize(0) - 1, 1);
+
+            xGlobal(lftPts) = xGlobal(rgtPts) - xLen;
+            df_x(lftPts) = df_x(rgtPts);
+            dfxx(lftPts) = dfxx(rgtPts);
+            dfx2(lftPts) = dfx2(rgtPts);
+
+            rgtPts = blitz::Range(globalSize(0), globalSize(0) + padWidths(0) - 1, 1);
+            lftPts = blitz::Range(0, padWidths(0) - 1, 1);
+
+            xGlobal(rgtPts) = xLen + xGlobal(lftPts);
+            df_x(rgtPts) = df_x(lftPts);
+            dfxx(rgtPts) = dfxx(lftPts);
+            dfx2(rgtPts) = dfx2(lftPts);
+
+            xi_x = df_x(blitz::Range(subarrayStarts(0) - padWidths(0), subarrayEnds(0) + padWidths(0)));
+            xixx = dfxx(blitz::Range(subarrayStarts(0) - padWidths(0), subarrayEnds(0) + padWidths(0)));
+            xix2 = dfx2(blitz::Range(subarrayStarts(0) - padWidths(0), subarrayEnds(0) + padWidths(0)));
+        }
+    }
+    */
 }
 
 

@@ -80,16 +80,12 @@ class poisson {
         blitz::Array<int, 1> mgSizeArray;
         blitz::Array<int, 1> strideValues;
 
-        blitz::TinyVector<int, 3> localSizeIndex;
-
         blitz::Array<MPI_Request, 1> recvRequest;
         blitz::Array<MPI_Status, 1> recvStatus;
 
         blitz::Array<real, 1> hx, hy, hz;
         blitz::Array<real, 1> hx2, hz2, hzhx;
         blitz::Array<real, 1> hxhy, hyhz, hxhyhz;
-
-        blitz::Array<blitz::Array<real, 1>, 1> nuX, nuY, nuZ;
 
         blitz::Array<blitz::Array<real, 1>, 1> xixx, xix2;
         blitz::Array<blitz::Array<real, 1>, 1> etyy, ety2;
@@ -113,10 +109,8 @@ class poisson {
 
         static inline bool isOdd(int x) { return x % 2; };
 
-        void setLocalSizeIndex();
         void initializeArrays();
         void copyDerivs();
-        void copyGrids();
         void setCoefficients();
         void setStagBounds();
 
@@ -137,10 +131,6 @@ class poisson {
         poisson(const grid &mesh, const parser &solParam);
 
         void mgSolve(plainsf &inFn, const plainsf &rhs);
-
-        virtual real testProlong();
-        virtual real testTransfer();
-        virtual real testPeriodic();
 
         virtual ~poisson();
 };
@@ -181,10 +171,6 @@ class multigrid_d2: public poisson {
     public:
         multigrid_d2(const grid &mesh, const parser &solParam);
 
-        real testProlong();
-        real testTransfer();
-        real testPeriodic();
-
         ~multigrid_d2() {};
 };
 
@@ -217,10 +203,6 @@ class multigrid_d3: public poisson {
 
     public:
         multigrid_d3(const grid &mesh, const parser &solParam);
-
-        real testProlong();
-        real testTransfer();
-        real testPeriodic();
 
         ~multigrid_d3() {};
 };
