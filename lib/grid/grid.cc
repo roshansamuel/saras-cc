@@ -58,13 +58,17 @@
  */
 grid::grid(const parser &solParam, parallel &parallelData): inputParams(solParam),
                                                             rankData(parallelData) {
+    // Flag to enable printing to I/O only by 0 rank
+    pf = false;
+    if (rankData.rank == 0) pf = true;
+
     /** Depending on the finite-difference scheme chosen for calculating derivatives, set the \ref padWidths along all directions. */
     if (inputParams.dScheme == 1) {
         padWidths = 1, 1, 1;
     } else if (inputParams.dScheme == 2) {
         padWidths = 2, 2, 2;
     } else {
-        if (rankData.rank == 0) {
+        if (pf) {
             std::cout << "Undefined finite differencing scheme in YAML file. ABORTING" << std::endl;
         }
         MPI_Finalize();
@@ -122,23 +126,21 @@ grid::grid(const parser &solParam, parallel &parallelData): inputParams(solParam
 
     // DEPENDING ON THE USER-SET PARAMETERS, SWITCH TO TAN-HYP ALONG SELECTED DIRECTIONS
     if (inputParams.xGrid == 2) {
-        createTanHypGrid(0);
+        createTanHypGrid(0, xGlobal, xiGlo);
         gridCheck = true;
     }
 
+#ifndef PLANAR
     if (inputParams.yGrid == 2) {
-        createTanHypGrid(1);
+        createTanHypGrid(1, yGlobal, etGlo);
         gridCheck = true;
     }
+#endif
 
     if (inputParams.zGrid == 2) {
-        createTanHypGrid(2);
+        createTanHypGrid(2, zGlobal, ztGlo);
         gridCheck = true;
     }
-
-    if (rankData.rank == 0) std::cout << globalMetrics << std::endl;
-    MPI_Finalize();
-    exit(0);
 
     x = xGlobal(blitz::Range(subarrayStarts(0) - padWidths(0), subarrayEnds(0) + padWidths(0)));
     y = yGlobal(blitz::Range(subarrayStarts(1) - padWidths(1), subarrayEnds(1) + padWidths(1)));
@@ -406,13 +408,19 @@ void grid::createUniformGrid() {
  * \param   dim is an integer value that defines the direction along which tan-hyp grid is to be generated: 0 -> X, 1 -> Y, 2 -> Z
  ********************************************************************************************************************************************
  */
-void grid::createTanHypGrid(int dim) {
-    int i;
-    blitz::Array<real, 1> df_x, dfxx, dfx2;
+void grid::createTanHypGrid(int dim, blitz::Array<real, 1> xGlo, blitz::Array<real, 1> xiGl) {
     blitz::Range lftPts, rgtPts;
+    blitz::Array<real, 1> df_x, dfxx, dfx2;
+    blitz::TinyVector<real, 3> dLen = xLen, yLen, zLen;
+
+    // Hyperbolic tangent of beta parameter
+    real thb = tanh(thBeta(dim));
+
+    // Product of beta and length
+    real btl = thBeta(dim)*dLen(dim);
 
 #ifndef TEST_RUN
-    if (rankData.rank == 0) {
+    if (pf) {
         switch (dim) {
             case 0: std::cout << "Generating tangent hyperbolic grid along X direction" << std::endl;
                     break;
@@ -424,139 +432,49 @@ void grid::createTanHypGrid(int dim) {
     }
 #endif
 
-    if (dim == 0) {
-        // GENERATE X-GRID POINTS FROM UNIFORM XI-GRID POINTS AND THEIR METRICS
-        df_x.resize(blitz::Range(-padWidths(0), globalSize(0)));
-        dfxx.resize(blitz::Range(-padWidths(0), globalSize(0)));
-        dfx2.resize(blitz::Range(-padWidths(0), globalSize(0)));
+    // GENERATE X-GRID POINTS FROM UNIFORM XI-GRID POINTS AND THEIR METRICS
+    df_x.resize(blitz::Range(-padWidths(dim), globalSize(dim)));
+    dfxx.resize(blitz::Range(-padWidths(dim), globalSize(dim)));
+    dfx2.resize(blitz::Range(-padWidths(dim), globalSize(dim)));
 
-        for (i = 0; i < globalSize(0); i++) {
-            xGlobal(i) = xLen*(1.0 - tanh(thBeta[0]*(1.0 - 2.0*xiGlo(i)))/tanh(thBeta[0]))/2.0;
+    for (int i = 0; i < globalSize(dim); i++) {
+        xGlo(i) = dLen(dim)*(1.0 - tanh(thBeta[dim]*(1.0 - 2.0*xiGl(i)))/thb)/2.0;
 
-            df_x(i) = tanh(thBeta[0])/(thBeta[0]*xLen*(1.0 - pow((1.0 - 2.0*xGlobal(i)/xLen)*tanh(thBeta[0]), 2)));
-            dfxx(i) = -4.0*pow(tanh(thBeta[0]), 3)*(1.0 - 2.0*xGlobal(i)/xLen)/(thBeta[0]*xLen*xLen*pow(1.0 - pow(tanh(thBeta[0])*(1.0 - 2.0*xGlobal(i)/xLen), 2), 2));
-            dfx2(i) = pow(df_x(i), 2.0);
-        }
+        // Non-dimensionalized physical coordinate
+        real ndx = xGlo(i)/dLen(dim);
 
-        lftPts = blitz::Range(-padWidths(0), -1, 1);
-        rgtPts = blitz::Range(globalSize(0) - padWidths(0), globalSize(0) - 1, 1);
-
-        xGlobal(lftPts) = xGlobal(rgtPts) - xLen;
-        df_x(lftPts) = df_x(rgtPts);
-        dfxx(lftPts) = dfxx(rgtPts);
-        dfx2(lftPts) = dfx2(rgtPts);
-
-        rgtPts = blitz::Range(globalSize(0), globalSize(0) + padWidths(0) - 1, 1);
-        lftPts = blitz::Range(0, padWidths(0) - 1, 1);
-
-        xGlobal(rgtPts) = xLen + xGlobal(lftPts);
-        df_x(rgtPts) = df_x(lftPts);
-        dfxx(rgtPts) = dfxx(lftPts);
-        dfx2(rgtPts) = dfx2(lftPts);
-
-        globalMetrics(0) = xiGlo;
-        globalMetrics(1) = xGlobal;
-        globalMetrics(2) = df_x;
-        globalMetrics(3) = dfxx;
-        globalMetrics(4) = dfx2;
-        if (rankData.rank == 0) std::cout << xiGlo << xGlobal << globalMetrics(0).shape() << std::endl;
-        MPI_Finalize();
-        exit(0);
-
-        xi_x = df_x(blitz::Range(subarrayStarts(0) - padWidths(0), subarrayEnds(0) + padWidths(0)));
-        xixx = dfxx(blitz::Range(subarrayStarts(0) - padWidths(0), subarrayEnds(0) + padWidths(0)));
-        xix2 = dfx2(blitz::Range(subarrayStarts(0) - padWidths(0), subarrayEnds(0) + padWidths(0)));
-
-        mgGridMetrics(dim);
+        df_x(i) = thb/(btl*(1.0 - pow((1.0 - 2.0*ndx)*thb, 2)));
+        dfxx(i) = -4.0*pow(thb, 3)*(1.0 - 2.0*ndx)/(dLen(dim)*btl*pow(1.0 - pow(thb*(1.0 - 2.0*ndx), 2), 2));
+        dfx2(i) = pow(df_x(i), 2.0);
     }
 
-#ifndef PLANAR
-    if (dim == 1) {
-        // STAGGERED Y-GRID POINTS FROM UNIFORM ETA-GRID POINTS AND THEIR METRICS
-        df_x.resize(blitz::Range(-padWidths(1), globalSize(1)));
-        dfxx.resize(blitz::Range(-padWidths(1), globalSize(1)));
-        dfx2.resize(blitz::Range(-padWidths(1), globalSize(1)));
+    lftPts = blitz::Range(-padWidths(dim), -1, 1);
+    rgtPts = blitz::Range(globalSize(dim) - padWidths(dim), globalSize(dim) - 1, 1);
 
-        for (i = 0; i < globalSize(1); i++) {
-            yGlobal(i) = yLen*(1.0 - tanh(thBeta[1]*(1.0 - 2.0*etGlo(i)))/tanh(thBeta[1]))/2.0;
+    xGlo(lftPts) = xGlo(rgtPts) - dLen(dim);
+    df_x(lftPts) = df_x(rgtPts);
+    dfxx(lftPts) = dfxx(rgtPts);
+    dfx2(lftPts) = dfx2(rgtPts);
 
-            df_x(i) = tanh(thBeta[1])/(thBeta[1]*yLen*(1.0 - pow((1.0 - 2.0*yGlobal(i)/yLen)*tanh(thBeta[1]), 2)));
-            dfxx(i) = -4.0*pow(tanh(thBeta[1]), 3)*(1.0 - 2.0*yGlobal(i)/yLen)/(thBeta[1]*yLen*yLen*pow(1.0 - pow(tanh(thBeta[1])*(1.0 - 2.0*yGlobal(i)/yLen), 2), 2));
-            dfx2(i) = pow(df_x(i), 2.0);
-        }
+    rgtPts = blitz::Range(globalSize(dim), globalSize(dim) + padWidths(dim) - 1, 1);
+    lftPts = blitz::Range(0, padWidths(dim) - 1, 1);
 
-        lftPts = blitz::Range(-padWidths(1), -1, 1);
-        rgtPts = blitz::Range(globalSize(1) - padWidths(1), globalSize(1) - 1, 1);
+    xGlo(rgtPts) = dLen(dim) + xGlo(lftPts);
+    df_x(rgtPts) = df_x(lftPts);
+    dfxx(rgtPts) = dfxx(lftPts);
+    dfx2(rgtPts) = dfx2(lftPts);
 
-        yGlobal(lftPts) = yGlobal(rgtPts) - yLen;
-        df_x(lftPts) = df_x(rgtPts);
-        dfxx(lftPts) = dfxx(rgtPts);
-        dfx2(lftPts) = dfx2(rgtPts);
+    globalMetrics(5*dim + 0) = xiGl;
+    globalMetrics(5*dim + 1) = xGlo;
+    globalMetrics(5*dim + 2) = df_x;
+    globalMetrics(5*dim + 3) = dfxx;
+    globalMetrics(5*dim + 4) = dfx2;
 
-        rgtPts = blitz::Range(globalSize(1), globalSize(1) + padWidths(1) - 1, 1);
-        lftPts = blitz::Range(0, padWidths(1) - 1, 1);
+    xi_x = df_x(blitz::Range(subarrayStarts(dim) - padWidths(dim), subarrayEnds(dim) + padWidths(dim)));
+    xixx = dfxx(blitz::Range(subarrayStarts(dim) - padWidths(dim), subarrayEnds(dim) + padWidths(dim)));
+    xix2 = dfx2(blitz::Range(subarrayStarts(dim) - padWidths(dim), subarrayEnds(dim) + padWidths(dim)));
 
-        yGlobal(rgtPts) = yLen + yGlobal(lftPts);
-        df_x(rgtPts) = df_x(lftPts);
-        dfxx(rgtPts) = dfxx(lftPts);
-        dfx2(rgtPts) = dfx2(lftPts);
-
-        globalMetrics(5) = etGlo;
-        globalMetrics(6) = yGlobal;
-        globalMetrics(7) = df_x;
-        globalMetrics(8) = dfxx;
-        globalMetrics(9) = dfx2;
-
-        et_y = df_x(blitz::Range(subarrayStarts(1) - padWidths(1), subarrayEnds(1) + padWidths(1)));
-        etyy = dfxx(blitz::Range(subarrayStarts(1) - padWidths(1), subarrayEnds(1) + padWidths(1)));
-        ety2 = dfx2(blitz::Range(subarrayStarts(1) - padWidths(1), subarrayEnds(1) + padWidths(1)));
-
-        mgGridMetrics(dim);
-    }
-#endif
-
-    if (dim == 2) {
-        // STAGGERED Z-GRID POINTS FROM UNIFORM ZETA-GRID POINTS AND THEIR METRICS
-        df_x.resize(blitz::Range(-padWidths(2), globalSize(2)));
-        dfxx.resize(blitz::Range(-padWidths(2), globalSize(2)));
-        dfx2.resize(blitz::Range(-padWidths(2), globalSize(2)));
-
-        for (i = 0; i < globalSize(2); i++) {
-            zGlobal(i) = zLen*(1.0 - tanh(thBeta[2]*(1.0 - 2.0*ztGlo(i)))/tanh(thBeta[2]))/2.0;
-
-            df_x(i) = tanh(thBeta[2])/(thBeta[2]*zLen*(1.0 - pow((1.0 - 2.0*zGlobal(i)/zLen)*tanh(thBeta[2]), 2)));
-            dfxx(i) = -4.0*pow(tanh(thBeta[2]), 3)*(1.0 - 2.0*zGlobal(i)/zLen)/(thBeta[2]*zLen*zLen*pow(1.0 - pow(tanh(thBeta[2])*(1.0 - 2.0*zGlobal(i)/zLen), 2), 2));
-            dfx2(i) = pow(df_x(i), 2.0);
-        }
-
-        lftPts = blitz::Range(-padWidths(2), -1, 1);
-        rgtPts = blitz::Range(globalSize(2) - padWidths(2), globalSize(2) - 1, 1);
-
-        zGlobal(lftPts) = zGlobal(rgtPts) - zLen;
-        df_x(lftPts) = df_x(rgtPts);
-        dfxx(lftPts) = dfxx(rgtPts);
-        dfx2(lftPts) = dfx2(rgtPts);
-
-        rgtPts = blitz::Range(globalSize(2), globalSize(2) + padWidths(2) - 1, 1);
-        lftPts = blitz::Range(0, padWidths(2) - 1, 1);
-
-        zGlobal(rgtPts) = zLen + zGlobal(lftPts);
-        df_x(rgtPts) = df_x(lftPts);
-        dfxx(rgtPts) = dfxx(lftPts);
-        dfx2(rgtPts) = dfx2(lftPts);
-
-        globalMetrics(10) = ztGlo;
-        globalMetrics(11) = zGlobal;
-        globalMetrics(12) = df_x;
-        globalMetrics(13) = dfxx;
-        globalMetrics(14) = dfx2;
-
-        zt_z = df_x(blitz::Range(subarrayStarts(2) - padWidths(2), subarrayEnds(2) + padWidths(2)));
-        ztzz = dfxx(blitz::Range(subarrayStarts(2) - padWidths(2), subarrayEnds(2) + padWidths(2)));
-        ztz2 = dfx2(blitz::Range(subarrayStarts(2) - padWidths(2), subarrayEnds(2) + padWidths(2)));
-
-        mgGridMetrics(dim);
-    }
+    mgGridMetrics(dim);
 }
 
 
@@ -573,6 +491,8 @@ void grid::createTanHypGrid(int dim) {
 void grid::mgGridMetrics() {
     blitz::Range xRange, yRange, zRange;
     int numLevels = blitz::min(sizeIndex);
+    blitz::Array<real, 1> trnsGrid, physGrid;
+    blitz::TinyVector<real, 3> dLen = xLen, yLen, zLen;
 
     // FOR EACH LEVEL, THERE ARE 15 ONE-DIMENSIONAL ARRAYS:
     // xi, x, xi_x, xixx, xix2,
@@ -580,19 +500,49 @@ void grid::mgGridMetrics() {
     // zt, z, zt_z, ztzz, ztz2
     globalMetrics.resize(15*numLevels);
 
-    for (int i=0; i<numLevels; i++) {
+    for (int vLev=0; vLev<numLevels; vLev++) {
         // FIRST SET THE RANGES TO RESIZE ARRAYS
-        xRange = blitz::Range(-1, int(std::pow(2, inputParams.xInd - i)));
-        yRange = blitz::Range(-1, int(std::pow(2, inputParams.yInd - i)));
-        zRange = blitz::Range(-1, int(std::pow(2, inputParams.zInd - i)));
+        xRange = blitz::Range(-1, int(std::pow(2, inputParams.xInd - vLev)));
+        yRange = blitz::Range(-1, int(std::pow(2, inputParams.yInd - vLev)));
+        zRange = blitz::Range(-1, int(std::pow(2, inputParams.zInd - vLev)));
 
         // START INDEX FOR LEVEL
-        int ls = 15*i;
+        int ls = 15*vLev;
 
         // It has 9 arrays - xi_x, xixx, xix2, et_y, etyy, ety2, zt_z, ztzz, ztz2 in that order.
         for (int j=0;  j<5;  j++) globalMetrics(ls + j).resize(xRange);
         for (int j=5;  j<10; j++) globalMetrics(ls + j).resize(yRange);
         for (int j=10; j<15; j++) globalMetrics(ls + j).resize(zRange);
+
+        if (vLev == 0) {
+            // Uniform grid values at the finest grid level
+            globalMetrics(0) = xiGlo;       globalMetrics(1) = xGlobal;
+            globalMetrics(5) = etGlo;       globalMetrics(6) = yGlobal;
+            globalMetrics(10) = ztGlo;      globalMetrics(11) = zGlobal;
+
+        } else {
+            for (int dim=0; dim<3; dim++) {
+                int sls = ls + 5*dim;
+                int cLen = globalMetrics(sls).ubound()(0);
+
+                trnsGrid.resize(cLen + 2);      trnsGrid.reindexSelf(-1);
+                physGrid.resize(cLen + 2);      physGrid.reindexSelf(-1);
+
+                for (int i = 0; i < cLen; i++) {
+                    trnsGrid(i) = (globalMetrics(sls - 15)(2*i) + globalMetrics(sls - 15)(2*i + 1))/2.0;
+                    physGrid(i) = dLen(dim)*trnsGrid(i);
+                }
+
+                trnsGrid(-1) = -trnsGrid(0);
+                physGrid(-1) = -physGrid(0);
+
+                trnsGrid(cLen) = 1.0 + trnsGrid(0);
+                physGrid(cLen) = dLen(dim) + physGrid(0);
+
+                globalMetrics(sls) = trnsGrid;
+                globalMetrics(sls + 1) = physGrid;
+            }
+        }
 
         // DEFAULT VALUES FOR UNIFORM GRID
         // THESE VALUES ARE OVERWRITTEN IF NON-UNIFORM GRID IS USED
@@ -607,54 +557,59 @@ void grid::mgGridMetrics() {
  ********************************************************************************************************************************************
  * \brief   Function to update the globalMetrics array for non-uniform grid
  *
- *          The overloaded version of this function is called by createTanHypGrid function when non-uniform
- *          grid is generated along a given direction.
- *          The function accordingly updates the global metrics with non-uniform grid values.
+ *          The overloaded version of this function is called to generate grid metrics for
+ *          coarser grids of the multi-grid Poisson solver.
  ********************************************************************************************************************************************
  */
 void grid::mgGridMetrics(int dim) {
-    blitz::TinyVector<int, 3> sInd;
-    sInd = inputParams.xInd, inputParams.yInd, inputParams.zInd;
-    //blitz::Array<real, 1> df_x, dfxx, dfx2;
+    blitz::TinyVector<real, 3> dLen = xLen, yLen, zLen;
+    blitz::Array<real, 1> trnsGrid, physGrid, df_x, dfxx, dfx2;
 
-    /*
-    if (dim == 0) {
-        for (int vLev=1; vLev<numLevels; vLev++) {
-            // GENERATE X-GRID POINTS FROM UNIFORM XI-GRID POINTS AND THEIR METRICS
-            df_x.resize(blitz::Range(-1, int(std::pow(2, inputParams.sInd(dim) - vLev))));
-            dfxx.resize(blitz::Range(-1, int(std::pow(2, inputParams.sInd(dim) - vLev))));
-            dfx2.resize(blitz::Range(-1, int(std::pow(2, inputParams.sInd(dim) - vLev))));
+    // Hyperbolic tangent of beta parameter
+    real thb = tanh(thBeta(dim));
 
-            for (i = 0; i < globalSize(0); i++) {
-                xGlobal(i) = xLen*(1.0 - tanh(thBeta[0]*(1.0 - 2.0*xiGlo(i)))/tanh(thBeta[0]))/2.0;
+    // Product of beta and length
+    real btl = thBeta(dim)*dLen(dim);
 
-                df_x(i) = tanh(thBeta[0])/(thBeta[0]*xLen*(1.0 - pow((1.0 - 2.0*xGlobal(i)/xLen)*tanh(thBeta[0]), 2)));
-                dfxx(i) = -4.0*pow(tanh(thBeta[0]), 3)*(1.0 - 2.0*xGlobal(i)/xLen)/(thBeta[0]*xLen*xLen*pow(1.0 - pow(tanh(thBeta[0])*(1.0 - 2.0*xGlobal(i)/xLen), 2), 2));
-                dfx2(i) = pow(df_x(i), 2.0);
-            }
+    int numLevels = blitz::min(sizeIndex);
 
-            lftPts = blitz::Range(-padWidths(0), -1, 1);
-            rgtPts = blitz::Range(globalSize(0) - padWidths(0), globalSize(0) - 1, 1);
+    for (int vLev=1; vLev<numLevels; vLev++) {
+        // START INDEX FOR LEVEL
+        int ls = 5*dim + 15*vLev;
+        int cLen = globalMetrics(ls).shape()(0);
 
-            xGlobal(lftPts) = xGlobal(rgtPts) - xLen;
-            df_x(lftPts) = df_x(rgtPts);
-            dfxx(lftPts) = dfxx(rgtPts);
-            dfx2(lftPts) = dfx2(rgtPts);
+        // GENERATE X-GRID POINTS FROM UNIFORM XI-GRID POINTS AND THEIR METRICS
+        physGrid.resize(cLen);      physGrid.reindexSelf(-1);
+        df_x.resize(cLen);          df_x.reindexSelf(-1);
+        dfxx.resize(cLen);          dfxx.reindexSelf(-1);
+        dfx2.resize(cLen);          dfx2.reindexSelf(-1);
 
-            rgtPts = blitz::Range(globalSize(0), globalSize(0) + padWidths(0) - 1, 1);
-            lftPts = blitz::Range(0, padWidths(0) - 1, 1);
+        for (int i = 0; i < cLen-2; i++) {
+            physGrid(i) = dLen(dim)*(1.0 - tanh(thBeta(dim)*(1.0 - 2.0*globalMetrics(ls)(i)))/thb)/2.0;
 
-            xGlobal(rgtPts) = xLen + xGlobal(lftPts);
-            df_x(rgtPts) = df_x(lftPts);
-            dfxx(rgtPts) = dfxx(lftPts);
-            dfx2(rgtPts) = dfx2(lftPts);
+            // Non-dimensionalized physical coordinate
+            real ndx = physGrid(i)/dLen(dim);
 
-            xi_x = df_x(blitz::Range(subarrayStarts(0) - padWidths(0), subarrayEnds(0) + padWidths(0)));
-            xixx = dfxx(blitz::Range(subarrayStarts(0) - padWidths(0), subarrayEnds(0) + padWidths(0)));
-            xix2 = dfx2(blitz::Range(subarrayStarts(0) - padWidths(0), subarrayEnds(0) + padWidths(0)));
+            df_x(i) = thb/(btl*(1.0 - pow((1.0 - 2.0*ndx)*thb, 2)));
+            dfxx(i) = -4.0*pow(thb, 3)*(1.0 - 2.0*ndx)/(dLen(dim)*btl*pow(1.0 - pow(thb*(1.0 - 2.0*ndx), 2), 2));
+            dfx2(i) = pow(df_x(i), 2.0);
         }
+
+        physGrid(-1) = -physGrid(0);
+        df_x(-1) = df_x(cLen-3);
+        dfxx(-1) = dfxx(cLen-3);
+        dfx2(-1) = dfx2(cLen-3);
+
+        physGrid(cLen-2) = dLen(dim) + physGrid(0);
+        df_x(cLen-2) = df_x(0);
+        dfxx(cLen-2) = dfxx(0);
+        dfx2(cLen-2) = dfx2(0);
+
+        globalMetrics(ls + 1) = physGrid;
+        globalMetrics(ls + 2) = df_x;
+        globalMetrics(ls + 3) = dfxx;
+        globalMetrics(ls + 4) = dfx2;
     }
-    */
 }
 
 
@@ -714,9 +669,9 @@ void grid::checkAnisotropy() {
 
     MPI_Barrier(MPI_COMM_WORLD);
     if (globalMax > 7.0) {
-        if (rankData.rank == 0) std::cout << "\nWARNING: Grid anisotropy exceeds limits. Finite-difference calculations will be inaccurate" << std::endl;
+        if (pf) std::cout << "\nWARNING: Grid anisotropy exceeds limits. Finite-difference calculations will be inaccurate" << std::endl;
     } else {
-        if (rankData.rank == 0) std::cout << "\nMaximum grid anisotropy is " << globalMax << std::endl;
+        if (pf) std::cout << "\nMaximum grid anisotropy is " << globalMax << std::endl;
     }
 }
 

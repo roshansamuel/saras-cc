@@ -58,9 +58,9 @@
     "Taylor Number": 0.0
 
     # Dimensions of the domain
-    "X Length": 1.0
+    "X Length": 2.0
     "Y Length": 1.0
-    "Z Length": 1.0
+    "Z Length": 0.5
 
     # For Problem Type 5, heating can be applied at bottom wall using a circular heating plate
     "Heating Plate": false
@@ -90,7 +90,7 @@
     # D - Double sided tangent-hyperbolic stretching (finest near both edges and coarsest at the center)
     # Specify the required spacing along X, Y and Z directions by using appropriate letters from above
     # Eg. Uniform spacing in X-direction, double sided tan-hyp stretching along Y and single sided tan-hyp along Z would be "UDS"
-    "Mesh Type": "DDD"
+    "Mesh Type": "UDD"
 
     # Stretching factor to be used for tangent-hyperbolic grids.
     # This option is considered only when tangent-hyperbolic stretching is specified in the Mesh Type
@@ -98,13 +98,13 @@
     "Y Beta": 1.3
     "Z Beta": 1.3
 
-    # Choose the grid sizes (for the staggered grid) as indices from the list below
-    # These sizes are set to allow multigrid operations on the staggered grid
+    # Choose the grid sizes (number of cells) as indices from the list below
+    # These sizes are set to allow multigrid operations on cell-centers
     # 2D simulations can be run by setting Y Index to 0
-    # Grid sizes: 2 3 5 9 17 33 65 129 257 513 1025 2049 4097 8193 16385]
+    # Grid sizes: 1 2 4 8 15 32 64 128 256 512 1024 2048 4096 8192 16384]
     # Size index: 0 1 2 3  4  5  6  7   8   9   10   11   12   13    14
-    "X Index": 6
-    "Y Index": 6
+    "X Index": 8
+    "Y Index": 7
     "Z Index": 6
 
 
@@ -112,7 +112,7 @@
 "Parallel":
     "Number of OMP threads": 1
     "X Number of Procs": 4
-    "Y Number of Procs": 4
+    "Y Number of Procs": 2
 
 
 # Solver parameters

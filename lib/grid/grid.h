@@ -65,13 +65,16 @@ class grid {
         blitz::Array<real, 1> xiGlo, etGlo, ztGlo;
         //@}
 
+        // Print flag - basically flag to ease printing to I/O. It is true for root rank (0)
+        bool pf;
+
         void resizeGrid();
         void makeSizeArray();
         void setDomainSizes();
         void createXiEtaZeta();
 
         void createUniformGrid();
-        void createTanHypGrid(int dim);
+        void createTanHypGrid(int dim, blitz::Array<real, 1> xGlo, blitz::Array<real, 1> xiGl);
 
         void mgGridMetrics();
         void mgGridMetrics(int dim);
