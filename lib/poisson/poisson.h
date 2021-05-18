@@ -78,7 +78,6 @@ class poisson {
         blitz::RectDomain<3> meanCore;
 
         blitz::Array<int, 1> mgSizeArray;
-        blitz::Array<int, 1> strideValues;
 
         blitz::Array<MPI_Request, 1> recvRequest;
         blitz::Array<MPI_Status, 1> recvStatus;

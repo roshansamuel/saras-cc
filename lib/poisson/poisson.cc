@@ -75,11 +75,6 @@ poisson::poisson(const grid &mesh, const parser &solParam): mesh(mesh), inputPar
 
     mgSizeArray(0) = 1;
 
-    strideValues.resize(inputParams.vcDepth + 1);
-    for (int i=0; i<=inputParams.vcDepth; i++) {
-        strideValues(i) = int(pow(2, i));
-    }
-
     // SET THE ARRAY LIMITS OF FULL AND CORE DOMAINS
     setStagBounds();
 
@@ -417,6 +412,13 @@ void poisson::setStagBounds() {
  ********************************************************************************************************************************************
  */
 void poisson::setCoefficients() {
+    blitz::Array<int, 1> strideValues;
+
+    strideValues.resize(inputParams.vcDepth + 1);
+    for (int i=0; i<=inputParams.vcDepth; i++) {
+        strideValues(i) = int(pow(2, i));
+    }
+
     hx.resize(inputParams.vcDepth + 1);
 #ifndef PLANAR
     hy.resize(inputParams.vcDepth + 1);
@@ -475,11 +477,8 @@ void poisson::setCoefficients() {
  ********************************************************************************************************************************************
  */
 void poisson::copyDerivs() {
-    // Points at the left and right pads of the MPI-subdomains need to be taken from
-    // neighbouring sub-domains, and these real values will be used to hold the coordinates
-    // temporarily during transfer along each axis
-    real recvPoint0, recvPoint1, sendPoint0, sendPoint1;
-    MPI_Status srStatus;
+    // Sub-array start and end indices (in global indexing) at different levels of multigrid
+    int ss, se, ls;
 
     xixx.resize(inputParams.vcDepth + 1);
     xix2.resize(inputParams.vcDepth + 1);
@@ -491,126 +490,55 @@ void poisson::copyDerivs() {
     ztz2.resize(inputParams.vcDepth + 1);
 
     for(int n=0; n<=inputParams.vcDepth; ++n) {
-        /////////////////// d^2 xi / d x^2 terms ///////////////////
+        ss = mesh.subarrayStarts(0)/int(pow(2, n)) - 1;
+        se = (mesh.subarrayEnds(0) - 1)/int(pow(2, n)) + 1;
+        ls = 15*n + 3;
 
         xixx(n).resize(stagFull(n).ubound(0) - stagFull(n).lbound(0) + 1);
         xixx(n).reindexSelf(stagFull(n).lbound(0));
         xixx(n) = 0.0;
-        xixx(n)(blitz::Range(0, stagCore(n).ubound(0), 1)) = mesh.xixx(blitz::Range(0, stagCore(0).ubound(0), strideValues(n)));
+        xixx(n)(blitz::Range(-1, stagFull(n).ubound(0))) = mesh.globalMetrics(ls)(blitz::Range(ss, se));
 
-        // Assign points to be sent
-        sendPoint0 = xixx(n)(1);
-        sendPoint1 = xixx(n)(stagCore(n).ubound(0) - 1);
-
-        // Exchange the pad points across processors
-        MPI_Sendrecv(&sendPoint0, 1, MPI_FP_REAL, mesh.rankData.faceRanks(0), 1, &recvPoint1, 1, MPI_FP_REAL, mesh.rankData.faceRanks(1), 1, MPI_COMM_WORLD, &srStatus);
-        MPI_Sendrecv(&sendPoint1, 1, MPI_FP_REAL, mesh.rankData.faceRanks(1), 2, &recvPoint0, 1, MPI_FP_REAL, mesh.rankData.faceRanks(0), 2, MPI_COMM_WORLD, &srStatus);
-
-        // Assign received points to the grid
-        xixx(n)(-1) = recvPoint0;
-        xixx(n)(stagCore(n).ubound(0) + 1) = recvPoint1;
-
-        // Whether domain is periodic or not, left-most point and right-most points will be differently calculated
-        if (mesh.rankData.xRank == 0) xixx(n)(-1) = xixx(n)(1);
-        if (mesh.rankData.xRank == mesh.rankData.npX - 1) xixx(n)(stagCore(n).ubound(0) + 1) = xixx(n)(stagCore(n).ubound(0) - 1);
-
-        /////////////////// (d xi / d x)^2 terms ///////////////////
-
-    if (mesh.rankData.rank == 0) std::cout << mesh.rankData.rank << mesh.subarrayStarts << std::endl;
-    if (mesh.rankData.rank == 5) std::cout << mesh.rankData.rank << mesh.subarrayStarts << std::endl;
-    if (mesh.rankData.rank == 10) std::cout << mesh.rankData.rank << mesh.subarrayStarts << std::endl;
-    if (mesh.rankData.rank == 15) std::cout << mesh.rankData.rank << mesh.subarrayStarts << std::endl;
-    MPI_Finalize();
-    exit(0);
+        ls = 15*n + 4;
 
         xix2(n).resize(stagFull(n).ubound(0) - stagFull(n).lbound(0) + 1);
         xix2(n).reindexSelf(stagFull(n).lbound(0));
         xix2(n) = 0.0;
-        xix2(n)(blitz::Range(0, stagCore(n).ubound(0), 1)) = mesh.xix2(blitz::Range(0, stagCore(0).ubound(0), strideValues(n)));
-
-        // Assign points to be sent
-        sendPoint0 = xix2(n)(1);
-        sendPoint1 = xix2(n)(stagCore(n).ubound(0) - 1);
-
-        // Exchange the pad points across processors
-        MPI_Sendrecv(&sendPoint0, 1, MPI_FP_REAL, mesh.rankData.faceRanks(0), 1, &recvPoint1, 1, MPI_FP_REAL, mesh.rankData.faceRanks(1), 1, MPI_COMM_WORLD, &srStatus);
-        MPI_Sendrecv(&sendPoint1, 1, MPI_FP_REAL, mesh.rankData.faceRanks(1), 2, &recvPoint0, 1, MPI_FP_REAL, mesh.rankData.faceRanks(0), 2, MPI_COMM_WORLD, &srStatus);
-
-        // Assign received points to the grid
-        xix2(n)(-1) = recvPoint0;
-        xix2(n)(stagCore(n).ubound(0) + 1) = recvPoint1;
-
-        // Whether domain is periodic or not, left-most point and right-most points will be differently calculated
-        if (mesh.rankData.xRank == 0) xix2(n)(-1) = xix2(n)(1);
-        if (mesh.rankData.xRank == mesh.rankData.npX - 1) xix2(n)(stagCore(n).ubound(0) + 1) = xix2(n)(stagCore(n).ubound(0) - 1);
+        xix2(n)(blitz::Range(-1, stagFull(n).ubound(0))) = mesh.globalMetrics(ls)(blitz::Range(ss, se));
 
 #ifndef PLANAR
-        /////////////////// d^2 eta / d y^2 terms ///////////////////
+        ss = mesh.subarrayStarts(1)/int(pow(2, n)) - 1;
+        se = (mesh.subarrayEnds(1) - 1)/int(pow(2, n)) + 1;
+        ls = 15*n + 8;
 
         etyy(n).resize(stagFull(n).ubound(1) - stagFull(n).lbound(1) + 1);
         etyy(n).reindexSelf(stagFull(n).lbound(1));
         etyy(n) = 0.0;
-        etyy(n)(blitz::Range(0, stagCore(n).ubound(1), 1)) = mesh.etyy(blitz::Range(0, stagCore(0).ubound(1), strideValues(n)));
+        etyy(n)(blitz::Range(-1, stagFull(n).ubound(1))) = mesh.globalMetrics(ls)(blitz::Range(ss, se));
 
-        // Assign points to be sent
-        sendPoint0 = etyy(n)(1);
-        sendPoint1 = etyy(n)(stagCore(n).ubound(1) - 1);
-
-        // Exchange the pad points across processors
-        MPI_Sendrecv(&sendPoint0, 1, MPI_FP_REAL, mesh.rankData.faceRanks(2), 1, &recvPoint1, 1, MPI_FP_REAL, mesh.rankData.faceRanks(3), 1, MPI_COMM_WORLD, &srStatus);
-        MPI_Sendrecv(&sendPoint1, 1, MPI_FP_REAL, mesh.rankData.faceRanks(3), 2, &recvPoint0, 1, MPI_FP_REAL, mesh.rankData.faceRanks(2), 2, MPI_COMM_WORLD, &srStatus);
-
-        // Assign received points to the grid
-        etyy(n)(-1) = recvPoint0;
-        etyy(n)(stagCore(n).ubound(1) + 1) = recvPoint1;
-
-        // Whether domain is periodic or not, front-most point and rear-most points will be differently calculated
-        if (mesh.rankData.yRank == 0) etyy(n)(-1) = etyy(n)(1);
-        if (mesh.rankData.yRank == mesh.rankData.npY - 1) etyy(n)(stagCore(n).ubound(1) + 1) = etyy(n)(stagCore(n).ubound(1) - 1);
-
-        /////////////////// (d eta / d y)^2 terms ///////////////////
+        ls = 15*n + 9;
 
         ety2(n).resize(stagFull(n).ubound(1) - stagFull(n).lbound(1) + 1);
         ety2(n).reindexSelf(stagFull(n).lbound(1));
         ety2(n) = 0.0;
-        ety2(n)(blitz::Range(0, stagCore(n).ubound(1), 1)) = mesh.ety2(blitz::Range(0, stagCore(0).ubound(1), strideValues(n)));
-
-        // Assign points to be sent
-        sendPoint0 = ety2(n)(1);
-        sendPoint1 = ety2(n)(stagCore(n).ubound(1) - 1);
-
-        // Exchange the pad points across processors
-        MPI_Sendrecv(&sendPoint0, 1, MPI_FP_REAL, mesh.rankData.faceRanks(2), 1, &recvPoint1, 1, MPI_FP_REAL, mesh.rankData.faceRanks(3), 1, MPI_COMM_WORLD, &srStatus);
-        MPI_Sendrecv(&sendPoint1, 1, MPI_FP_REAL, mesh.rankData.faceRanks(3), 2, &recvPoint0, 1, MPI_FP_REAL, mesh.rankData.faceRanks(2), 2, MPI_COMM_WORLD, &srStatus);
-
-        // Assign received points to the grid
-        ety2(n)(-1) = recvPoint0;
-        ety2(n)(stagCore(n).ubound(1) + 1) = recvPoint1;
-
-        // Whether domain is periodic or not, front-most point and rear-most points will be differently calculated
-        if (mesh.rankData.yRank == 0) ety2(n)(-1) = ety2(n)(1);
-        if (mesh.rankData.yRank == mesh.rankData.npY - 1) ety2(n)(stagCore(n).ubound(1) + 1) = ety2(n)(stagCore(n).ubound(1) - 1);
+        ety2(n)(blitz::Range(-1, stagFull(n).ubound(1))) = mesh.globalMetrics(ls)(blitz::Range(ss, se));
 #endif
 
-        /////////////////// d^2 zeta / d z^2 terms ///////////////////
+        ss = mesh.subarrayStarts(2)/int(pow(2, n)) - 1;
+        se = (mesh.subarrayEnds(2) - 1)/int(pow(2, n)) + 1;
+        ls = 15*n + 13;
 
         ztzz(n).resize(stagFull(n).ubound(2) - stagFull(n).lbound(2) + 1);
         ztzz(n).reindexSelf(stagFull(n).lbound(2));
         ztzz(n) = 0.0;
-        ztzz(n)(blitz::Range(0, stagCore(n).ubound(2), 1)) = mesh.ztzz(blitz::Range(0, stagCore(0).ubound(2), strideValues(n)));
+        ztzz(n)(blitz::Range(-1, stagFull(n).ubound(2))) = mesh.globalMetrics(ls)(blitz::Range(ss, se));
 
-        ztzz(n)(-1) = ztzz(n)(1);
-        ztzz(n)(stagCore(n).ubound(2) + 1) = ztzz(n)(stagCore(n).ubound(2) - 1);
-
-        /////////////////// (d zeta / d z)^2 terms ///////////////////
+        ls = 15*n + 14;
 
         ztz2(n).resize(stagFull(n).ubound(2) - stagFull(n).lbound(2) + 1);
         ztz2(n).reindexSelf(stagFull(n).lbound(2));
         ztz2(n) = 0.0;
-        ztz2(n)(blitz::Range(0, stagCore(n).ubound(2), 1)) = mesh.ztz2(blitz::Range(0, stagCore(0).ubound(2), strideValues(n)));
-
-        ztz2(n)(-1) = ztz2(n)(1);
-        ztz2(n)(stagCore(n).ubound(2) + 1) = ztz2(n)(stagCore(n).ubound(2) - 1);
+        ztz2(n)(blitz::Range(-1, stagFull(n).ubound(2))) = mesh.globalMetrics(ls)(blitz::Range(ss, se));
     }
 };
 
