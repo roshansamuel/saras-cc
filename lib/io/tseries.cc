@@ -178,7 +178,7 @@ void tseries::writeTSHeader() {
  ********************************************************************************************************************************************
  */
 void tseries::writeTSData() {
-    V.divergence(divV, P);
+    V.divergence(divV);
     divValue = maxSwitch? divV.fxMax(): divV.fxMean();
 
     if (divValue > 1.0e5) {
@@ -252,7 +252,7 @@ void tseries::writeTSData(const sfield &T, const real nu, const real kappa) {
     real theta = 0.0;
 
     // COMPUTE ENERGY AND DIVERGENCE FOR THE INITIAL CONDITION
-    V.divergence(divV, P);
+    V.divergence(divV);
     divValue = maxSwitch? divV.fxMax(): divV.fxMean();
 
     if (divValue > 1.0e5) {

@@ -97,7 +97,7 @@ void eulerCN_d2::timeAdvance(vfield &V, sfield &P) {
 
     // Subtract the pressure gradient term
     pressureGradient = 0.0;
-    P.gradient(pressureGradient, V);
+    P.gradient(pressureGradient);
     nseRHS -= pressureGradient;
 
     // Multiply the entire RHS with dt and add the velocity of previous time-step to advance by explicit Euler method
@@ -112,7 +112,7 @@ void eulerCN_d2::timeAdvance(vfield &V, sfield &P) {
     solveVz(V, nseRHS);
 
     // Calculate the rhs for the poisson solver (mgRHS) using the divergence of guessed velocity in V
-    V.divergence(mgRHS, P);
+    V.divergence(mgRHS);
     mgRHS *= 1.0/dt;
 
     // IF THE POISSON SOLVER IS BEING TESTED, THE RHS IS SET TO ONE.
@@ -138,7 +138,7 @@ void eulerCN_d2::timeAdvance(vfield &V, sfield &P) {
     P += Pp;
 
     // Finally get the velocity field at end of time-step by subtracting the gradient of pressure correction from V
-    Pp.gradient(pressureGradient, V);
+    Pp.gradient(pressureGradient);
     pressureGradient *= dt;
     V -= pressureGradient;
 
@@ -209,7 +209,7 @@ void eulerCN_d2::timeAdvance(vfield &V, sfield &P, sfield &T) {
 
     // Subtract the pressure gradient term from momentum equation
     pressureGradient = 0.0;
-    P.gradient(pressureGradient, V);
+    P.gradient(pressureGradient);
     nseRHS -= pressureGradient;
 
     // Multiply the entire RHS with dt and add the velocity of previous time-step to advance by explicit Euler method
@@ -232,7 +232,7 @@ void eulerCN_d2::timeAdvance(vfield &V, sfield &P, sfield &T) {
     solveT(T, tmpRHS);
 
     // Calculate the rhs for the poisson solver (mgRHS) using the divergence of guessed velocity in V
-    V.divergence(mgRHS, P);
+    V.divergence(mgRHS);
     mgRHS *= 1.0/dt;
 
     // Using the calculated mgRHS, evaluate pressure correction (Pp) using multi-grid method
@@ -245,7 +245,7 @@ void eulerCN_d2::timeAdvance(vfield &V, sfield &P, sfield &T) {
     P += Pp;
 
     // Finally get the velocity field at end of time-step by subtracting the gradient of pressure correction from V
-    Pp.gradient(pressureGradient, V);
+    Pp.gradient(pressureGradient);
     pressureGradient *= dt;
     V -= pressureGradient;
 

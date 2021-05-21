@@ -56,7 +56,9 @@ class sfield {
     private:
         const grid &gridData;
 
-        blitz::Array<real, 3> derivTempF;
+        blitz::Array<real, 3> derivTemp;
+
+        blitz::RectDomain<3> core;
 
     public:
         field F;
@@ -80,7 +82,7 @@ class sfield {
         void computeDiff(plainsf &H);
         void computeNLin(const vfield &V, plainsf &H);
 
-        void gradient(plainvf &gradF, const vfield &V);
+        void gradient(plainvf &gradF);
 
         void syncData();
 

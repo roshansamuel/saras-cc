@@ -64,8 +64,10 @@ sfield::sfield(const grid &gridData, std::string fieldName):
 {
     this->fieldName = fieldName;
 
-    derivTempF.resize(F.fSize);
-    derivTempF.reindexSelf(F.flBound);
+    derivTemp.resize(F.fSize);
+    derivTemp.reindexSelf(F.flBound);
+
+    core = gridData.coreDomain;
 }
 
 /**
@@ -79,19 +81,19 @@ sfield::sfield(const grid &gridData, std::string fieldName):
  ********************************************************************************************************************************************
  */
 void sfield::computeDiff(plainsf &H) {
-    derivTempF = 0.0;
-    derS.calcDerivative2xx(derivTempF);
-    H.F(F.fCore) += derivTempF(F.fCore);
+    derivTemp = 0.0;
+    derS.calcDerivative2xx(derivTemp);
+    H.F(core) += derivTemp(core);
 
 #ifndef PLANAR
-    derivTempF = 0.0;
-    derS.calcDerivative2yy(derivTempF);
-    H.F(F.fCore) += derivTempF(F.fCore);
+    derivTemp = 0.0;
+    derS.calcDerivative2yy(derivTemp);
+    H.F(core) += derivTemp(core);
 #endif
 
-    derivTempF = 0.0;
-    derS.calcDerivative2zz(derivTempF);
-    H.F(F.fCore) += derivTempF(F.fCore);
+    derivTemp = 0.0;
+    derS.calcDerivative2zz(derivTemp);
+    H.F(core) += derivTemp(core);
 }
 
 /**
@@ -106,19 +108,19 @@ void sfield::computeDiff(plainsf &H) {
  ********************************************************************************************************************************************
  */
 void sfield::computeNLin(const vfield &V, plainsf &H) {
-    derivTempF = 0.0;
-    derS.calcDerivative1_x(derivTempF);
-    H.F(F.fCore) -= V.Vx.F(F.fCore)*derivTempF(F.fCore);
+    derivTemp = 0.0;
+    derS.calcDerivative1_x(derivTemp);
+    H.F(core) -= V.Vx.F(core)*derivTemp(core);
 
 #ifndef PLANAR
-    derivTempF = 0.0;
-    derS.calcDerivative1_y(derivTempF);
-    H.F(F.fCore) -= V.Vy.F(F.fCore)*derivTempF(F.fCore);
+    derivTemp = 0.0;
+    derS.calcDerivative1_y(derivTemp);
+    H.F(core) -= V.Vy.F(core)*derivTemp(core);
 #endif
 
-    derivTempF = 0.0;
-    derS.calcDerivative1_z(derivTempF);
-    H.F(F.fCore) -= V.Vz.F(F.fCore)*derivTempF(F.fCore);
+    derivTemp = 0.0;
+    derS.calcDerivative1_z(derivTemp);
+    H.F(core) -= V.Vz.F(core)*derivTemp(core);
 }
 
 /**
@@ -129,21 +131,20 @@ void sfield::computeNLin(const vfield &V, plainsf &H) {
  *          \f$ \nabla f = \frac{\partial f}{\partial x}i + \frac{\partial f}{\partial y}j + \frac{\partial f}{\partial z}k \f$.
  *
  * \param   gradF is a reference to a plain vector field (plainvf) into which the computed gradient must be written.
- * \param   V is a const reference to a vector field (vfield) whose core slices are used to compute gradient, since plainvf doesn't have them
  ********************************************************************************************************************************************
  */
-void sfield::gradient(plainvf &gradF, const vfield &V) {
-    derivTempF = 0.0;
-    derS.calcDerivative1_x(derivTempF);
-    gradF.Vx(V.Vx.fCore) = derivTempF(F.fCore);
+void sfield::gradient(plainvf &gradF) {
+    derivTemp = 0.0;
+    derS.calcDerivative1_x(derivTemp);
+    gradF.Vx(core) = derivTemp(core);
 #ifndef PLANAR
-    derivTempF = 0.0;
-    derS.calcDerivative1_y(derivTempF);
-    gradF.Vy(V.Vy.fCore) = derivTempF(F.fCore);
+    derivTemp = 0.0;
+    derS.calcDerivative1_y(derivTemp);
+    gradF.Vy(core) = derivTemp(core);
 #endif
-    derivTempF = 0.0;
-    derS.calcDerivative1_z(derivTempF);
-    gradF.Vz(V.Vz.fCore) = derivTempF(F.fCore);
+    derivTemp = 0.0;
+    derS.calcDerivative1_z(derivTemp);
+    gradF.Vz(core) = derivTemp(core);
 }
 
 /**

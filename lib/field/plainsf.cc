@@ -62,6 +62,11 @@ plainsf::plainsf(const grid &gridData, const sfield &refF): gridData(gridData) {
     F.reindexSelf(refF.F.flBound);
     F = 0.0;
 
+    derivTemp.resize(refF.F.fSize);
+    derivTemp.reindexSelf(refF.F.flBound);
+
+    core = gridData.coreDomain;
+
     mpiHandle = new mpidata(F, gridData.rankData);
     mpiHandle->createSubarrays(refF.F.fSize, refF.F.cuBound + 1, gridData.padWidths);
 }
@@ -75,21 +80,20 @@ plainsf::plainsf(const grid &gridData, const sfield &refF): gridData(gridData) {
  *          \f$ \nabla f = \frac{\partial f}{\partial x}i + \frac{\partial f}{\partial y}j + \frac{\partial f}{\partial z}k \f$.
  *
  * \param   gradF is a reference to a plain vector field (plainvf) into which the computed gradient must be written.
- * \param   V is a const reference to a vector field (vfield) whose core slices are used to compute gradient, since plainvf doesn't have them
  ********************************************************************************************************************************************
  */
-void plainsf::gradient(plainvf &gradF, const vfield &V) {
-    derivTempF = 0.0;
-    derS.calcDerivative1_x(derivTempF);
-    gradF.Vx(V.Vx.fCore) = derivTempF(gridData.coreDomain);
+void plainsf::gradient(plainvf &gradF) {
+    derivTemp = 0.0;
+    //derS.calcDerivative1_x(derivTemp);
+    gradF.Vx(core) = derivTemp(core);
 #ifndef PLANAR
-    derivTempF = 0.0;
-    derS.calcDerivative1_y(derivTempF);
-    gradF.Vy(V.Vy.fCore) = derivTempF(gridData.coreDomain);
+    derivTemp = 0.0;
+    //derS.calcDerivative1_y(derivTemp);
+    gradF.Vy(core) = derivTemp(core);
 #endif
-    derivTempF = 0.0;
-    derS.calcDerivative1_z(derivTempF);
-    gradF.Vz(V.Vz.fCore) = derivTempF(gridData.coreDomain);
+    derivTemp = 0.0;
+    //derS.calcDerivative1_z(derivTemp);
+    gradF.Vz(core) = derivTemp(core);
 }
 
 /**

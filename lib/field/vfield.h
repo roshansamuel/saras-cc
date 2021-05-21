@@ -57,7 +57,9 @@ class vfield {
     private:
         const grid &gridData;
 
-        blitz::Array<real, 3> derivTempX, derivTempY, derivTempZ;
+        blitz::Array<real, 3> derivTemp;
+
+        blitz::RectDomain<3> core;
 
     public:
         field Vx, Vy, Vz;
@@ -87,7 +89,7 @@ class vfield {
         void computeTStp(real &dt_out);
         void computeNLin(const vfield &V, plainvf &H);
 
-        void divergence(plainsf &divV, const sfield &P);
+        void divergence(plainsf &divV);
 
         void syncData();
 

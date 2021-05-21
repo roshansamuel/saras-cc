@@ -66,16 +66,10 @@ vfield::vfield(const grid &gridData, std::string fieldName):
 {
     this->fieldName = fieldName;
 
-    derivTempX.resize(Vx.fSize);
-    derivTempX.reindexSelf(Vx.flBound);
+    derivTemp.resize(Vx.fSize);
+    derivTemp.reindexSelf(Vx.flBound);
 
-#ifndef PLANAR
-    derivTempY.resize(Vy.fSize);
-    derivTempY.reindexSelf(Vy.flBound);
-#endif
-
-    derivTempZ.resize(Vz.fSize);
-    derivTempZ.reindexSelf(Vz.flBound);
+    core = gridData.coreDomain;
 }
 
 /**
@@ -91,47 +85,47 @@ vfield::vfield(const grid &gridData, std::string fieldName):
  ********************************************************************************************************************************************
  */
 void vfield::computeDiff(plainvf &H) {
-    derivTempX = 0.0;
-    derVx.calcDerivative2xx(derivTempX);
-    H.Vx(Vx.fCore) += derivTempX(Vx.fCore);
+    derivTemp = 0.0;
+    derVx.calcDerivative2xx(derivTemp);
+    H.Vx(core) += derivTemp(core);
 
 #ifndef PLANAR
-    derivTempX = 0.0;
-    derVx.calcDerivative2yy(derivTempX);
-    H.Vx(Vx.fCore) += derivTempX(Vx.fCore);
+    derivTemp = 0.0;
+    derVx.calcDerivative2yy(derivTemp);
+    H.Vx(core) += derivTemp(core);
 #endif
 
-    derivTempX = 0.0;
-    derVx.calcDerivative2zz(derivTempX);
-    H.Vx(Vx.fCore) += derivTempX(Vx.fCore);
+    derivTemp = 0.0;
+    derVx.calcDerivative2zz(derivTemp);
+    H.Vx(core) += derivTemp(core);
 
 #ifndef PLANAR
-    derivTempY = 0.0;
-    derVy.calcDerivative2xx(derivTempY);
-    H.Vy(Vy.fCore) += derivTempY(Vy.fCore);
+    derivTemp = 0.0;
+    derVy.calcDerivative2xx(derivTemp);
+    H.Vy(core) += derivTemp(core);
 
-    derivTempY = 0.0;
-    derVy.calcDerivative2yy(derivTempY);
-    H.Vy(Vy.fCore) += derivTempY(Vy.fCore);
+    derivTemp = 0.0;
+    derVy.calcDerivative2yy(derivTemp);
+    H.Vy(core) += derivTemp(core);
 
-    derivTempY = 0.0;
-    derVy.calcDerivative2zz(derivTempY);
-    H.Vy(Vy.fCore) += derivTempY(Vy.fCore);
+    derivTemp = 0.0;
+    derVy.calcDerivative2zz(derivTemp);
+    H.Vy(core) += derivTemp(core);
 #endif
 
-    derivTempZ = 0.0;
-    derVz.calcDerivative2xx(derivTempZ);
-    H.Vz(Vz.fCore) += derivTempZ(Vz.fCore);
+    derivTemp = 0.0;
+    derVz.calcDerivative2xx(derivTemp);
+    H.Vz(core) += derivTemp(core);
 
 #ifndef PLANAR
-    derivTempZ = 0.0;
-    derVz.calcDerivative2yy(derivTempZ);
-    H.Vz(Vz.fCore) += derivTempZ(Vz.fCore);
+    derivTemp = 0.0;
+    derVz.calcDerivative2yy(derivTemp);
+    H.Vz(core) += derivTemp(core);
 #endif
 
-    derivTempZ = 0.0;
-    derVz.calcDerivative2zz(derivTempZ);
-    H.Vz(Vz.fCore) += derivTempZ(Vz.fCore);
+    derivTemp = 0.0;
+    derVz.calcDerivative2zz(derivTemp);
+    H.Vz(core) += derivTemp(core);
 }
 
 /**
@@ -149,49 +143,49 @@ void vfield::computeDiff(plainvf &H) {
  */
 void vfield::computeNLin(const vfield &V, plainvf &H) {
     // Compute non-linear term for the Vx component
-    derivTempX = 0.0;
-    derVx.calcDerivative1_x(derivTempX);
-    H.Vx(Vx.fCore) -= V.Vx.F(Vx.fCore)*derivTempX(Vx.fCore);
+    derivTemp = 0.0;
+    derVx.calcDerivative1_x(derivTemp);
+    H.Vx(core) -= V.Vx.F(core)*derivTemp(core);
 
 #ifndef PLANAR
-    derivTempX = 0.0;
-    derVx.calcDerivative1_y(derivTempX);
-    H.Vx(Vx.fCore) -= V.Vy.F(Vx.fCore)*derivTempX(Vx.fCore);
+    derivTemp = 0.0;
+    derVx.calcDerivative1_y(derivTemp);
+    H.Vx(core) -= V.Vy.F(core)*derivTemp(core);
 #endif
 
-    derivTempX = 0.0;    
-    derVx.calcDerivative1_z(derivTempX);
-    H.Vx(Vx.fCore) -= V.Vz.F(Vx.fCore)*derivTempX(Vx.fCore);
+    derivTemp = 0.0;    
+    derVx.calcDerivative1_z(derivTemp);
+    H.Vx(core) -= V.Vz.F(core)*derivTemp(core);
 
 // Compute non-linear term for the Vy component
 #ifndef PLANAR
-    derivTempY = 0.0;
-    derVy.calcDerivative1_x(derivTempY);
-    H.Vy(Vy.fCore) -= V.Vx.F(Vy.fCore)*derivTempY(Vy.fCore);
+    derivTemp = 0.0;
+    derVy.calcDerivative1_x(derivTemp);
+    H.Vy(core) -= V.Vx.F(core)*derivTemp(core);
 
-    derivTempY = 0.0;
-    derVy.calcDerivative1_y(derivTempY);
-    H.Vy(Vy.fCore) -= V.Vy.F(Vy.fCore)*derivTempY(Vy.fCore);
+    derivTemp = 0.0;
+    derVy.calcDerivative1_y(derivTemp);
+    H.Vy(core) -= V.Vy.F(core)*derivTemp(core);
 
-    derivTempY = 0.0;
-    derVy.calcDerivative1_z(derivTempY);
-    H.Vy(Vy.fCore) -= V.Vz.F(Vy.fCore)*derivTempY(Vy.fCore);
+    derivTemp = 0.0;
+    derVy.calcDerivative1_z(derivTemp);
+    H.Vy(core) -= V.Vz.F(core)*derivTemp(core);
 #endif
 
     // Compute non-linear term for the Vz component
-    derivTempZ = 0.0;
-    derVz.calcDerivative1_x(derivTempZ);
-    H.Vz(Vz.fCore) -= V.Vx.F(Vz.fCore)*derivTempZ(Vz.fCore);
+    derivTemp = 0.0;
+    derVz.calcDerivative1_x(derivTemp);
+    H.Vz(core) -= V.Vx.F(core)*derivTemp(core);
 
 #ifndef PLANAR
-    derivTempZ = 0.0;
-    derVz.calcDerivative1_y(derivTempZ);
-    H.Vz(Vz.fCore) -= V.Vy.F(Vz.fCore)*derivTempZ(Vz.fCore);
+    derivTemp = 0.0;
+    derVz.calcDerivative1_y(derivTemp);
+    H.Vz(core) -= V.Vy.F(core)*derivTemp(core);
 #endif
 
-    derivTempZ = 0.0;
-    derVz.calcDerivative1_z(derivTempZ);
-    H.Vz(Vz.fCore) -= V.Vz.F(Vz.fCore)*derivTempZ(Vz.fCore);
+    derivTemp = 0.0;
+    derVz.calcDerivative1_z(derivTemp);
+    H.Vz(core) -= V.Vz.F(core)*derivTemp(core);
 }
 
 /**
@@ -238,23 +232,23 @@ void vfield::computeTStp(real &dt_out) {
  * \param   divV is a reference to the scalar field (sfield) into which the computed divergence is written.
  ********************************************************************************************************************************************
  */
-void vfield::divergence(plainsf &divV, const sfield &P) {
-    derivTempX = 0.0;
-    derVx.calcDerivative1_x(derivTempX);
+void vfield::divergence(plainsf &divV) {
+    derivTemp = 0.0;
+    derVx.calcDerivative1_x(derivTemp);
 
 #ifndef PLANAR
-    derivTempY = 0.0;
-    derVy.calcDerivative1_y(derivTempY);
+    derivTemp = 0.0;
+    derVy.calcDerivative1_y(derivTemp);
 #endif
 
-    derivTempZ = 0.0;
-    derVz.calcDerivative1_z(derivTempZ);
+    derivTemp = 0.0;
+    derVz.calcDerivative1_z(derivTemp);
 
     divV = 0.0;
 #ifdef PLANAR
-    divV.F(P.F.fCore) = derivTempX(P.F.fCore) + derivTempZ(P.F.fCore);
+    divV.F(core) = derivTemp(core) + derivTemp(core);
 #else
-    divV.F(P.F.fCore) = derivTempX(P.F.fCore) + derivTempY(P.F.fCore) + derivTempZ(P.F.fCore);
+    divV.F(core) = derivTemp(core) + derivTemp(core) + derivTemp(core);
 #endif
 }
 

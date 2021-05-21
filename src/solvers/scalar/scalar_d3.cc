@@ -206,6 +206,10 @@ void scalar_d3::solvePDE() {
         // MAIN FUNCTION CALLED IN EACH LOOP TO UPDATE THE FIELDS AT EACH TIME-STEP
         ivpSolver->timeAdvance(V, P, T);
 
+        // DEBUG CODE
+        MPI_Finalize();
+        exit(0);
+
         if (inputParams.useCFL) {
             V.computeTStp(dt);
             if (dt > inputParams.tStp) {

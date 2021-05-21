@@ -52,10 +52,12 @@ class plainsf {
     private:
         const grid &gridData;
 
-        blitz::Array<real, 3> derivTempF;
+        blitz::Array<real, 3> derivTemp;
+
+        blitz::RectDomain<3> core;
 
         /** derS is an instance of the derivative class used to compute derivatives */
-        derivative derS;
+        //derivative derS;
 
     public:
         blitz::Array<real, 3> F;
@@ -64,7 +66,7 @@ class plainsf {
 
         plainsf(const grid &gridData, const sfield &refF);
 
-        void gradient(plainvf &gradF, const vfield &V);
+        void gradient(plainvf &gradF);
 
         plainsf& operator += (plainsf &a);
         plainsf& operator -= (plainsf &a);
