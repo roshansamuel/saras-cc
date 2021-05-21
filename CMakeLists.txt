@@ -64,6 +64,14 @@ message (STATUS "The parent directory is ${PARENT_DIR}")
 message (STATUS "Install folder is ${INSTALL_DIR}")
 message (STATUS "All headers are in ${HEADER_DIR}")
 
+# Search for Blitz++ library
+find_library(BLITZPP_FOUND NAMES blitz blitzpp libblitz)
+if (BLITZPP_FOUND)
+    message (STATUS "Found Blitz++")
+else ()
+    message (FATAL_ERROR "Could not find Blitz++")
+endif ()
+
 # Search for yaml-cpp library
 find_package(yaml-cpp)
 if (yaml-cpp_FOUND)
@@ -74,7 +82,23 @@ if (yaml-cpp_FOUND)
         add_definitions(-DYAML_LEGACY)
     endif ()
 else ()
-    message (FATAL_ERROR "Did not find YAML-Cpp library")
+    message (FATAL_ERROR "Could not find YAML-Cpp")
+endif ()
+
+# Search for MPI library
+find_package(MPI REQUIRED)
+if (MPI_FOUND)
+    message (STATUS "Found MPI ${MPI_VERSION}")
+else ()
+    message (FATAL_ERROR "Could not find MPI")
+endif ()
+
+# Search for HDF5 package
+find_package(HDF5 REQUIRED)
+if (HDF5_FOUND)
+    message (STATUS "Found HDF5 ${MPI_VERSION}")
+else ()
+    message (FATAL_ERROR "Could not find HDF5")
 endif ()
 
 # Search for OpenMP package to enable hybrid parallelization and set the correct OpenMP compiler flag
@@ -143,6 +167,9 @@ unset (REAL_SINGLE CACHE)
 # Remove the TEST_POISSON variable from cache to force user to manually set the flag for testing Poisson solver
 unset (TEST_POISSON CACHE)
 
-# Remove variables associated with finding yaml-cpp version from cache
+# Remove variables associated with finding different libraries
 unset (yaml-cpp_FOUND CACHE)
 unset (yaml-cpp_VERSION CACHE)
+unset (BLITZPP_FOUND CACHE)
+unset (MPI_FOUND CACHE)
+unset (HDF5_FOUND CACHE)

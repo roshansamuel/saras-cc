@@ -97,7 +97,7 @@ class plainvf {
         inline real vxMax() {
             real localMax, globalMax;
 
-            localMax = blitz::max(Vx);
+            localMax = blitz::max(Vx(gridData.coreDomain));
 
             MPI_Allreduce(&localMax, &globalMax, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);
 
@@ -118,7 +118,7 @@ class plainvf {
         inline real vyMax() {
             real localMax, globalMax;
 
-            localMax = blitz::max(Vy);
+            localMax = blitz::max(Vy(gridData.coreDomain));
 
             MPI_Allreduce(&localMax, &globalMax, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);
 
@@ -139,7 +139,7 @@ class plainvf {
         inline real vzMax() {
             real localMax, globalMax;
 
-            localMax = blitz::max(Vz);
+            localMax = blitz::max(Vz(gridData.coreDomain));
 
             MPI_Allreduce(&localMax, &globalMax, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);
 

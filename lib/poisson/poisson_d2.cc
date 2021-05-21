@@ -191,6 +191,7 @@ void multigrid_d2::coarsen() {
     pLevel = vLevel;
     vLevel += 1;
 
+    // The following implementation is *incomplete*
     for (int i = 0; i <= xEnd(vLevel); ++i) {
         i2 = i*2;
         for (int k = 0; k <= zEnd(vLevel); ++k) {
@@ -322,9 +323,9 @@ void multigrid_d2::createMGSubArrays() {
         MPI_Type_commit(&xMGArray(n));
 
         // SET STARTING INDICES OF MEMORY LOCATIONS FROM WHERE TO READ (SEND) AND WRITE (RECEIVE) DATA
-        mgSendLft(n) =  1, 0, -1;
+        mgSendLft(n) =  0, 0, -1;
         mgRecvLft(n) = -1, 0, -1;
-        mgSendRgt(n) = stagCore(n).ubound(0) - 1, 0, -1;
+        mgSendRgt(n) = stagCore(n).ubound(0), 0, -1;
         mgRecvRgt(n) = stagCore(n).ubound(0) + 1, 0, -1;
     }
 }
