@@ -315,13 +315,3 @@ void hydro::initPBCs() {
     }
 };
 
-
-/**
- ********************************************************************************************************************************************
- * \brief   Function to test whether periodic BC is being implemented properly
- *
- *          The function populates the arrays with predetermined values at all locations.
- *          It then calls imposeUBCs, imposeVBCs and imposeWBCs and checks if the correct values of the functions are imposed at boundaries
- ********************************************************************************************************************************************
- */
-real hydro::testPeriodic() { return 0; };

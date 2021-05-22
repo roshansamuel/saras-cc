@@ -67,7 +67,6 @@ class hydro {
         hydro(const grid &mesh, const parser &solParam, parallel &mpiParam);
 
         virtual void solvePDE();
-        virtual real testPeriodic();
 
         virtual ~hydro() { };
 
@@ -121,7 +120,6 @@ class hydro_d2: public hydro {
         hydro_d2(const grid &mesh, const parser &solParam, parallel &mpiParam);
 
         void solvePDE();
-        real testPeriodic();
 
         ~hydro_d2();
 };
@@ -141,7 +139,6 @@ class hydro_d3: public hydro {
         hydro_d3(const grid &mesh, const parser &solParam, parallel &mpiParam);
 
         void solvePDE();
-        real testPeriodic();
 
         ~hydro_d3();
 };
