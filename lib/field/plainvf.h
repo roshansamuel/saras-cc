@@ -44,7 +44,6 @@
 #define PLAINVF_H
 
 #include "vfield.h"
-#include "grid.h"
 
 class plainvf {
     private:

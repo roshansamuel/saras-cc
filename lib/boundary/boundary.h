@@ -43,10 +43,7 @@
 #ifndef BOUNDARY_H
 #define BOUNDARY_H
 
-#include <blitz/array.h>
-
 #include "field.h"
-#include "grid.h"
 
 class boundary {
     public:

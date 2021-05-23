@@ -43,8 +43,6 @@
 #ifndef TIMESTEP_H
 #define TIMESTEP_H
 
-#include <blitz/array.h>
-
 #include "poisson.h"
 #include "tseries.h"
 #include "force.h"

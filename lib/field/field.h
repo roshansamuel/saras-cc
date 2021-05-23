@@ -43,9 +43,6 @@
 #ifndef FIELD_H
 #define FIELD_H
 
-#include <blitz/array.h>
-#include <string>
-
 #include "mpidata.h"
 #include "grid.h"
 

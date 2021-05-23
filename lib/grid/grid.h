@@ -43,10 +43,7 @@
 #ifndef GRID_H
 #define GRID_H
 
-#include <math.h>
-#include <string>
 #include <vector>
-#include <blitz/array.h>
 
 #include "parallel.h"
 

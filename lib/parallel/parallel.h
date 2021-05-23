@@ -43,7 +43,6 @@
 #ifndef PARALLEL_H
 #define PARALLEL_H
 
-#include <blitz/array.h>
 #include <mpi.h>
 
 #include "parser.h"

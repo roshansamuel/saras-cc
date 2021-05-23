@@ -43,12 +43,9 @@
 #ifndef TSERIES_H
 #define TSERIES_H
 
-#include <fstream>
-
 #include "plainsf.h"
 #include "sfield.h"
 #include "vfield.h"
-#include "grid.h"
 
 class tseries {
     public:

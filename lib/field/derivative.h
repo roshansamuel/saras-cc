@@ -48,7 +48,6 @@
 #include <blitz/array/stencilops.h>
 
 #include "field.h"
-#include "grid.h"
 
 class derivative {
     private: 

@@ -43,14 +43,9 @@
 #ifndef PROBES_H
 #define PROBES_H
 
-#include <vector>
-#include <fstream>
 #include <cstddef>
-#include <blitz/array.h>
-#include <mpi.h>
 
 #include "field.h"
-#include "grid.h"
 
 /**
  ********************************************************************************************************************************************

@@ -43,10 +43,7 @@
 #ifndef FORCE_H
 #define FORCE_H
 
-#include <blitz/array.h>
-
-#include "plainvf.h"
-#include "sfield.h"
+#include "plainsf.h"
 
 class force {
     public:

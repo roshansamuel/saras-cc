@@ -43,10 +43,8 @@
 #ifndef PLAINSF_H
 #define PLAINSF_H
 
-#include "plainvf.h"
 #include "sfield.h"
-#include "vfield.h"
-#include "grid.h"
+#include "plainvf.h"
 
 class plainsf {
     private:

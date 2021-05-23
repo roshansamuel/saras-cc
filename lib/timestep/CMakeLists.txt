@@ -31,9 +31,9 @@
  ##
  ##! \file CMakeLists.txt
  #
- #   \brief CMakeLists file to add the force class library.
+ #   \brief CMakeLists file to add the timestep class
  #
- #   \author Shashwat Bhattacharya, Roshan Samuel
+ #   \author Roshan Samuel
  #   \date Nov 2019
  #   \copyright New BSD License
  #

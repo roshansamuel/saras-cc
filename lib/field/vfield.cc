@@ -42,9 +42,7 @@
 
 #include "plainsf.h"
 #include "plainvf.h"
-#include "sfield.h"
 #include "vfield.h"
-#include <math.h>
 
 /**
  ********************************************************************************************************************************************
@@ -229,7 +227,7 @@ void vfield::computeTStp(real &dt_out) {
  *                                    \frac{\partial \mathbf{v}}{\partial y} +
  *                                    \frac{\partial \mathbf{v}}{\partial z} \f$.
  *
- * \param   divV is a reference to the scalar field (sfield) into which the computed divergence is written.
+ * \param   divV is a reference to the plain scalar field (plainsf) into which the computed divergence is written.
  ********************************************************************************************************************************************
  */
 void vfield::divergence(plainsf &divV) {
@@ -256,9 +254,9 @@ void vfield::divergence(plainsf &divV) {
  ********************************************************************************************************************************************
  * \brief   Function to synchronise data across all processors when performing parallel computations
  *
- *          Each of the individual field components have their own subroutine, \ref sfield#syncData "syncData" to send and
+ *          Each of the individual field components have their own subroutine, \ref field#syncData "syncData" to send and
  *          receive data across its MPI decomposed sub-domains.
- *          This function calls the \ref sfield#syncData "syncData" function of its components to update the sub-domain boundary pads.
+ *          This function calls the \ref field#syncData "syncData" function of its components to update the sub-domain boundary pads.
  ********************************************************************************************************************************************
  */
 void vfield::syncData() {

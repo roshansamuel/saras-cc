@@ -43,7 +43,6 @@
 #ifndef VFIELD_H
 #define VFIELD_H
 
-#include "field.h"
 #include "boundary.h"
 #include "derivative.h"
 

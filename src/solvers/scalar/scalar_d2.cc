@@ -41,6 +41,8 @@
  */
 
 #include "scalar.h"
+#include "reader.h"
+#include "writer.h"
 #include "initial.h"
 
 /**

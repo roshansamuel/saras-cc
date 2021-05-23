@@ -43,10 +43,7 @@
 #ifndef SCALAR_H
 #define SCALAR_H
 
-#include <blitz/array.h>
-
 #include "hydro.h"
-#include <math.h>
 
 class scalar: public hydro {
     public:

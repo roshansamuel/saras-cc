@@ -43,18 +43,10 @@
 #ifndef HYDRO_H
 #define HYDRO_H
 
-#include <blitz/array.h>
-
-#include "parallel.h"
 #include "timestep.h"
-#include "tseries.h"
-#include "writer.h"
-#include "reader.h"
 #include "probes.h"
 #include "sfield.h"
 #include "vfield.h"
-#include "parser.h"
-#include "grid.h"
 
 class hydro {
     public:

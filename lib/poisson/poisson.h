@@ -43,10 +43,8 @@
 #ifndef POISSON_H
 #define POISSON_H
 
-#include <blitz/array.h>
 #include <sys/time.h>
 #include <algorithm>
-#include <math.h>
 
 #include "plainsf.h"
 #include "grid.h"

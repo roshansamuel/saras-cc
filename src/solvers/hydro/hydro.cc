@@ -58,7 +58,17 @@ hydro::hydro(const grid &mesh, const parser &solParam, parallel &mpiParam):
             P(mesh, "P"),
             mesh(mesh),
             inputParams(solParam),
-            mpiData(mpiParam) { }
+            mpiData(mpiParam) {
+    // For reasons I don't fully understand, an instance of plainvf
+    // has to exist in the solver for the plainvf class to be
+    // found by the compiler when linking the project.
+    // The following object is not used anywhere.
+    // However, if you remove it, the compiler will fail to link
+    // plainvf class, and throw "undefined reference" error,
+    // and that too in an entirely different part of the code.
+    // This issue was found when using gcc 7.5
+    plainvf why(mesh, V);
+}
 
 
 /**

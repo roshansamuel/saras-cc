@@ -43,9 +43,6 @@
 #ifndef MPIDATA_H
 #define MPIDATA_H
 
-#include <blitz/array.h>
-#include <mpi.h>
-
 #include "parallel.h"
 
 class mpidata {
