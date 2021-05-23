@@ -43,6 +43,7 @@
 #ifndef SFIELD_H
 #define SFIELD_H
 
+#include "field.h"
 #include "boundary.h"
 #include "derivative.h"
 

@@ -55,7 +55,7 @@ class plainsf {
         blitz::RectDomain<3> core;
 
         /** derS is an instance of the derivative class used to compute derivatives */
-        //derivative derS;
+        derivative *derS;
 
     public:
         blitz::Array<real, 3> F;

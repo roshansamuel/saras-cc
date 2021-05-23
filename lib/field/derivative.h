@@ -47,19 +47,21 @@
 #include <blitz/array/stencil-et.h>
 #include <blitz/array/stencilops.h>
 
-#include "field.h"
+#include "grid.h"
 
 class derivative {
     private: 
         const grid &gridData;
 
-        const field &F;
+        const blitz::Array<real, 3> &F;
 
         real invDelx, invDely, invDelz;
 
         blitz::firstIndex i;
         blitz::secondIndex j;
         blitz::thirdIndex k;    
+
+        blitz::RectDomain<3> core;
 
         blitz::RectDomain<3> x0Lft, x0Mid, x0Rgt;
         blitz::RectDomain<3> x1Lft, x1Mid, x1Rgt;
@@ -78,7 +80,7 @@ class derivative {
         void setWallRectDomains();
 
     public:
-        derivative(const grid &gridData, const field &F);
+        derivative(const grid &gridData, const blitz::Array<real, 3> &F);
 
         void calcDerivative1_x(blitz::Array<real, 3> outputMat);
         void calcDerivative1_y(blitz::Array<real, 3> outputMat);

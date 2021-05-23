@@ -59,7 +59,7 @@
 sfield::sfield(const grid &gridData, std::string fieldName):
                gridData(gridData),
                F(gridData, fieldName),
-               derS(gridData, F)
+               derS(gridData, F.F)
 {
     this->fieldName = fieldName;
 

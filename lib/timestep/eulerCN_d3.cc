@@ -184,9 +184,9 @@ void eulerCN_d3::timeAdvance(vfield &V, sfield &P, sfield &T) {
     static plainsf tmpRHS(mesh);
     real subgridKE;
 
-    std::cout << mesh.rankData.rank << V.Vx.fCore.ubound() << V.Vy.fCore.ubound() << V.Vz.fCore.ubound() << T.F.fCore.ubound() << P.F.fCore.ubound() << mesh.coreDomain.ubound() << std::endl;
-    MPI_Finalize();
-    exit(0);
+    //std::cout << mesh.rankData.rank << V.Vx.fCore.ubound() << V.Vy.fCore.ubound() << V.Vz.fCore.ubound() << T.F.fCore.ubound() << P.F.fCore.ubound() << mesh.coreDomain.ubound() << std::endl;
+    //MPI_Finalize();
+    //exit(0);
 
     nseRHS = 0.0;
     tmpRHS = 0.0;

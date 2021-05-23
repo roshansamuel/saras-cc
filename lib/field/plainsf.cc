@@ -64,6 +64,8 @@ plainsf::plainsf(const grid &gridData): gridData(gridData) {
     F.reindexSelf(dlBnd);
     F = 0.0;
 
+    derS = new derivative(gridData, F);
+
     derivTemp.resize(dSize);
     derivTemp.reindexSelf(dlBnd);
 
@@ -86,15 +88,15 @@ plainsf::plainsf(const grid &gridData): gridData(gridData) {
  */
 void plainsf::gradient(plainvf &gradF) {
     derivTemp = 0.0;
-    //derS.calcDerivative1_x(derivTemp);
+    derS->calcDerivative1_x(derivTemp);
     gradF.Vx(core) = derivTemp(core);
 #ifndef PLANAR
     derivTemp = 0.0;
-    //derS.calcDerivative1_y(derivTemp);
+    derS->calcDerivative1_y(derivTemp);
     gradF.Vy(core) = derivTemp(core);
 #endif
     derivTemp = 0.0;
-    //derS.calcDerivative1_z(derivTemp);
+    derS->calcDerivative1_z(derivTemp);
     gradF.Vz(core) = derivTemp(core);
 }
 

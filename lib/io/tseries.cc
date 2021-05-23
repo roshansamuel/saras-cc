@@ -62,10 +62,6 @@ tseries::tseries(const grid &mesh, vfield &solverV, const real &solverTime, cons
 {
     blitz::RectDomain<3> core = mesh.coreDomain;
 
-    //std::cout << mesh.rankData.rank << P.F.fCore.lbound() << P.F.fCore.ubound() << core.lbound() << core.ubound() << std::endl;
-    //MPI_Finalize();
-    //exit(0);
-
     // Open TimeSeries file
     if (mesh.inputParams.restartFlag) {
         ofFile.open("output/TimeSeries.dat", std::fstream::out | std::fstream::app);

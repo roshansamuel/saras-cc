@@ -60,7 +60,7 @@
 vfield::vfield(const grid &gridData, std::string fieldName):
                gridData(gridData),
                Vx(gridData, "Vx"), Vy(gridData, "Vy"), Vz(gridData, "Vz"),
-               derVx(gridData, Vx), derVy(gridData, Vy), derVz(gridData, Vz)
+               derVx(gridData, Vx.F), derVy(gridData, Vy.F), derVz(gridData, Vz.F)
 {
     this->fieldName = fieldName;
 

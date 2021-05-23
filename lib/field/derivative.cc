@@ -54,14 +54,16 @@
  *          operations on non-uniform grids.
  *
  * \param   gridData is a const reference to the global data in the grid class
- * \param   F is a reference to the field on which finite-difference operations will be performed
+ * \param   F is a reference to the blitz array on which finite-difference operations will be performed
  ********************************************************************************************************************************************
  */
 
-derivative::derivative(const grid &gridData, const field &F): gridData(gridData), F(F) {
+derivative::derivative(const grid &gridData, const blitz::Array<real, 3> &F): gridData(gridData), F(F) {
     // TEMPORARY ARRAY TO STORE DERIVATIVES WHEN CALCULATING 2ND ORDER DERIVATIVES
-    tempMat.resize(F.fSize);
-    tempMat.reindexSelf(F.flBound);
+    tempMat.resize(F.shape());
+    tempMat.reindexSelf(F.lbound());
+
+    core = gridData.coreDomain;
 
     // INVERSES OF hx, hy AND hz, WHICH ARE MULTIPLIED TO FINITE-DIFFERENCE STENCILS
     invDelx = 1.0/gridData.dXi;
@@ -70,9 +72,9 @@ derivative::derivative(const grid &gridData, const field &F): gridData(gridData)
 
     // RANGES OF ARRAY INTO WHICH RESULTS FROM BLITZ STENCIL OPERATORS HAVE TO BE WRITTEN
     fullRange = blitz::Range::all();
-    xRange = blitz::Range(0, F.fCore.ubound(0), 1);
-    yRange = blitz::Range(0, F.fCore.ubound(1), 1);
-    zRange = blitz::Range(0, F.fCore.ubound(2), 1);
+    xRange = blitz::Range(0, core.ubound(0), 1);
+    yRange = blitz::Range(0, core.ubound(1), 1);
+    zRange = blitz::Range(0, core.ubound(2), 1);
 
     setWallRectDomains();
 
@@ -93,9 +95,9 @@ derivative::derivative(const grid &gridData, const field &F): gridData(gridData)
  */
 void derivative::calcDerivative1_x(blitz::Array<real, 3> outputMat) {
     if (gridData.inputParams.dScheme == 1) {
-        outputMat(xRange, fullRange, fullRange) = central12n(F.F, 0);
+        outputMat(xRange, fullRange, fullRange) = central12n(F, 0);
     } else if (gridData.inputParams.dScheme == 2) {
-        outputMat(xRange, fullRange, fullRange) = central14n(F.F, 0);
+        outputMat(xRange, fullRange, fullRange) = central14n(F, 0);
 
         // 2ND ORDER CENTRAL DIFFERENCE AT BOUNDARIES
         if (gridData.rankData.xRank == 0) {
@@ -124,9 +126,9 @@ void derivative::calcDerivative1_x(blitz::Array<real, 3> outputMat) {
  */
 void derivative::calcDerivative1_y(blitz::Array<real, 3> outputMat) {
     if (gridData.inputParams.dScheme == 1) {
-        outputMat(fullRange, yRange, fullRange) = central12n(F.F, 1);
+        outputMat(fullRange, yRange, fullRange) = central12n(F, 1);
     } else if (gridData.inputParams.dScheme == 2) {
-        outputMat(fullRange, yRange, fullRange) = central14n(F.F, 1);
+        outputMat(fullRange, yRange, fullRange) = central14n(F, 1);
 
         // 2ND ORDER CENTRAL DIFFERENCE AT BOUNDARIES
         if (gridData.rankData.yRank == 0) {
@@ -155,9 +157,9 @@ void derivative::calcDerivative1_y(blitz::Array<real, 3> outputMat) {
  */
 void derivative::calcDerivative1_z(blitz::Array<real, 3> outputMat) {
     if (gridData.inputParams.dScheme == 1) {
-        outputMat(fullRange, fullRange, zRange) = central12n(F.F, 2);
+        outputMat(fullRange, fullRange, zRange) = central12n(F, 2);
     } else if (gridData.inputParams.dScheme == 2) {
-        outputMat(fullRange, fullRange, zRange) = central14n(F.F, 2);
+        outputMat(fullRange, fullRange, zRange) = central14n(F, 2);
 
         // 2ND ORDER CENTRAL DIFFERENCE AT BOUNDARIES
         outputMat(z0Mid) = 0.5*(outputMat(z0Rgt) - outputMat(z0Lft));
@@ -181,10 +183,10 @@ void derivative::calcDerivative1_z(blitz::Array<real, 3> outputMat) {
  ********************************************************************************************************************************************
  */
 void derivative::calcDerivative2xx(blitz::Array<real, 3> outputMat) {
-    tempMat(xRange, fullRange, fullRange) = central12n(F.F, 0);
+    tempMat(xRange, fullRange, fullRange) = central12n(F, 0);
     tempMat *= invDelx;
 
-    outputMat(xRange, fullRange, fullRange) = central22n(F.F, 0);
+    outputMat(xRange, fullRange, fullRange) = central22n(F, 0);
     outputMat *= invDelx*invDelx;
 
     outputMat = gridData.xixx(i)*tempMat(i, j, k) + gridData.xix2(i)*outputMat(i, j, k);
@@ -203,10 +205,10 @@ void derivative::calcDerivative2xx(blitz::Array<real, 3> outputMat) {
  ********************************************************************************************************************************************
  */
 void derivative::calcDerivative2yy(blitz::Array<real, 3> outputMat) {
-    tempMat(fullRange, yRange, fullRange) = central12n(F.F, 1);
+    tempMat(fullRange, yRange, fullRange) = central12n(F, 1);
     tempMat *= invDely;
 
-    outputMat(fullRange, yRange, fullRange) = central22n(F.F, 1);
+    outputMat(fullRange, yRange, fullRange) = central22n(F, 1);
     outputMat *= invDely*invDely;
 
     outputMat = gridData.etyy(j)*tempMat(i, j, k) + gridData.ety2(j)*outputMat(i, j, k);
@@ -225,10 +227,10 @@ void derivative::calcDerivative2yy(blitz::Array<real, 3> outputMat) {
  ********************************************************************************************************************************************
  */
 void derivative::calcDerivative2zz(blitz::Array<real, 3> outputMat) {
-    tempMat(fullRange, fullRange, zRange) = central12n(F.F, 2);
+    tempMat(fullRange, fullRange, zRange) = central12n(F, 2);
     tempMat *= invDelz;
 
-    outputMat(fullRange, fullRange, zRange) = central22n(F.F, 2);
+    outputMat(fullRange, fullRange, zRange) = central22n(F, 2);
     outputMat *= invDelz*invDelz;
 
     outputMat = gridData.ztzz(k)*tempMat(i, j, k) + gridData.ztz2(k)*outputMat(i, j, k);
@@ -250,39 +252,39 @@ void derivative::setWallRectDomains() {
     blitz::TinyVector<int, 3> lb, ub;
 
     lb = -gridData.padWidths;       lb(0) = 0;
-    ub = F.F.ubound();              ub(0) = 0;
+    ub = F.ubound();              ub(0) = 0;
     x0Mid = blitz::RectDomain<3>(lb, ub);
     x0Lft = x0Mid;      x0Lft.lbound()(0) -= 1;      x0Lft.ubound()(0) -= 1;
     x0Rgt = x0Mid;      x0Rgt.lbound()(0) += 1;      x0Rgt.ubound()(0) += 1;
 
-    lb = -gridData.padWidths;       lb(0) = F.fCore.ubound(0);
-    ub = F.F.ubound();              ub(0) = F.fCore.ubound(0);
+    lb = -gridData.padWidths;       lb(0) = core.ubound(0);
+    ub = F.ubound();              ub(0) = core.ubound(0);
     x1Mid = blitz::RectDomain<3>(lb, ub);
     x1Lft = x1Mid;      x1Lft.lbound()(0) -= 1;      x1Lft.ubound()(0) -= 1;
     x1Rgt = x1Mid;      x1Rgt.lbound()(0) += 1;      x1Rgt.ubound()(0) += 1;
 
 
     lb = -gridData.padWidths;       lb(1) = 0;
-    ub = F.F.ubound();              ub(1) = 0;
+    ub = F.ubound();              ub(1) = 0;
     y0Mid = blitz::RectDomain<3>(lb, ub);
     y0Lft = y0Mid;      y0Lft.lbound()(1) -= 1;      y0Lft.ubound()(1) -= 1;
     y0Rgt = y0Mid;      y0Rgt.lbound()(1) += 1;      y0Rgt.ubound()(1) += 1;
 
-    lb = -gridData.padWidths;       lb(1) = F.fCore.ubound(1);
-    ub = F.F.ubound();              ub(1) = F.fCore.ubound(1);
+    lb = -gridData.padWidths;       lb(1) = core.ubound(1);
+    ub = F.ubound();              ub(1) = core.ubound(1);
     y1Mid = blitz::RectDomain<3>(lb, ub);
     y1Lft = y1Mid;      y1Lft.lbound()(1) -= 1;      y1Lft.ubound()(1) -= 1;
     y1Rgt = y1Mid;      y1Rgt.lbound()(1) += 1;      y1Rgt.ubound()(1) += 1;
 
 
     lb = -gridData.padWidths;       lb(2) = 0;
-    ub = F.F.ubound();              ub(2) = 0;
+    ub = F.ubound();              ub(2) = 0;
     z0Mid = blitz::RectDomain<3>(lb, ub);
     z0Lft = z0Mid;      z0Lft.lbound()(2) -= 1;      z0Lft.ubound()(2) -= 1;
     z0Rgt = z0Mid;      z0Rgt.lbound()(2) += 1;      z0Rgt.ubound()(2) += 1;
 
-    lb = -gridData.padWidths;       lb(2) = F.fCore.ubound(2);
-    ub = F.F.ubound();              ub(2) = F.fCore.ubound(2);
+    lb = -gridData.padWidths;       lb(2) = core.ubound(2);
+    ub = F.ubound();              ub(2) = core.ubound(2);
     z1Mid = blitz::RectDomain<3>(lb, ub);
     z1Lft = z1Mid;      z1Lft.lbound()(2) -= 1;      z1Lft.ubound()(2) -= 1;
     z1Rgt = z1Mid;      z1Rgt.lbound()(2) += 1;      z1Rgt.ubound()(2) += 1;
