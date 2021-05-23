@@ -80,7 +80,7 @@ eulerCN_d2::eulerCN_d2(const grid &mesh, const real &sTime, const real &dt, tser
  ********************************************************************************************************************************************
  */
 void eulerCN_d2::timeAdvance(vfield &V, sfield &P) {
-    static plainvf nseRHS(mesh, V);
+    static plainvf nseRHS(mesh);
 
     nseRHS = 0.0;
 
@@ -161,8 +161,8 @@ void eulerCN_d2::timeAdvance(vfield &V, sfield &P) {
  ********************************************************************************************************************************************
  */
 void eulerCN_d2::timeAdvance(vfield &V, sfield &P, sfield &T) {
-    static plainvf nseRHS(mesh, V);
-    static plainsf tmpRHS(mesh, T);
+    static plainvf nseRHS(mesh);
+    static plainsf tmpRHS(mesh);
 
     // BELOW FLAG MAY BE TURNED OFF FOR DEBUGGING/DIGNOSTIC RUNS ONLY
     // IT IS USED TO TURN OFF COMPUTATION OF NON-LINEAR TERMS

@@ -57,8 +57,15 @@
  *
  ********************************************************************************************************************************************
  */
-tseries::tseries(const grid &mesh, vfield &solverV, const sfield &solverP, const real &solverTime, const real &timeStep):
-                 time(solverTime), tStp(timeStep), mesh(mesh), P(solverP), V(solverV), divV(mesh, P) {
+tseries::tseries(const grid &mesh, vfield &solverV, const real &solverTime, const real &timeStep):
+                 time(solverTime), tStp(timeStep), mesh(mesh), V(solverV), divV(mesh)
+{
+    blitz::RectDomain<3> core = mesh.coreDomain;
+
+    //std::cout << mesh.rankData.rank << P.F.fCore.lbound() << P.F.fCore.ubound() << core.lbound() << core.ubound() << std::endl;
+    //MPI_Finalize();
+    //exit(0);
+
     // Open TimeSeries file
     if (mesh.inputParams.restartFlag) {
         ofFile.open("output/TimeSeries.dat", std::fstream::out | std::fstream::app);
@@ -67,26 +74,11 @@ tseries::tseries(const grid &mesh, vfield &solverV, const sfield &solverP, const
     }
 
     // UPPER AND LOWER LIMITS WHEN COMPUTING ENERGY IN STAGGERED GRID
-    xLow = P.F.fCore.lbound(0);        xTop = P.F.fCore.ubound(0);
+    xLow = core.lbound(0);        xTop = core.ubound(0);
 #ifndef PLANAR
-    yLow = P.F.fCore.lbound(1);        yTop = P.F.fCore.ubound(1);
+    yLow = core.lbound(1);        yTop = core.ubound(1);
 #endif
-    zLow = P.F.fCore.lbound(2);        zTop = P.F.fCore.ubound(2);
-
-    // STAGGERED GRIDS HAVE SHARED POINT ACROSS MPI-SUBDOMAINS - ACCORDINGLY DECREASE LIMITS
-    if (mesh.inputParams.xPer) {
-        xLow += 1;
-    } else {
-        if (mesh.rankData.xRank > 0) xLow += 1;
-    }
-
-#ifndef PLANAR
-    if (mesh.inputParams.yPer) {
-        yLow += 1;
-    } else {
-        if (mesh.rankData.yRank > 0) yLow += 1;
-    }
-#endif
+    zLow = core.lbound(2);        zTop = core.ubound(2);
 
     // TOTAL VOLUME FOR AVERAGING THE RESULT OF VOLUMETRIC INTEGRATION
     real localVol = 0.0;
@@ -273,6 +265,7 @@ void tseries::writeTSData(const sfield &T, const real nu, const real kappa) {
     int iY = 0;
     for (int iX = xLow; iX <= xTop; iX++) {
         for (int iZ = zLow; iZ <= zTop; iZ++) {
+            // Check if the following value of theta is valid for all scalar runs
             theta = T.F.F(iX, iY, iZ) + mesh.z(iZ) - 1.0;
 
             localKineticEnergy += (pow(V.Vx.F(iX, iY, iZ), 2.0) + pow(V.Vz.F(iX, iY, iZ), 2.0))*0.5*
@@ -287,6 +280,7 @@ void tseries::writeTSData(const sfield &T, const real nu, const real kappa) {
     for (int iX = xLow; iX <= xTop; iX++) {
         for (int iY = yLow; iY <= yTop; iY++) {
             for (int iZ = zLow; iZ <= zTop; iZ++) {
+                // Check if the following value of theta is valid for all scalar runs
                 theta = T.F.F(iX, iY, iZ) + mesh.z(iZ) - 1.0;
 
                 localKineticEnergy += (pow(V.Vx.F(iX, iY, iZ), 2.0) + pow(V.Vy.F(iX, iY, iZ), 2.0) + pow(V.Vz.F(iX, iY, iZ), 2.0))*0.5*

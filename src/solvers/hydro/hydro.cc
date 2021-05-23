@@ -67,7 +67,7 @@ hydro::hydro(const grid &mesh, const parser &solParam, parallel &mpiParam):
     // plainvf class, and throw "undefined reference" error,
     // and that too in an entirely different part of the code.
     // This issue was found when using gcc 7.5
-    plainvf why(mesh, V);
+    plainvf why(mesh);
 }
 
 

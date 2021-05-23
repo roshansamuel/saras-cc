@@ -52,7 +52,7 @@ class tseries {
         /** The real value for sub-grid energy computed by LES model is used only when LES switch is on */
         real subgridEnergy;
 
-        tseries(const grid &mesh, vfield &solverV, const sfield &solverP, const real &solverTime, const real &timeStep);
+        tseries(const grid &mesh, vfield &solverV, const real &solverTime, const real &timeStep);
 
         void writeTSHeader();
         void writeTSData();
@@ -77,7 +77,6 @@ class tseries {
 
         const grid &mesh;
 
-        const sfield &P;
         vfield &V;
 
         plainsf divV;

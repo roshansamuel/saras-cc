@@ -52,7 +52,7 @@ class plainvf {
     public:
         blitz::Array<real, 3> Vx, Vy, Vz;
 
-        plainvf(const grid &gridData, const vfield &refV);
+        plainvf(const grid &gridData);
 
         mpidata *mpiVxData, *mpiVyData, *mpiVzData;
 

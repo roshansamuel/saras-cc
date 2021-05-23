@@ -62,7 +62,7 @@ class plainsf {
 
         mpidata *mpiHandle;
 
-        plainsf(const grid &gridData, const sfield &refF);
+        plainsf(const grid &gridData);
 
         void gradient(plainvf &gradF);
 

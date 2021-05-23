@@ -58,10 +58,10 @@ timestep::timestep(const grid &mesh, const real &sTime, const real &dt, tseries 
     solTime(sTime),
     dt(dt),
     mesh(mesh),
-    Pp(mesh, P),
-    mgRHS(mesh, P),
+    Pp(mesh),
+    mgRHS(mesh),
     tsWriter(tsIO),
-    pressureGradient(mesh, V)
+    pressureGradient(mesh)
 {
     // Below flags may be turned on for debugging/dignostic runs only
     bool viscSwitch = false;

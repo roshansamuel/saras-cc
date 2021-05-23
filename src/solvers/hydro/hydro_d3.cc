@@ -150,7 +150,7 @@ void hydro_d3::solvePDE() {
     }
 
     // Output file and I/O writer to write time-series of various variables
-    tseries tsWriter(mesh, V, P, time, dt);
+    tseries tsWriter(mesh, V, time, dt);
 
     // Initialize semi-implicit Euler-CN time-stepping method
     ivpSolver = new eulerCN_d3(mesh, time, dt, tsWriter, V, P);

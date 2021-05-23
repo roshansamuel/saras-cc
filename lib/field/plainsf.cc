@@ -54,21 +54,23 @@
  *          across the processors during MPI communication.
  *
  * \param   gridData is a const reference to the global data contained in the grid class
- * \param   refF is a const reference to a sample sfield according to which the plainsf is resized
  ********************************************************************************************************************************************
  */
-plainsf::plainsf(const grid &gridData, const sfield &refF): gridData(gridData) {
-    F.resize(refF.F.fSize);
-    F.reindexSelf(refF.F.flBound);
+plainsf::plainsf(const grid &gridData): gridData(gridData) {
+    blitz::TinyVector<int, 3> dSize = gridData.fullDomain.ubound() - gridData.fullDomain.lbound() + 1;
+    blitz::TinyVector<int, 3> dlBnd = gridData.fullDomain.lbound();
+
+    F.resize(dSize);
+    F.reindexSelf(dlBnd);
     F = 0.0;
 
-    derivTemp.resize(refF.F.fSize);
-    derivTemp.reindexSelf(refF.F.flBound);
+    derivTemp.resize(dSize);
+    derivTemp.reindexSelf(dlBnd);
 
     core = gridData.coreDomain;
 
     mpiHandle = new mpidata(F, gridData.rankData);
-    mpiHandle->createSubarrays(refF.F.fSize, refF.F.cuBound + 1, gridData.padWidths);
+    mpiHandle->createSubarrays(dSize, core.ubound() + 1, gridData.padWidths);
 }
 
 /**

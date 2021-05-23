@@ -50,30 +50,33 @@
  *          The name for the plain vector field as given by the user is also assigned.
  *
  * \param   gridData is a const reference to the global data in the grid class
- * \param   refV is a const reference to a vfield according to whose components the arrays of plainvf are resized
  ********************************************************************************************************************************************
  */
-plainvf::plainvf(const grid &gridData, const vfield &refV): gridData(gridData) {
-    Vx.resize(refV.Vx.fSize);
-    Vx.reindexSelf(refV.Vx.flBound);
+plainvf::plainvf(const grid &gridData): gridData(gridData) {
+    blitz::TinyVector<int, 3> dSize = gridData.fullDomain.ubound() - gridData.fullDomain.lbound() + 1;
+    blitz::TinyVector<int, 3> dlBnd = gridData.fullDomain.lbound();
+    blitz::RectDomain<3> core = gridData.coreDomain;
+
+    Vx.resize(dSize);
+    Vx.reindexSelf(dlBnd);
     Vx = 0.0;
 
     mpiVxData = new mpidata(Vx, gridData.rankData);
-    mpiVxData->createSubarrays(refV.Vx.fSize, refV.Vx.cuBound + 1, gridData.padWidths);
+    mpiVxData->createSubarrays(dSize, core.ubound() + 1, gridData.padWidths);
 
-    Vy.resize(refV.Vy.fSize);
-    Vy.reindexSelf(refV.Vy.flBound);
+    Vy.resize(dSize);
+    Vy.reindexSelf(dlBnd);
     Vx = 0.0;
 
     mpiVyData = new mpidata(Vy, gridData.rankData);
-    mpiVyData->createSubarrays(refV.Vy.fSize, refV.Vy.cuBound + 1, gridData.padWidths);
+    mpiVyData->createSubarrays(dSize, core.ubound() + 1, gridData.padWidths);
 
-    Vz.resize(refV.Vz.fSize);
-    Vz.reindexSelf(refV.Vz.flBound);
+    Vz.resize(dSize);
+    Vz.reindexSelf(dlBnd);
     Vx = 0.0;
 
     mpiVzData = new mpidata(Vz, gridData.rankData);
-    mpiVzData->createSubarrays(refV.Vz.fSize, refV.Vz.cuBound + 1, gridData.padWidths);
+    mpiVzData->createSubarrays(dSize, core.ubound() + 1, gridData.padWidths);
 }
 
 /**
