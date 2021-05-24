@@ -191,7 +191,6 @@ void multigrid_d2::coarsen() {
     pLevel = vLevel;
     vLevel += 1;
 
-    // The following implementation is *incomplete*
     for (int i = 0; i <= xEnd(vLevel); ++i) {
         i2 = i*2;
         for (int k = 0; k <= zEnd(vLevel); ++k) {
@@ -199,9 +198,9 @@ void multigrid_d2::coarsen() {
             vertPoints = (tmpDataArray(pLevel)(i2 + 1, 0, k2 + 1) +
                           tmpDataArray(pLevel)(i2 + 1, 0, k2 - 1) +
                           tmpDataArray(pLevel)(i2 - 1, 0, k2 + 1) +
-                          tmpDataArray(pLevel)(i2 - 1, 0, k2 - 1))*0.0625;
+                          tmpDataArray(pLevel)(i2 - 1, 0, k2 - 1));
 
-            residualData(vLevel)(i, 0, k) = vertPoints + tmpDataArray(pLevel)(i2, 0, k2)*0.25;
+            residualData(vLevel)(i, 0, k) = vertPoints/4.0;
         }
     }
 }

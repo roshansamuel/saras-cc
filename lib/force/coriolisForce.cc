@@ -42,7 +42,7 @@
 
 #include "force.h"
 
-coriolisForce::coriolisForce(const grid &mesh, vfield &U): force(mesh, U) {
+coriolisForce::coriolisForce(const grid &mesh, const vfield &U): force(mesh, U) {
     Fr = 1.0/mesh.inputParams.Ro;
 }
 

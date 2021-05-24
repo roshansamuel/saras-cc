@@ -29,7 +29,7 @@
  *
  ********************************************************************************************************************************************
  */
-/*! \file boundary.cc
+/*! \file hotPlate.cc
  *
  *  \brief Definitions for functions of class boundary
  *  \sa boundary.h
@@ -58,6 +58,8 @@
 hotPlate::hotPlate(const grid &mesh, field &inField, const int bcWall, const real plateRad):
                             boundary(mesh, inField, bcWall), patchRadius(plateRad) {
     createPatch(patchRadius);
+
+    dataSlice = dField.shift(shiftDim, dField.fWalls(wallNum), 1);
 }
 
 
@@ -111,12 +113,11 @@ void hotPlate::createPatch(const real patchRadius) {
  */
 void hotPlate::imposeBC() {
     // First impose Neumann BC everywhere for adiabatic wall
-    dField.F(dField.fWalls(wallNum)) = dField.F(dField.shift(shiftDim, dField.fWalls(wallNum), 1));
+    dField.F(wallSlice) = dField.F(dataSlice);
 
     // Now in the area of the circular patch, make all values 0 in order to apply conducting BC
-    dField.F(dField.fWalls(wallNum)) = dField.F(dField.fWalls(wallNum))*wallMask;
+    dField.F(wallSlice) = dField.F(wallSlice)*wallMask;
 
     // Finally apply conducting BC in the circular patch alone
-    dField.F(dField.fWalls(wallNum)) = dField.F(dField.fWalls(wallNum)) +
-            wallData*(2.0*wallData - dField.F(dField.shift(shiftDim, dField.fWalls(wallNum), 1)));
+    dField.F(wallSlice) = dField.F(wallSlice) + wallData*(2.0*wallData - dField.F(dataSlice));
 }

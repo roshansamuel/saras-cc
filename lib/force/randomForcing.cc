@@ -42,7 +42,7 @@
 
 #include "force.h"
 
-randomForcing::randomForcing(const grid &mesh, vfield &U): force(mesh, U) {
+randomForcing::randomForcing(const grid &mesh, const vfield &U): force(mesh, U) {
     Force_x.resize(V.Vx.fSize);
     Force_x.reindexSelf(V.Vx.flBound);
 

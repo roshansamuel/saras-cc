@@ -70,12 +70,9 @@ writer::writer(const grid &mesh, std::vector<field> &wFields): mesh(mesh), wFiel
  ********************************************************************************************************************************************
  */
 void writer::initLimits() {
-    hid_t sDSpace;
-    hid_t tDSpace;
-
     herr_t status;
 
-    blitz::TinyVector<int, 3> gloSize, sdStart, locSize;
+    blitz::TinyVector<int, 3> gloSize, sdStart;
 
 #ifdef PLANAR
     hsize_t dimsf[2];           /* dataset dimensions */
@@ -85,125 +82,97 @@ void writer::initLimits() {
     hsize_t offset[3];          /* offset of hyperslab */
 #endif
 
-    for (unsigned int i=0; i < wFields.size(); i++) {
-        gloSize = mesh.globalSize;
+    locSize = mesh.coreSize;
+    gloSize = mesh.globalSize;
+    sdStart = mesh.subarrayStarts;
 
 #ifdef PLANAR
-        gloSize(1) = 1;
+    gloSize(1) = 1;
+    locSize(1) = 1;
 #endif
 
-        // All subdomains exclude the last point (which is shared across 2 processors), except those at the last rank along X direction, thereby capturing the full domain
-        locSize(0) = mesh.coreSize(0) - 1;
-        if (mesh.rankData.xRank == mesh.rankData.npX - 1) {
-            locSize(0) += 1;
+    // Create a dataspace representing the full limits of the local array - this is the source dataspace
+#ifdef PLANAR
+    dimsf[0] = locSize(0);
+    dimsf[1] = locSize(2);
+    sourceDSpace = H5Screate_simple(2, dimsf, NULL);
+#else
+    dimsf[0] = locSize(0);
+    dimsf[1] = locSize(1);
+    dimsf[2] = locSize(2);
+    sourceDSpace = H5Screate_simple(3, dimsf, NULL);
+#endif
+
+    // Modify the view of the *source* dataspace by using a hyperslab - *this view will be used to read from memory*
+#ifdef PLANAR
+    dimsf[0] = locSize(0);
+    dimsf[1] = locSize(2);
+    offset[0] = 0;
+    offset[1] = 0;
+#else
+    dimsf[0] = locSize(0);
+    dimsf[1] = locSize(1);
+    dimsf[2] = locSize(2);
+    offset[0] = 0;
+    offset[1] = 0;
+    offset[2] = 0;
+#endif
+    status = H5Sselect_hyperslab(sourceDSpace, H5S_SELECT_SET, offset, NULL, dimsf, NULL);
+    if (status) {
+        if (mesh.rankData.rank == 0) {
+            std::cout << "Error in creating hyperslab while writing data. Aborting" << std::endl;
         }
+        MPI_Finalize();
+        exit(0);
+    }
 
-#ifndef PLANAR
-        // As with X direction, all subdomains exclude the last point (which is shared across 2 processors), except those at the last rank along Y direction
-        locSize(1) = mesh.coreSize(1) - 1;
-        if (mesh.rankData.yRank == mesh.rankData.npY - 1) {
-            locSize(1) += 1;
+    // Create a dataspace representing the full limits of the global array - i.e. the dataspace for output file
+#ifdef PLANAR
+    dimsf[0] = gloSize(0);
+    dimsf[1] = gloSize(2);
+    targetDSpace = H5Screate_simple(2, dimsf, NULL);
+#else
+    dimsf[0] = gloSize(0);
+    dimsf[1] = gloSize(1);
+    dimsf[2] = gloSize(2);
+    targetDSpace = H5Screate_simple(3, dimsf, NULL);
+#endif
+
+    // Modify the view of the *target* dataspace by using a hyperslab according to its position in the global file dataspace
+#ifdef PLANAR
+    dimsf[0] = locSize(0);
+    dimsf[1] = locSize(2);
+    offset[0] = sdStart[0];
+    offset[1] = sdStart[2];
+#else
+    dimsf[0] = locSize(0);
+    dimsf[1] = locSize(1);
+    dimsf[2] = locSize(2);
+    offset[0] = sdStart[0];
+    offset[1] = sdStart[1];
+    offset[2] = sdStart[2];
+#endif
+    status = H5Sselect_hyperslab(targetDSpace, H5S_SELECT_SET, offset, NULL, dimsf, NULL);
+    if (status) {
+        if (mesh.rankData.rank == 0) {
+            std::cout << "Error in creating hyperslab while writing data. Aborting" << std::endl;
         }
-#else
-        locSize(1) = 1;
-#endif
-
-        locSize(2) = mesh.coreSize(2);
-
-        // Since only the last rank along X and Y directions include the extra point (shared across processors), subArrayStarts are same for all ranks
-        sdStart = mesh.subarrayStarts;
-
-        // Create a dataspace representing the full limits of the array - this is the source dataspace
-#ifdef PLANAR
-        dimsf[0] = locSize(0);
-        dimsf[1] = locSize(2);
-        sDSpace = H5Screate_simple(2, dimsf, NULL);
-#else
-        dimsf[0] = locSize(0);
-        dimsf[1] = locSize(1);
-        dimsf[2] = locSize(2);
-        sDSpace = H5Screate_simple(3, dimsf, NULL);
-#endif
-
-        // Modify the view of the *source* dataspace by using a hyperslab - *this view will be used to read from memory*
-
-        // ************* NOTE: Check if the hyperslab view must be changed to take care of the common point at the the MPI decomposed sub-domain boundaries ****************//
-#ifdef PLANAR
-        dimsf[0] = locSize(0);
-        dimsf[1] = locSize(2);
-        offset[0] = 0;
-        offset[1] = 0;
-#else
-        dimsf[0] = locSize(0);
-        dimsf[1] = locSize(1);
-        dimsf[2] = locSize(2);
-        offset[0] = 0;
-        offset[1] = 0;
-        offset[2] = 0;
-#endif
-
-        status = H5Sselect_hyperslab(sDSpace, H5S_SELECT_SET, offset, NULL, dimsf, NULL);
-        if (status) {
-            if (mesh.rankData.rank == 0) {
-                std::cout << "Error in creating hyperslab while writing data. Aborting" << std::endl;
-            }
-            MPI_Finalize();
-            exit(0);
-        }
-
-        // Create a dataspace representing the full limits of the global array - i.e. the dataspace for output file
-#ifdef PLANAR
-        dimsf[0] = gloSize(0);
-        dimsf[1] = gloSize(2);
-        tDSpace = H5Screate_simple(2, dimsf, NULL);
-#else
-        dimsf[0] = gloSize(0);
-        dimsf[1] = gloSize(1);
-        dimsf[2] = gloSize(2);
-        tDSpace = H5Screate_simple(3, dimsf, NULL);
-#endif
-
-        // Modify the view of the *target* dataspace by using a hyperslab according to its position in the global file dataspace
-#ifdef PLANAR
-        dimsf[0] = locSize(0);
-        dimsf[1] = locSize(2);
-        offset[0] = sdStart[0];
-        offset[1] = sdStart[2];
-#else
-        dimsf[0] = locSize(0);
-        dimsf[1] = locSize(1);
-        dimsf[2] = locSize(2);
-        offset[0] = sdStart[0];
-        offset[1] = sdStart[1];
-        offset[2] = sdStart[2];
-#endif
-
-        status = H5Sselect_hyperslab(tDSpace, H5S_SELECT_SET, offset, NULL, dimsf, NULL);
-        if (status) {
-            if (mesh.rankData.rank == 0) {
-                std::cout << "Error in creating hyperslab while writing data. Aborting" << std::endl;
-            }
-            MPI_Finalize();
-            exit(0);
-        }
-
-        localSize.push_back(locSize);
-        sourceDSpace.push_back(sDSpace);
-        targetDSpace.push_back(tDSpace);
+        MPI_Finalize();
+        exit(0);
     }
 
     hsize_t dimgs[1];
 
     dimgs[0] = mesh.xGlobal.size() - 2*mesh.padWidths(0);
-    xsDSpace = H5Screate_simple(1, dimgs, NULL);
+    xDSpace = H5Screate_simple(1, dimgs, NULL);
 
 #ifndef PLANAR
     dimgs[0] = mesh.yGlobal.size() - 2*mesh.padWidths(1);
-    ysDSpace = H5Screate_simple(1, dimgs, NULL);
+    yDSpace = H5Screate_simple(1, dimgs, NULL);
 #endif
 
     dimgs[0] = mesh.zGlobal.size() - 2*mesh.padWidths(2);
-    zsDSpace = H5Screate_simple(1, dimgs, NULL);
+    zDSpace = H5Screate_simple(1, dimgs, NULL);
 
     timeDSpace = H5Screate(H5S_SCALAR);
 }
@@ -262,9 +231,6 @@ void writer::writeTarang(real time) {
     struct stat info;
     int createStatus;
 
-    // The last entry in wFields is P, which is cell centered. Hence the MPI-IO data-structures associated with this index is used for file writing
-    int pIndex = wFields.size() - 1;
-
     // Generate the foldername corresponding to the time
     folderName = new char[100];
     constFile.str(std::string());
@@ -317,9 +283,9 @@ void writer::writeTarang(real time) {
         H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
 
 #ifdef PLANAR
-        fieldData.resize(blitz::TinyVector<int, 2>(localSize[pIndex](0), localSize[pIndex](2)));
+        fieldData.resize(blitz::TinyVector<int, 2>(locSize(0), locSize(2)));
 #else
-        fieldData.resize(localSize[pIndex]);
+        fieldData.resize(locSize);
 #endif
 
         //Write data after first interpolating them to cell centers
@@ -327,14 +293,14 @@ void writer::writeTarang(real time) {
 
         // Create the dataset *for the file*, linking it to the file handle.
         // Correspondingly, it will use the *core* dataspace, as only the core has to be written excluding the pads
-        dataSet = H5Dcreate2(fileHandle, wFields[i].fieldName.c_str(), H5T_NATIVE_REAL, targetDSpace[pIndex], H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+        dataSet = H5Dcreate2(fileHandle, wFields[i].fieldName.c_str(), H5T_NATIVE_REAL, targetDSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
         // Write the dataset. Most important thing to note is that the 3rd and 4th arguments represent the *source* and *destination* dataspaces.
         // The source here is the sourceDSpace pointing to the memory buffer. Note that its view has been adjusted using hyperslab.
         // The destination is the targetDSpace. Though the targetDSpace is smaller than the sourceDSpace,
         // only the appropriate hyperslab within the sourceDSpace is transferred to the destination.
 
-        status = H5Dwrite(dataSet, H5T_NATIVE_REAL, sourceDSpace[pIndex], targetDSpace[pIndex], plist_id, fieldData.dataFirst());
+        status = H5Dwrite(dataSet, H5T_NATIVE_REAL, sourceDSpace, targetDSpace, plist_id, fieldData.dataFirst());
         if (status) {
             if (mesh.rankData.rank == 0) {
                 std::cout << "Error in writing output to HDF file. Aborting" << std::endl;
@@ -393,20 +359,20 @@ void writer::writeSolution(real time) {
     H5Pclose(plist_id);
 
     // Add the coordinates of the grid along X axis to the solution file
-    dataSet = H5Dcreate2(fileHandle, "X", H5T_NATIVE_REAL, xsDSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    status = H5Dwrite(dataSet, H5T_NATIVE_REAL, xsDSpace, xsDSpace, H5P_DEFAULT, mesh.xGlobal.dataZero());
+    dataSet = H5Dcreate2(fileHandle, "X", H5T_NATIVE_REAL, xDSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    status = H5Dwrite(dataSet, H5T_NATIVE_REAL, xDSpace, xDSpace, H5P_DEFAULT, mesh.xGlobal.dataZero());
     H5Dclose(dataSet);
 
 #ifndef PLANAR
     // Add the coordinates of the grid along Y axis to the solution file
-    dataSet = H5Dcreate2(fileHandle, "Y", H5T_NATIVE_REAL, ysDSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    status = H5Dwrite(dataSet, H5T_NATIVE_REAL, ysDSpace, ysDSpace, H5P_DEFAULT, mesh.yGlobal.dataZero());
+    dataSet = H5Dcreate2(fileHandle, "Y", H5T_NATIVE_REAL, yDSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    status = H5Dwrite(dataSet, H5T_NATIVE_REAL, yDSpace, yDSpace, H5P_DEFAULT, mesh.yGlobal.dataZero());
     H5Dclose(dataSet);
 #endif
 
     // Add the coordinates of the grid along Z axis to the solution file
-    dataSet = H5Dcreate2(fileHandle, "Z", H5T_NATIVE_REAL, zsDSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    status = H5Dwrite(dataSet, H5T_NATIVE_REAL, zsDSpace, zsDSpace, H5P_DEFAULT, mesh.zGlobal.dataZero());
+    dataSet = H5Dcreate2(fileHandle, "Z", H5T_NATIVE_REAL, zDSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    status = H5Dwrite(dataSet, H5T_NATIVE_REAL, zDSpace, zDSpace, H5P_DEFAULT, mesh.zGlobal.dataZero());
     H5Dclose(dataSet);
 
     // Add the scalar value of time to the solution file
@@ -420,9 +386,9 @@ void writer::writeSolution(real time) {
 
     for (unsigned int i=0; i < wFields.size(); i++) {
 #ifdef PLANAR
-        fieldData.resize(blitz::TinyVector<int, 2>(localSize[i](0), localSize[i](2)));
+        fieldData.resize(blitz::TinyVector<int, 2>(locSize(0), locSize(2)));
 #else
-        fieldData.resize(localSize[i]);
+        fieldData.resize(locSize);
 #endif
 
         //Write data after first interpolating them to cell centers
@@ -430,14 +396,14 @@ void writer::writeSolution(real time) {
 
         // Create the dataset *for the file*, linking it to the file handle.
         // Correspondingly, it will use the *core* dataspace, as only the core has to be written excluding the pads
-        dataSet = H5Dcreate2(fileHandle, wFields[i].fieldName.c_str(), H5T_NATIVE_REAL, targetDSpace[i], H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+        dataSet = H5Dcreate2(fileHandle, wFields[i].fieldName.c_str(), H5T_NATIVE_REAL, targetDSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
         // Write the dataset. Most important thing to note is that the 3rd and 4th arguments represent the *source* and *destination* dataspaces.
         // The source here is the sourceDSpace pointing to the memory buffer. Note that its view has been adjusted using hyperslab.
         // The destination is the targetDSpace. Though the targetDSpace is smaller than the sourceDSpace,
         // only the appropriate hyperslab within the sourceDSpace is transferred to the destination.
 
-        status = H5Dwrite(dataSet, H5T_NATIVE_REAL, sourceDSpace[i], targetDSpace[i], plist_id, fieldData.dataFirst());
+        status = H5Dwrite(dataSet, H5T_NATIVE_REAL, sourceDSpace, targetDSpace, plist_id, fieldData.dataFirst());
         if (status) {
             if (mesh.rankData.rank == 0) {
                 std::cout << "Error in writing output to HDF file. Aborting" << std::endl;
@@ -496,9 +462,9 @@ void writer::writeRestart(real time) {
 
     for (unsigned int i=0; i < wFields.size(); i++) {
 #ifdef PLANAR
-        fieldData.resize(blitz::TinyVector<int, 2>(localSize[i](0), localSize[i](2)));
+        fieldData.resize(blitz::TinyVector<int, 2>(locSize(0), locSize(2)));
 #else
-        fieldData.resize(localSize[i]);
+        fieldData.resize(locSize);
 #endif
 
         //Write data
@@ -506,14 +472,14 @@ void writer::writeRestart(real time) {
 
         // Create the dataset *for the file*, linking it to the file handle.
         // Correspondingly, it will use the *core* dataspace, as only the core has to be written excluding the pads
-        dataSet = H5Dcreate2(fileHandle, wFields[i].fieldName.c_str(), H5T_NATIVE_REAL, targetDSpace[i], H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+        dataSet = H5Dcreate2(fileHandle, wFields[i].fieldName.c_str(), H5T_NATIVE_REAL, targetDSpace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
         // Write the dataset. Most important thing to note is that the 3rd and 4th arguments represent the *source* and *destination* dataspaces.
         // The source here is the sourceDSpace pointing to the memory buffer. Note that its view has been adjusted using hyperslab.
         // The destination is the targetDSpace. Though the targetDSpace is smaller than the sourceDSpace,
         // only the appropriate hyperslab within the sourceDSpace is transferred to the destination.
 
-        status = H5Dwrite(dataSet, H5T_NATIVE_REAL, sourceDSpace[i], targetDSpace[i], plist_id, fieldData.dataFirst());
+        status = H5Dwrite(dataSet, H5T_NATIVE_REAL, sourceDSpace, targetDSpace, plist_id, fieldData.dataFirst());
         if (status) {
             if (mesh.rankData.rank == 0) {
                 std::cout << "Error in writing output to HDF file. Aborting" << std::endl;

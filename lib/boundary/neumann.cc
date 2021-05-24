@@ -71,14 +71,6 @@ neumann::neumann(const grid &mesh, field &inField, const int bcWall, const real 
 inline void neumann::imposeBC() {
     if (rankFlag) {
         // This implementation assumes that the derivative at boundary is 0, and needs update
-        dField.F(dField.fWalls(wallNum)) = dField.F(dField.shift(shiftDim, dField.fWalls(wallNum), shiftVal));
-
-        // Debug code to test a different implementation of Neumann BC for pressure field
-        //if (dField.fieldName == "P") {
-        //    dField.F(dField.shift(shiftDim, dField.fWalls(wallNum), -shiftVal)) = dField.F(dField.shift(shiftDim, dField.fWalls(wallNum), shiftVal));
-        //} else {
-        //    dField.F(dField.fWalls(wallNum)) = dField.F(dField.shift(shiftDim, dField.fWalls(wallNum), shiftVal));
-        //}
-
+        dField.F(wallSlice) = dField.F(dataSlice);
     }
 }

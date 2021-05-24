@@ -47,7 +47,7 @@
 
 class force {
     public:
-        force(const grid &mesh, vfield &U);
+        force(const grid &mesh, const vfield &U);
 
         virtual void addForcing(plainvf &Hv);
         virtual void addForcing(plainsf &Ht);
@@ -55,7 +55,7 @@ class force {
     protected:
         const grid &mesh;
 
-        vfield &V;
+        const vfield &V;
 };
 
 /**
@@ -68,7 +68,7 @@ class force {
 
 class coriolisForce: public force {
     public:
-        coriolisForce(const grid &mesh, vfield &U);
+        coriolisForce(const grid &mesh, const vfield &U);
 
         inline void addForcing(plainvf &Hv);
         inline void addForcing(plainsf &Ht) { };
@@ -86,7 +86,7 @@ class coriolisForce: public force {
 
 class buoyantForce: public force {
     public:
-        buoyantForce(const grid &mesh, vfield &U, const sfield &T);
+        buoyantForce(const grid &mesh, const vfield &U, const sfield &T);
 
         inline void addForcing(plainvf &Hv);
         inline void addForcing(plainsf &Ht) { };
@@ -106,7 +106,7 @@ class buoyantForce: public force {
 
 class rotatingConv: public force {
     public:
-        rotatingConv(const grid &mesh, vfield &U, const sfield &T);
+        rotatingConv(const grid &mesh, const vfield &U, const sfield &T);
 
         inline void addForcing(plainvf &Hv);
         inline void addForcing(plainsf &Ht) { };
@@ -126,7 +126,7 @@ class rotatingConv: public force {
 
 class randomForcing: public force {
     public:
-        randomForcing(const grid &mesh, vfield &U);
+        randomForcing(const grid &mesh, const vfield &U);
 
         inline void addForcing(plainvf &Hv);
         inline void addForcing(plainsf &Ht) { };
@@ -144,7 +144,7 @@ class randomForcing: public force {
 
 class constantPGrad: public force {
     public:
-        constantPGrad(const grid &mesh, vfield &U): force(mesh, U) { };
+        constantPGrad(const grid &mesh, const vfield &U): force(mesh, U) { };
 
         inline void addForcing(plainvf &Hv) {Hv.Vx(V.Vx.fCore) += mesh.inputParams.meanPGrad;};
         inline void addForcing(plainsf &Ht) { };
@@ -160,7 +160,7 @@ class constantPGrad: public force {
 
 class zeroForcing: public force {
     public:
-        zeroForcing(const grid &mesh, vfield &U): force(mesh, U) { };
+        zeroForcing(const grid &mesh, const vfield &U): force(mesh, U) { };
 
         inline void addForcing(plainvf &Hv) { };
         inline void addForcing(plainsf &Ht) { };

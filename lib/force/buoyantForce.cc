@@ -42,7 +42,7 @@
 
 #include "force.h"
 
-buoyantForce::buoyantForce(const grid &mesh, vfield &U, const sfield &T): force(mesh, U), T(T) {
+buoyantForce::buoyantForce(const grid &mesh, const vfield &U, const sfield &T): force(mesh, U), T(T) {
     switch (mesh.inputParams.rbcType) {
         case 1: Fb = mesh.inputParams.Ra*mesh.inputParams.Pr;
             break;

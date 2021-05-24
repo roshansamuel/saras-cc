@@ -62,14 +62,15 @@ dirichlet::dirichlet(const grid &mesh, field &inField, const int bcWall, const r
  ********************************************************************************************************************************************
  * \brief   Function to impose Dirichlet BC on a cell centered variable
  *
- *          For Saras solver, the wall passes through the cell centers of the variables.
- *          Hence the variable is lying on the wall for this case.
- *          Accordingly the value of the variable is directly set to fieldValue on the wall.
+ *          For Saras solver, all variables are at cell-centers, while the walls pass along
+ *          the faces of the cells.
+ *          Hence the ghost point and adjacent point just inside the domain are lying on either side of the wall.
+ *          Accordingly the value of the variable is set through averaging across the wall.
  *
  ********************************************************************************************************************************************
  */
 inline void dirichlet::imposeBC() {
     if (rankFlag) {
-        dField.F(dField.fWalls(wallNum)) = fieldValue;
+        dField.F(wallSlice) = 2.0*fieldValue - dField.F(dataSlice);
     }
 }

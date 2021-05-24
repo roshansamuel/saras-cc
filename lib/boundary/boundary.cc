@@ -88,6 +88,10 @@ boundary::boundary(const grid &mesh, field &inField, const int bcWall):
 
     // Find the dimension along which the BC is being applied (X -> 0, Y -> 1, Z -> 2) using the wallNum
     shiftDim = (int) wallNum/2;
+
+    // Set the wall and data slices of the domain
+    wallSlice = dField.fWalls(wallNum);
+    dataSlice = dField.shift(shiftDim, dField.fWalls(wallNum), shiftVal);
 }
 
 /**

@@ -43,11 +43,8 @@
 #ifndef WRITER_H
 #define WRITER_H
 
-#include <blitz/array.h>
 #include <sys/stat.h>
-#include <fstream>
 #include <iomanip>
-#include <sstream>
 #include <vector>
 
 #include "field.h"
@@ -76,12 +73,10 @@ class writer {
 #endif
 
         hid_t timeDSpace;
-        hid_t xsDSpace, ysDSpace, zsDSpace;
-        hid_t xcDSpace, ycDSpace, zcDSpace;
+        hid_t xDSpace, yDSpace, zDSpace;
+        hid_t sourceDSpace, targetDSpace;
 
-        std::vector<hid_t> sourceDSpace, targetDSpace;
-
-        std::vector< blitz::TinyVector<int, 3> > localSize;
+        blitz::TinyVector<int, 3> locSize;
 
         void outputCheck();
 

@@ -43,11 +43,8 @@
 #ifndef INITIAL_H
 #define INITIAL_H
 
-#include <blitz/array.h>
-
 #include "vfield.h"
 #include "sfield.h"
-#include "grid.h"
 
 class initial {
     public:

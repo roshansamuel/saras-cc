@@ -58,6 +58,9 @@ class boundary {
         /** Reference to the field onto which the boundary condition has to be applied. */
         field &dField;
 
+        /** The wall slice on which BC is applied, and data slice which lies just inside the domain. */
+        blitz::RectDomain<3> wallSlice, dataSlice;
+
         /** The flag is true for MPI ranks on which the boundary condition has to be applied. */
         bool rankFlag;
 

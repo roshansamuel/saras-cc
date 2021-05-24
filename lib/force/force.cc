@@ -53,7 +53,7 @@
  * \param   U is a reference to the velocity vector field
  ********************************************************************************************************************************************
  */
-force::force(const grid &mesh, vfield &U): mesh(mesh), V(U) { }
+force::force(const grid &mesh, const vfield &U): mesh(mesh), V(U) { }
 
 
 /**
