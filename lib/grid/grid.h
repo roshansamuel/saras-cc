@@ -114,7 +114,7 @@ class grid {
 
         /** Lengths of the physical computational domain along the x, y and z directions */
         //@{
-        real xLen, yLen, zLen;
+        const real xLen, yLen, zLen;
         //@}
 
         /** Array of collocated grid sizes such that the corresponding staggered grid will be multi-grid compatible */

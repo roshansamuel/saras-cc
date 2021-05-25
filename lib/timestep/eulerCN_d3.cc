@@ -251,6 +251,13 @@ void eulerCN_d3::timeAdvance(vfield &V, sfield &P, sfield &T) {
     // Using the calculated mgRHS, evaluate pressure correction (Pp) using multi-grid method
     mgSolver.mgSolve(Pp, mgRHS);
 
+    //std::cout << mesh.rankData.rank << "\t" << V.Vx.fieldMax() << "\t" << V.Vy.fieldMax() << "\t" << V.Vz.fieldMax() << std::endl;
+    //std::cout << mesh.rankData.rank << "\t" << nseRHS.vxMax() << "\t" << nseRHS.vyMax() << "\t" << nseRHS.vzMax() << std::endl;
+    //std::cout << mesh.rankData.rank << "\t" << mgRHS.fxMax() << std::endl;
+    //std::cout << mesh.rankData.rank << "\t" << P.F.fieldMax() << std::endl;
+    //MPI_Finalize();
+    //exit(0);
+
     // Synchronise the pressure correction term across processors
     Pp.syncData();
 

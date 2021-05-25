@@ -97,11 +97,6 @@ tseries::tseries(const grid &mesh, vfield &solverV, const real &solverTime, cons
 #endif
     MPI_Allreduce(&localVol, &totalVol, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
 
-    // Check on calculation of totalVol may be necessary
-    //if (mesh.rankData.rank == 0) std::cout << totalVol << std::endl;
-    //MPI_Finalize();
-    //exit(0);
-
     // This switch decides if mean or maximum of divergence has to be printed.
     // Ideally maximum has to be tracked, but mean is a less strict metric.
     // By default, the mean is computed. To enable a stricter check, the below flag

@@ -57,7 +57,8 @@
  ********************************************************************************************************************************************
  */
 grid::grid(const parser &solParam, parallel &parallelData): inputParams(solParam),
-                                                            rankData(parallelData) {
+    rankData(parallelData), xLen(inputParams.Lx), yLen(inputParams.Ly), zLen(inputParams.Lz)
+{
     // Flag to enable printing to I/O only by 0 rank
     pf = false;
     if (rankData.rank == 0) pf = true;
@@ -85,10 +86,6 @@ grid::grid(const parser &solParam, parallel &parallelData): inputParams(solParam
 #else
     totalPoints = globalSize(0)*globalSize(1)*globalSize(2);
 #endif
-
-    xLen = inputParams.Lx;
-    yLen = inputParams.Ly;
-    zLen = inputParams.Lz;
 
     thBeta = inputParams.betaX, inputParams.betaY, inputParams.betaZ;
 
@@ -410,8 +407,10 @@ void grid::createUniformGrid() {
  */
 void grid::createTanHypGrid(int dim, blitz::Array<real, 1> xGlo, blitz::Array<real, 1> xiGl) {
     blitz::Range lftPts, rgtPts;
+    blitz::TinyVector<real, 3> dLen;
     blitz::Array<real, 1> df_x, dfxx, dfx2;
-    blitz::TinyVector<real, 3> dLen = xLen, yLen, zLen;
+
+    dLen = xLen, yLen, zLen;
 
     // Hyperbolic tangent of beta parameter
     real thb = tanh(thBeta(dim));
@@ -489,10 +488,12 @@ void grid::createTanHypGrid(int dim, blitz::Array<real, 1> xGlo, blitz::Array<re
  ********************************************************************************************************************************************
  */
 void grid::mgGridMetrics() {
+    blitz::TinyVector<real, 3> dLen;
     blitz::Range xRange, yRange, zRange;
     int numLevels = blitz::min(sizeIndex);
     blitz::Array<real, 1> trnsGrid, physGrid;
-    blitz::TinyVector<real, 3> dLen = xLen, yLen, zLen;
+
+    dLen = xLen, yLen, zLen;
 
     // FOR EACH LEVEL, THERE ARE 15 ONE-DIMENSIONAL ARRAYS:
     // xi, x, xi_x, xixx, xix2,
@@ -562,8 +563,10 @@ void grid::mgGridMetrics() {
  ********************************************************************************************************************************************
  */
 void grid::mgGridMetrics(int dim) {
-    blitz::TinyVector<real, 3> dLen = xLen, yLen, zLen;
+    blitz::TinyVector<real, 3> dLen;
     blitz::Array<real, 1> trnsGrid, physGrid, df_x, dfxx, dfx2;
+
+    dLen = xLen, yLen, zLen;
 
     // Hyperbolic tangent of beta parameter
     real thb = tanh(thBeta(dim));
