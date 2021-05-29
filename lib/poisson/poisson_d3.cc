@@ -179,22 +179,22 @@ void multigrid_d3::solve() {
                                 ztz2(vLevel)(k) * (pressureData(vLevel)(i, j, k + 1) - 2.0*pressureData(vLevel)(i, j, k) + pressureData(vLevel)(i, j, k - 1))/(hz(vLevel)*hz(vLevel)) +
                                 ztzz(vLevel)(k) * (pressureData(vLevel)(i, j, k + 1) - pressureData(vLevel)(i, j, k - 1))/(2.0*hz(vLevel))));
 
-                    if (tempValue > localMax) {
+                    if (tempValue > localMax)
                         localMax = tempValue;
-                    }
                 }
             }
         }
 
         MPI_Allreduce(&localMax, &globalMax, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);
 
-        if (globalMax < inputParams.mgTolerance) {
-            break;
-        }
+        if (globalMax < inputParams.mgTolerance) break;
 
         iterCount += 1;
         if (iterCount > maxCount) {
-            if (inputParams.printResidual) if (mesh.rankData.rank == 0) std::cout << "WARNING: Iterations for solution at coarsest level not converging." << std::endl;
+            if (inputParams.printResidual)
+                if (mesh.rankData.rank == 0)
+                    std::cout << "WARNING: Iterations for solution at coarsest level not converging." << std::endl;
+
             break;
         }
     }
@@ -204,10 +204,8 @@ void multigrid_d3::solve() {
 
 
 void multigrid_d3::coarsen() {
-    real vertPoints;
-
-    int i2, j2, k2;
     int pLevel;
+    int i2, j2, k2;
 
     pLevel = vLevel;
     vLevel += 1;
@@ -218,17 +216,10 @@ void multigrid_d3::coarsen() {
             j2 = j*2;
             for (int k = 0; k <= zEnd(vLevel); ++k) {
                 k2 = k*2;
-
-                vertPoints = (tmpDataArray(pLevel)(i2 + 1, j2 + 1, k2 + 1) +
-                              tmpDataArray(pLevel)(i2 + 1, j2 + 1, k2 - 1) +
-                              tmpDataArray(pLevel)(i2 + 1, j2 - 1, k2 + 1) +
-                              tmpDataArray(pLevel)(i2 - 1, j2 + 1, k2 + 1) +
-                              tmpDataArray(pLevel)(i2 + 1, j2 - 1, k2 - 1) +
-                              tmpDataArray(pLevel)(i2 - 1, j2 + 1, k2 - 1) +
-                              tmpDataArray(pLevel)(i2 - 1, j2 - 1, k2 + 1) +
-                              tmpDataArray(pLevel)(i2 - 1, j2 - 1, k2 - 1));
-
-                residualData(vLevel)(i, j, k) = vertPoints/8.0;
+                residualData(vLevel)(i, j, k) = (tmpDataArray(pLevel)(i2, j2, k2) + tmpDataArray(pLevel)(i2 + 1, j2 + 1, k2 + 1) +
+                                                 tmpDataArray(pLevel)(i2, j2 + 1, k2 + 1) + tmpDataArray(pLevel)(i2 + 1, j2, k2) +
+                                                 tmpDataArray(pLevel)(i2 + 1, j2, k2 + 1) + tmpDataArray(pLevel)(i2, j2 + 1, k2) +
+                                                 tmpDataArray(pLevel)(i2 + 1, j2 + 1, k2) + tmpDataArray(pLevel)(i2, j2, k2 + 1))/8;
             }
         }
     }
@@ -303,6 +294,7 @@ real multigrid_d3::computeError(const int normOrder) {
 
     real numValGlo = 0.0;
     real denValGlo = 0.0;
+    int pointCount = mesh.totalPoints;
     switch (normOrder) {
         case 0:     // L-Infinity Norm
             MPI_Allreduce(&numValLoc, &numValGlo, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);

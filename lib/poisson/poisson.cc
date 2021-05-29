@@ -109,10 +109,6 @@ poisson::poisson(const grid &mesh, const parser &solParam): mesh(mesh), inputPar
  ********************************************************************************************************************************************
  */
 void poisson::mgSolve(plainsf &inFn, const plainsf &rhs) {
-#ifndef TEST_POISSON
-    real prevResidual = 0.0;
-#endif
-
     vLevel = 0;
 
     for (int i=0; i <= inputParams.vcDepth; i++) {
@@ -180,17 +176,12 @@ void poisson::mgSolve(plainsf &inFn, const plainsf &rhs) {
         }
 #endif
 
-        if (inputParams.printResidual) {
-#ifdef TEST_POISSON
-            if (mesh.rankData.rank == 0) std::cout << std::endl << "Residual after V Cycle " << i << " is " << std::scientific << std::setprecision(3) << mgResidual << std::endl;
-#else
-            if (mesh.rankData.rank == 0) std::cout << std::endl << "Residual after V Cycle " << i << " is " << mgResidual << std::endl;
-#endif
-        }
+        if (inputParams.printResidual)
+            if (mesh.rankData.rank == 0)
+                std::cout << std::endl << "Residual after V Cycle " << i << " is " << std::scientific << std::setprecision(3) << mgResidual << std::endl;
 
 #ifndef TEST_POISSON
-        if (fabs(prevResidual - mgResidual) < inputParams.mgTolerance) break;
-        prevResidual = mgResidual;
+        if (mgResidual < inputParams.mgTolerance) break;
 #endif
     }
 
@@ -198,7 +189,9 @@ void poisson::mgSolve(plainsf &inFn, const plainsf &rhs) {
     if (allNeumann) {
         // WHEN USING NEUMANN BC ON ALL SIDES, THERE ARE INFINTELY MANY SOLUTIONS.
         // SUBTRACT THE MEAN OF THE SOLUTION SO THAT THE PRESSURE CORRECTION HAS ZERO MEAN.
-        // THIS CAN ENSURE THAT THE PRESSURE DOESN'T DRIFT WILDLY AS THE SIMULATION EVOLVES.
+        // THIS CAN ENSURE THAT THE PRESSURE DOESN'T DRIFT AS THE SIMULATION EVOLVES.
+        // THIS DOES NOT AFFECT THE PRESSURE GRADIENT, WHICH IS THE ACTUAL METRIC THAT
+        // SATISFIES DIVERGENCE IN THIS FORMULATION OF NSE.
         real localMean = blitz::sum(pressureData(0)(stagCore(0)))/mesh.totalPoints;
         real globalAvg = 0.0;
 
@@ -269,7 +262,7 @@ void poisson::vCycle() {
         (vLevel == inputParams.vcDepth)?
             inputParams.solveFlag?
                 solve():
-                smooth(inputParams.preSmooth + inputParams.postSmooth):
+                smooth(inputParams.preSmooth):
             smooth(inputParams.preSmooth);
     }
     // Step 4) Repeat steps 2-3 until you reach the coarsest grid level,
@@ -396,9 +389,6 @@ void poisson::setStagBounds() {
     // SET MAXIMUM NUMBER OF ITERATIONS FOR THE GAUSS-SEIDEL SOLVER AT COARSEST LEVEL OF MULTIGRID SOLVER
     blitz::TinyVector<int, 3> cgSize = stagFull(inputParams.vcDepth).ubound() - stagFull(inputParams.vcDepth).lbound();
     maxCount = cgSize(0)*cgSize(1)*cgSize(2);
-
-    int locPoints = (xEnd(0) + 1)*(yEnd(0) + 1)*(zEnd(0) + 1);
-    MPI_Allreduce(&locPoints, &pointCount, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 };
 
 

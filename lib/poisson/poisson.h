@@ -51,7 +51,6 @@
 
 class poisson {
     protected:
-        int pointCount;
         int vLevel, maxCount;
 
         bool zeroBC;

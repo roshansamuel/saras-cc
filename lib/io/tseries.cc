@@ -162,7 +162,7 @@ void tseries::writeTSHeader() {
  */
 void tseries::writeTSData() {
     V.divergence(divV);
-    divValue = maxSwitch? divV.fxMax(): divV.fxMean();
+    divValue = maxSwitch? divV.fxMaxAbs(): divV.fxMean();
 
     if (divValue > 1.0e5) {
         if (mesh.rankData.rank == 0) std::cout << std::endl << "ERROR: Divergence exceeds permissible limits. ABORTING" << std::endl << std::endl;
@@ -236,7 +236,7 @@ void tseries::writeTSData(const sfield &T, const real nu, const real kappa) {
 
     // COMPUTE ENERGY AND DIVERGENCE FOR THE INITIAL CONDITION
     V.divergence(divV);
-    divValue = maxSwitch? divV.fxMax(): divV.fxMean();
+    divValue = maxSwitch? divV.fxMaxAbs(): divV.fxMean();
 
     if (divValue > 1.0e5) {
         if (mesh.rankData.rank == 0) std::cout << std::endl << "ERROR: Divergence exceeds permissible limits. ABORTING" << std::endl << std::endl;

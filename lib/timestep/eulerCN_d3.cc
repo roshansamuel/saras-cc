@@ -251,13 +251,6 @@ void eulerCN_d3::timeAdvance(vfield &V, sfield &P, sfield &T) {
     // Using the calculated mgRHS, evaluate pressure correction (Pp) using multi-grid method
     mgSolver.mgSolve(Pp, mgRHS);
 
-    //std::cout << mesh.rankData.rank << "\t" << V.Vx.fieldMax() << "\t" << V.Vy.fieldMax() << "\t" << V.Vz.fieldMax() << std::endl;
-    //std::cout << mesh.rankData.rank << "\t" << nseRHS.vxMax() << "\t" << nseRHS.vyMax() << "\t" << nseRHS.vzMax() << std::endl;
-    //std::cout << mesh.rankData.rank << "\t" << mgRHS.fxMax() << std::endl;
-    //std::cout << mesh.rankData.rank << "\t" << P.F.fieldMax() << std::endl;
-    //MPI_Finalize();
-    //exit(0);
-
     // Synchronise the pressure correction term across processors
     Pp.syncData();
 
@@ -339,9 +332,8 @@ void eulerCN_d3::solveVx(vfield &V, plainvf &nseRHS) {
 
         locMax = blitz::max(tempVx(V.Vx.fCore));
         MPI_Allreduce(&locMax, &gloMax, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);
-        if (gloMax < mesh.inputParams.cnTolerance) {
-            break;
-        }
+
+        if (gloMax < mesh.inputParams.cnTolerance) break;
 
         iterCount += 1;
 
@@ -415,9 +407,8 @@ void eulerCN_d3::solveVy(vfield &V, plainvf &nseRHS) {
 
         locMax = blitz::max(tempVy(V.Vy.fCore));
         MPI_Allreduce(&locMax, &gloMax, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);
-        if (gloMax < mesh.inputParams.cnTolerance) {
-            break;
-        }
+
+        if (gloMax < mesh.inputParams.cnTolerance) break;
 
         iterCount += 1;
 
@@ -491,9 +482,8 @@ void eulerCN_d3::solveVz(vfield &V, plainvf &nseRHS) {
 
         locMax = blitz::max(tempVz(V.Vz.fCore));
         MPI_Allreduce(&locMax, &gloMax, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);
-        if (gloMax < mesh.inputParams.cnTolerance) {
-            break;
-        }
+
+        if (gloMax < mesh.inputParams.cnTolerance) break;
 
         iterCount += 1;
 
@@ -554,9 +544,8 @@ void eulerCN_d3::solveT(sfield &T, plainsf &tmpRHS) {
 
         locMax = blitz::max(tempT(T.F.fCore));
         MPI_Allreduce(&locMax, &gloMax, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);
-        if (gloMax < mesh.inputParams.cnTolerance) {
-            break;
-        }
+
+        if (gloMax < mesh.inputParams.cnTolerance) break;
 
         iterCount += 1;
 

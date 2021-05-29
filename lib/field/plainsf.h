@@ -113,6 +113,28 @@ class plainsf {
 
 /**
  ********************************************************************************************************************************************
+ * \brief   Function to extract the maximum from absolute values of the plain scalar field
+ *
+ *          Like fxMax, this function uses the in-built blitz function to obtain the maximum value in an array.
+ *          However, in doing so, it takes the absolute values of array.
+ *          While performing parallel computation, the function performs an <B>MPI_Allreduce()</B> to get
+ *          the global maximum from the entire computational domain.
+ *
+ * \return  The real value of the maximum is returned (it is implicitly assumed that only real values are used)
+ ********************************************************************************************************************************************
+ */
+        inline real fxMaxAbs() {
+            real localMax, globalMax;
+
+            localMax = blitz::max(blitz::abs(F(gridData.coreDomain)));
+
+            MPI_Allreduce(&localMax, &globalMax, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);
+
+            return globalMax;
+        }
+
+/**
+ ********************************************************************************************************************************************
  * \brief   Function to compute the mean value from the plain scalar field
  *
  *          The function uses the in-built blitz function to obtain the mean value in an array.

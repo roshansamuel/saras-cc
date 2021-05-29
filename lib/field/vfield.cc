@@ -231,23 +231,21 @@ void vfield::computeTStp(real &dt_out) {
  ********************************************************************************************************************************************
  */
 void vfield::divergence(plainsf &divV) {
+    divV = 0.0;
+
     derivTemp = 0.0;
     derVx.calcDerivative1_x(derivTemp);
+    divV.F(core) += derivTemp(core);
 
 #ifndef PLANAR
     derivTemp = 0.0;
     derVy.calcDerivative1_y(derivTemp);
+    divV.F(core) += derivTemp(core);
 #endif
 
     derivTemp = 0.0;
     derVz.calcDerivative1_z(derivTemp);
-
-    divV = 0.0;
-#ifdef PLANAR
-    divV.F(core) = derivTemp(core) + derivTemp(core);
-#else
-    divV.F(core) = derivTemp(core) + derivTemp(core) + derivTemp(core);
-#endif
+    divV.F(core) += derivTemp(core);
 }
 
 /**
