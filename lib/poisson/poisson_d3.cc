@@ -465,29 +465,29 @@ void multigrid_d3::imposeBC() {
 #ifdef TEST_POISSON
         // DIRICHLET BOUNDARY CONDITION AT LEFT AND RIGHT WALLS
         if (zeroBC) {
-            if (mesh.rankData.xRank == 0) {
+            if (xfr) {
                 pressureData(vLevel)(-1, all, all) = -pressureData(vLevel)(0, all, all);
             }
 
-            if (mesh.rankData.xRank == mesh.rankData.npX - 1) {
+            if (xlr) {
                 pressureData(vLevel)(stagCore(vLevel).ubound(0) + 1, all, all) = -pressureData(vLevel)(stagCore(vLevel).ubound(0), all, all);
             }
         } else {
-            if (mesh.rankData.xRank == 0) {
+            if (xfr) {
                 pressureData(vLevel)(-1, all, all) = 2.0*xWall(all, all) - pressureData(vLevel)(0, all, all);
             }
 
-            if (mesh.rankData.xRank == mesh.rankData.npX - 1) {
+            if (xlr) {
                 pressureData(vLevel)(stagCore(vLevel).ubound(0) + 1, all, all) = 2.0*xWall(all, all) - pressureData(vLevel)(stagCore(vLevel).ubound(0), all, all);
             }
         }
 #else
         // NEUMANN BOUNDARY CONDITION AT LEFT AND RIGHT WALLS
-        if (mesh.rankData.xRank == 0) {
+        if (xfr) {
             pressureData(vLevel)(-1, all, all) = pressureData(vLevel)(0, all, all);
         }
 
-        if (mesh.rankData.xRank == mesh.rankData.npX - 1) {
+        if (xlr) {
             pressureData(vLevel)(stagCore(vLevel).ubound(0) + 1, all, all) = pressureData(vLevel)(stagCore(vLevel).ubound(0), all, all);
         }
 #endif
@@ -497,29 +497,29 @@ void multigrid_d3::imposeBC() {
 #ifdef TEST_POISSON
         // DIRICHLET BOUNDARY CONDITION AT FRONT AND BACK WALLS
         if (zeroBC) {
-            if (mesh.rankData.yRank == 0) {
+            if (yfr) {
                 pressureData(vLevel)(all, -1, all) = -pressureData(vLevel)(all, 0, all);
             }
 
-            if (mesh.rankData.yRank == mesh.rankData.npY - 1) {
+            if (ylr) {
                 pressureData(vLevel)(all, stagCore(vLevel).ubound(1) + 1, all) = -pressureData(vLevel)(all, stagCore(vLevel).ubound(1), all);
             }
         } else {
-            if (mesh.rankData.yRank == 0) {
+            if (yfr) {
                 pressureData(vLevel)(all, -1, all) = 2.0*yWall(all, all) - pressureData(vLevel)(all, 0, all);
             }
 
-            if (mesh.rankData.yRank == mesh.rankData.npY - 1) {
+            if (ylr) {
                 pressureData(vLevel)(all, stagCore(vLevel).ubound(1) + 1, all) = 2.0*yWall(all, all) - pressureData(vLevel)(all, stagCore(vLevel).ubound(1), all);
             }
         }
 #else
         // NEUMANN BOUNDARY CONDITION AT FRONT AND BACK WALLS
-        if (mesh.rankData.yRank == 0) {
+        if (yfr) {
             pressureData(vLevel)(all, -1, all) = pressureData(vLevel)(all, 0, all);
         }
 
-        if (mesh.rankData.yRank == mesh.rankData.npY - 1) {
+        if (ylr) {
             pressureData(vLevel)(all, stagCore(vLevel).ubound(1) + 1, all) = pressureData(vLevel)(all, stagCore(vLevel).ubound(1), all);
         }
 #endif

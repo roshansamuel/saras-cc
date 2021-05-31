@@ -55,6 +55,9 @@ class derivative {
 
         const blitz::Array<real, 3> &F;
 
+        /** Flags for first rank (fr) and last rank (lr) along X and Y directions */
+        bool xfr, xlr, yfr, ylr;
+
         real invDelx, invDely, invDelz;
 
         blitz::firstIndex i;

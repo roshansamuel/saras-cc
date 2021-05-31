@@ -75,6 +75,11 @@ poisson::poisson(const grid &mesh, const parser &solParam): mesh(mesh), inputPar
 
     mgSizeArray(0) = 1;
 
+    xfr = (mesh.rankData.xRank == 0)? true: false;
+    yfr = (mesh.rankData.yRank == 0)? true: false;
+    xlr = (mesh.rankData.xRank == mesh.rankData.npX - 1)? true: false;
+    ylr = (mesh.rankData.yRank == mesh.rankData.npY - 1)? true: false;
+
     // SET THE ARRAY LIMITS OF FULL AND CORE DOMAINS
     setStagBounds();
 

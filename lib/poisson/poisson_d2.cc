@@ -372,7 +372,7 @@ void multigrid_d2::imposeBC() {
 #ifdef TEST_POISSON
         // DIRICHLET/NEUMANN BOUNDARY CONDITION AT LEFT AND RIGHT WALLS
         if (zeroBC) {
-            if (mesh.rankData.xRank == 0) {
+            if (xfr) {
                 if (testNeumann) {
                     pressureData(vLevel)(-1, 0, all) = pressureData(vLevel)(0, 0, all);
                 } else {
@@ -380,7 +380,7 @@ void multigrid_d2::imposeBC() {
                 }
             }
 
-            if (mesh.rankData.xRank == mesh.rankData.npX - 1) {
+            if (xlr) {
                 if (testNeumann) {
                     pressureData(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = pressureData(vLevel)(stagCore(vLevel).ubound(0), 0, all);
                 } else {
@@ -388,7 +388,7 @@ void multigrid_d2::imposeBC() {
                 }
             }
         } else {
-            if (mesh.rankData.xRank == 0) {
+            if (xfr) {
                 if (testNeumann) {
                     pressureData(vLevel)(-1, 0, all) = 0.5*hx(vLevel) + pressureData(vLevel)(0, 0, all);
                 } else {
@@ -396,7 +396,7 @@ void multigrid_d2::imposeBC() {
                 }
             }
 
-            if (mesh.rankData.xRank == mesh.rankData.npX - 1) {
+            if (xlr) {
                 if (testNeumann) {
                     pressureData(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = 0.5*hx(vLevel) + pressureData(vLevel)(stagCore(vLevel).ubound(0), 0, all);
                 } else {
@@ -406,11 +406,11 @@ void multigrid_d2::imposeBC() {
         }
 #else
         // NEUMANN BOUNDARY CONDITION AT LEFT AND RIGHT WALLS
-        if (mesh.rankData.xRank == 0) {
+        if (xfr) {
             pressureData(vLevel)(-1, 0, all) = pressureData(vLevel)(0, 0, all);
         }
 
-        if (mesh.rankData.xRank == mesh.rankData.npX - 1) {
+        if (xlr) {
             pressureData(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = pressureData(vLevel)(stagCore(vLevel).ubound(0), 0, all);
         }
 #endif
