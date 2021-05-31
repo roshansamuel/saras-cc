@@ -60,7 +60,7 @@
 
 class les {
     public:
-        les(const grid &mesh, const sfield &solverP);
+        les(const grid &mesh);
 
         virtual real computeSG(plainvf &nseRHS, vfield &V);
         virtual real computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T);
@@ -68,7 +68,7 @@ class les {
     protected:
         const grid &mesh;
 
-        const sfield &P;
+        blitz::RectDomain<3> core;
 };
 
 /**
@@ -81,7 +81,7 @@ class les {
 
 class spiral: public les {
     public:
-        spiral(const grid &mesh, const sfield &solverP, const real &kDiff);
+        spiral(const grid &mesh, const real &kDiff);
 
         real computeSG(plainvf &nseRHS, vfield &V);
         real computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T);

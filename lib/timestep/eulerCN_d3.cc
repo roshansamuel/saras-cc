@@ -74,7 +74,7 @@ eulerCN_d3::eulerCN_d3(const grid &mesh, const real &sTime, const real &dt, tser
                 std::cout << "LES Switch is ON. Using stretched spiral vortex LES Model\n" << std::endl;
             }
 
-            sgsLES = new spiral(mesh, P, nu);
+            sgsLES = new spiral(mesh, nu);
         }
     }
 }

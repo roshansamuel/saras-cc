@@ -56,14 +56,13 @@
  *          are initialized in the constructor.
  *
  * \param   mesh is a const reference to the global data contained in the grid class.
- * \param   solverP is a const reference to the cell-centered pressure field whose array limits are used to compute SGS terms
  * \param   kDiff is a const reference to scalar value denoting viscous dissipation
  ********************************************************************************************************************************************
  */
-spiral::spiral(const grid &mesh, const sfield &solverP, const real &kDiff):
-    les(mesh, solverP),
-    nu(kDiff)
-{
+spiral::spiral(const grid &mesh, const real &kDiff): les(mesh), nu(kDiff) {
+    blitz::TinyVector<int, 3> dSize = mesh.fullDomain.ubound() - mesh.fullDomain.lbound() + 1;
+    blitz::TinyVector<int, 3> dlBnd = mesh.fullDomain.lbound();
+
     // Scalar fields used to store components of the sub-grid stress tensor field
     Txx = new sfield(mesh, "Txx");
     Tyy = new sfield(mesh, "Tyy");
@@ -85,24 +84,24 @@ spiral::spiral(const grid &mesh, const sfield &solverP, const real &kDiff):
     // 3x3 matrix to store the velocity gradient tensor
     dudx.resize(3, 3);
 
-    // The 9 blitz arrays of tensor components have the same dimensions and limits as a cell centered variable (P)
-    A11.resize(P.F.fSize);      A11.reindexSelf(P.F.flBound);
-    A12.resize(P.F.fSize);      A12.reindexSelf(P.F.flBound);
-    A13.resize(P.F.fSize);      A13.reindexSelf(P.F.flBound);
-    A21.resize(P.F.fSize);      A21.reindexSelf(P.F.flBound);
-    A22.resize(P.F.fSize);      A22.reindexSelf(P.F.flBound);
-    A23.resize(P.F.fSize);      A23.reindexSelf(P.F.flBound);
-    A31.resize(P.F.fSize);      A31.reindexSelf(P.F.flBound);
-    A32.resize(P.F.fSize);      A32.reindexSelf(P.F.flBound);
-    A33.resize(P.F.fSize);      A33.reindexSelf(P.F.flBound);
+    // The 9 blitz arrays of tensor components have the same dimensions and limits as the cell centered variable
+    A11.resize(dSize);      A11.reindexSelf(dlBnd);
+    A12.resize(dSize);      A12.reindexSelf(dlBnd);
+    A13.resize(dSize);      A13.reindexSelf(dlBnd);
+    A21.resize(dSize);      A21.reindexSelf(dlBnd);
+    A22.resize(dSize);      A22.reindexSelf(dlBnd);
+    A23.resize(dSize);      A23.reindexSelf(dlBnd);
+    A31.resize(dSize);      A31.reindexSelf(dlBnd);
+    A32.resize(dSize);      A32.reindexSelf(dlBnd);
+    A33.resize(dSize);      A33.reindexSelf(dlBnd);
 
-    // The 9 arrays of vector components have the same dimensions and limits as a cell centered variable (P)
+    // The 9 arrays of vector components have the same dimensions and limits as the cell centered variable
     // These arrays are needed only when computing the sub-grid scalar flux.
     // Hence they are initialized only for thermal convection problems (probType > 4)
     if (mesh.inputParams.probType > 4) {
-        B1.resize(P.F.fSize);       B1.reindexSelf(P.F.flBound);
-        B2.resize(P.F.fSize);       B2.reindexSelf(P.F.flBound);
-        B3.resize(P.F.fSize);       B3.reindexSelf(P.F.flBound);
+        B1.resize(dSize);       B1.reindexSelf(dlBnd);
+        B2.resize(dSize);       B2.reindexSelf(dlBnd);
+        B3.resize(dSize);       B3.reindexSelf(dlBnd);
     }
 }
 
@@ -140,13 +139,12 @@ real spiral::computeSG(plainvf &nseRHS, vfield &V) {
     V.derVz.calcDerivative1_z(A33);
 
     // Set the array limits when looping over the domain to compute SG contribution.
-    // Use only the cell centers like a collocated grid and compute T tensor.
-    // Since interpolated U, V, and W data is available only in the core,
-    // the limits of fCore are used so that the boundary points are excluded
+    // Since correct U, V, and W data is available only in the core,
+    // the limits of core are used so that the boundary points are excluded
     // while computing derivatives and structure functions.
-    xS = P.F.fCore.lbound(0);       xE = P.F.fCore.ubound(0);
-    yS = P.F.fCore.lbound(1);       yE = P.F.fCore.ubound(1);
-    zS = P.F.fCore.lbound(2);       zE = P.F.fCore.ubound(2);
+    xS = core.lbound(0);       xE = core.ubound(0);
+    yS = core.lbound(1);       yE = core.ubound(1);
+    zS = core.lbound(2);       zE = core.ubound(2);
 
     localSGKE = 0.0;
     for (int iX = xS; iX <= xE; iX++) {
@@ -220,16 +218,10 @@ real spiral::computeSG(plainvf &nseRHS, vfield &V) {
     Tyz->derS.calcDerivative1_z(A32);
     Tzz->derS.calcDerivative1_z(A33);
 
-    // Sum the components to get the divergence of the stress tensor field
-    A11 = A11 + A21 + A31;
-    A22 = A12 + A22 + A32;
-    A33 = A13 + A23 + A33;
-
-    // Interpolate the computed divergence and add its contribution to the RHS 
-    // of the NSE provided as argument to the function
-    nseRHS.Vx(V.Vx.fCore) += (A11(V.Vx.fCore) + A11(V.Vx.shift(0, V.Vx.fCore, 1)))*0.5;
-    nseRHS.Vy(V.Vy.fCore) += (A22(V.Vy.fCore) + A22(V.Vy.shift(1, V.Vy.fCore, 1)))*0.5;
-    nseRHS.Vz(V.Vz.fCore) += (A33(V.Vz.fCore) + A33(V.Vz.shift(2, V.Vz.fCore, 1)))*0.5;
+    // Add the divergence of the stress tensor field to the RHS of NSE provided as argument to the function
+    nseRHS.Vx(core) = nseRHS.Vx(core) + A11(core) + A21(core) + A31(core);
+    nseRHS.Vy(core) = nseRHS.Vy(core) + A22(core) + A22(core) + A32(core);
+    nseRHS.Vz(core) = nseRHS.Vz(core) + A33(core) + A23(core) + A33(core);
 
     return totalSGKE;
 }
@@ -278,13 +270,12 @@ real spiral::computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T) {
     T.derS.calcDerivative1_z(B3);
 
     // Set the array limits when looping over the domain to compute SG contribution.
-    // Use only the cell centers like a collocated grid and compute T tensor.
-    // Since interpolated U, V, and W data is available only in the core,
-    // the limits of fCore are used so that the boundary points are excluded
+    // Since correct U, V, and W data is available only in the core,
+    // the limits of core are used so that the boundary points are excluded
     // to compute derivatives and structure functions correctly.
-    xS = P.F.fCore.lbound(0);       xE = P.F.fCore.ubound(0);
-    yS = P.F.fCore.lbound(1);       yE = P.F.fCore.ubound(1);
-    zS = P.F.fCore.lbound(2);       zE = P.F.fCore.ubound(2);
+    xS = core.lbound(0);       xE = core.ubound(0);
+    yS = core.lbound(1);       yE = core.ubound(1);
+    zS = core.lbound(2);       zE = core.ubound(2);
 
     localSGKE = 0.0;
     for (int iX = xS; iX <= xE; iX++) {
@@ -367,17 +358,10 @@ real spiral::computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T) {
     Tyz->derS.calcDerivative1_z(A32);
     Tzz->derS.calcDerivative1_z(A33);
 
-    // Sum the components to get the divergence of the stress tensor field
-    B1 = A11 + A21 + A31;
-    B2 = A12 + A22 + A32;
-    B3 = A13 + A23 + A33;
-
-    // Interpolate the computed divergence and add its contribution to the RHS 
-    // of the NSE provided as argument to the function
-    // Contribution to the X-component of NSE
-    nseRHS.Vx(V.Vx.fCore) += (B1(V.Vx.fCore) + B1(V.Vx.shift(0, V.Vx.fCore, 1)))*0.5;
-    nseRHS.Vy(V.Vy.fCore) += (B2(V.Vy.fCore) + B2(V.Vy.shift(1, V.Vy.fCore, 1)))*0.5;
-    nseRHS.Vz(V.Vz.fCore) += (B3(V.Vz.fCore) + B3(V.Vz.shift(2, V.Vz.fCore, 1)))*0.5;
+    // Add the divergence of the stress tensor field to the RHS of NSE provided as argument to the function
+    nseRHS.Vx(core) = nseRHS.Vx(core) + A11(core) + A21(core) + A31(core);
+    nseRHS.Vy(core) = nseRHS.Vy(core) + A22(core) + A22(core) + A32(core);
+    nseRHS.Vz(core) = nseRHS.Vz(core) + A33(core) + A23(core) + A33(core);
 
     // Synchronize the sub-grid scalar flux vector field data across MPI processors
     qX->syncData();
@@ -391,7 +375,7 @@ real spiral::computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T) {
 
     // Sum the components to get the divergence of scalar flux, and add its contribution
     // to the RHS of the temperature field equation provided as argument to the function
-    tmpRHS.F(T.F.fCore) += (B1(T.F.fCore) + B2(T.F.fCore) + B3(T.F.fCore));
+    tmpRHS.F(core) = tmpRHS.F(core) + B1(core) + B2(core) + B3(core);
 
     return totalSGKE;
 }
