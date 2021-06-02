@@ -20,7 +20,7 @@
     # 6 = Linear Temperature Profile (for Scalar Flow)
     # 7 = Cosine Temperature Profile (for Scalar Flow)
     # 8 = Sine Temperature Profile (for Scalar Flow)
-    "Initial Condition": 0
+    "Initial Condition": 8
 
     # Mean flow velocity (for Channel Flow)
     # If option 3 or 4 is selected above, the perturbation is imposed on a background uniform flow
@@ -53,7 +53,7 @@
     # Non-dimensional parameters
     "Reynolds Number": 1000
     "Rossby Number": 12
-    "Rayleigh Number": 1.0e4
+    "Rayleigh Number": 1.0e5
     "Prandtl Number": 0.71
     "Taylor Number": 0.0
 
@@ -111,8 +111,8 @@
 # Parellelization parameters
 "Parallel":
     "Number of OMP threads": 1
-    "X Number of Procs": 2
-    "Y Number of Procs": 2
+    "X Number of Procs": 1
+    "Y Number of Procs": 1
 
 
 # Solver parameters
@@ -139,7 +139,7 @@
     # If above flag is true, then set the value of Courant number below
     "Courant Number": 0.1
     "Time-Step": 0.01
-    "Final Time": 0.1
+    "Final Time": 0.01
 
     # Number of iterations to display output to standard I/O
     "I/O Count": 1
@@ -169,12 +169,12 @@
 # Poisson solver parameters
 "Multigrid":
     # Number of restriction/prolongation steps in each V-Cycle
-    "V-Cycle Depth": 3
+    "V-Cycle Depth": 4
     # Number of V-Cycles to be performed
     "V-Cycle Count": 20
 
     # Set the flag to true if the solver should solve at coarsest level instead of just smoothing
-    "Solve Coarsest": false
+    "Solve Coarsest": true
     # If the above flag is true, set the tolerance used in iterative method when solving
     "Solve Tolerance": 1.0e-6
 

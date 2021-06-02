@@ -82,9 +82,8 @@ class poisson {
         blitz::Array<MPI_Request, 1> recvRequest;
         blitz::Array<MPI_Status, 1> recvStatus;
 
-        blitz::Array<real, 1> hx, hy, hz;
-        blitz::Array<real, 1> hx2, hz2, hzhx;
-        blitz::Array<real, 1> hxhy, hyhz, hxhyhz;
+        blitz::Array<real, 1> i2hx, i2hy, i2hz;
+        blitz::Array<real, 1> ihx2, ihy2, ihz2;
 
         blitz::Array<blitz::Array<real, 1>, 1> xixx, xix2;
         blitz::Array<blitz::Array<real, 1>, 1> etyy, ety2;

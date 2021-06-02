@@ -77,10 +77,10 @@ void multigrid_d2::computeResidual() {
     for (int i = 0; i <= xEnd(vLevel); ++i) {
         for (int k = 0; k <= zEnd(vLevel); ++k) {
             tmpDataArray(vLevel)(i, 0, k) =  residualData(vLevel)(i, 0, k) -
-                         (xix2(vLevel)(i) * (pressureData(vLevel)(i + 1, 0, k) - 2.0*pressureData(vLevel)(i, 0, k) + pressureData(vLevel)(i - 1, 0, k))/(hx(vLevel)*hx(vLevel)) +
-                          xixx(vLevel)(i) * (pressureData(vLevel)(i + 1, 0, k) - pressureData(vLevel)(i - 1, 0, k))/(2.0*hx(vLevel)) +
-                          ztz2(vLevel)(k) * (pressureData(vLevel)(i, 0, k + 1) - 2.0*pressureData(vLevel)(i, 0, k) + pressureData(vLevel)(i, 0, k - 1))/(hz(vLevel)*hz(vLevel)) +
-                          ztzz(vLevel)(k) * (pressureData(vLevel)(i, 0, k + 1) - pressureData(vLevel)(i, 0, k - 1))/(2.0*hz(vLevel)));
+                         (xix2(vLevel)(i) * ihx2(vLevel) * (pressureData(vLevel)(i + 1, 0, k) - 2.0*pressureData(vLevel)(i, 0, k) + pressureData(vLevel)(i - 1, 0, k)) +
+                          xixx(vLevel)(i) * i2hx(vLevel) * (pressureData(vLevel)(i + 1, 0, k) - pressureData(vLevel)(i - 1, 0, k)) +
+                          ztz2(vLevel)(k) * ihz2(vLevel) * (pressureData(vLevel)(i, 0, k + 1) - 2.0*pressureData(vLevel)(i, 0, k) + pressureData(vLevel)(i, 0, k - 1)) +
+                          ztzz(vLevel)(k) * i2hz(vLevel) * (pressureData(vLevel)(i, 0, k + 1) - pressureData(vLevel)(i, 0, k - 1)));
         }
     }
 
@@ -100,12 +100,11 @@ void multigrid_d2::smooth(const int smoothCount) {
             // GAUSS-SEIDEL ITERATIVE SMOOTHING
             for (int i = 0; i <= xEnd(vLevel); ++i) {
                 for (int k = 0; k <= zEnd(vLevel); ++k) {
-                    pressureData(vLevel)(i, 0, k) = (hz2(vLevel) * xix2(vLevel)(i) * (pressureData(vLevel)(i + 1, 0, k) + pressureData(vLevel)(i - 1, 0, k))*2.0 +
-                                                     hz2(vLevel) * xixx(vLevel)(i) * (pressureData(vLevel)(i + 1, 0, k) - pressureData(vLevel)(i - 1, 0, k))*hx(vLevel) +
-                                                     hx2(vLevel) * ztz2(vLevel)(k) * (pressureData(vLevel)(i, 0, k + 1) + pressureData(vLevel)(i, 0, k - 1))*2.0 +
-                                                     hx2(vLevel) * ztzz(vLevel)(k) * (pressureData(vLevel)(i, 0, k + 1) - pressureData(vLevel)(i, 0, k - 1))*hz(vLevel) -
-                                              2.0 * hzhx(vLevel) * residualData(vLevel)(i, 0, k))/
-                                             (4.0 * (hz2(vLevel) * xix2(vLevel)(i) + hx2(vLevel)*ztz2(vLevel)(k)));
+                    pressureData(vLevel)(i, 0, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (pressureData(vLevel)(i + 1, 0, k) + pressureData(vLevel)(i - 1, 0, k)) +
+                                                     xixx(vLevel)(i) * i2hx(vLevel) * (pressureData(vLevel)(i + 1, 0, k) - pressureData(vLevel)(i - 1, 0, k)) +
+                                                     ztz2(vLevel)(k) * ihz2(vLevel) * (pressureData(vLevel)(i, 0, k + 1) + pressureData(vLevel)(i, 0, k - 1)) +
+                                                     ztzz(vLevel)(k) * i2hz(vLevel) * (pressureData(vLevel)(i, 0, k + 1) - pressureData(vLevel)(i, 0, k - 1)) -
+                                              residualData(vLevel)(i, 0, k)) / (2.0 * (ihx2(vLevel) * xix2(vLevel)(i) + ihz2(vLevel)*ztz2(vLevel)(k)));
                 }
             }
         } else {
@@ -113,12 +112,11 @@ void multigrid_d2::smooth(const int smoothCount) {
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none)
             for (int i = 0; i <= xEnd(vLevel); ++i) {
                 for (int k = 0; k <= zEnd(vLevel); ++k) {
-                    tmpDataArray(vLevel)(i, 0, k) = (hz2(vLevel) * xix2(vLevel)(i) * (pressureData(vLevel)(i + 1, 0, k) + pressureData(vLevel)(i - 1, 0, k))*2.0 +
-                                                     hz2(vLevel) * xixx(vLevel)(i) * (pressureData(vLevel)(i + 1, 0, k) - pressureData(vLevel)(i - 1, 0, k))*hx(vLevel) +
-                                                     hx2(vLevel) * ztz2(vLevel)(k) * (pressureData(vLevel)(i, 0, k + 1) + pressureData(vLevel)(i, 0, k - 1))*2.0 +
-                                                     hx2(vLevel) * ztzz(vLevel)(k) * (pressureData(vLevel)(i, 0, k + 1) - pressureData(vLevel)(i, 0, k - 1))*hz(vLevel) -
-                                              2.0 * hzhx(vLevel) * residualData(vLevel)(i, 0, k))/
-                                             (4.0 * (hz2(vLevel) * xix2(vLevel)(i) + hx2(vLevel)*ztz2(vLevel)(k)));
+                    tmpDataArray(vLevel)(i, 0, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (pressureData(vLevel)(i + 1, 0, k) + pressureData(vLevel)(i - 1, 0, k)) +
+                                                     xixx(vLevel)(i) * i2hx(vLevel) * (pressureData(vLevel)(i + 1, 0, k) - pressureData(vLevel)(i - 1, 0, k)) +
+                                                     ztz2(vLevel)(k) * ihz2(vLevel) * (pressureData(vLevel)(i, 0, k + 1) + pressureData(vLevel)(i, 0, k - 1)) +
+                                                     ztzz(vLevel)(k) * i2hz(vLevel) * (pressureData(vLevel)(i, 0, k + 1) - pressureData(vLevel)(i, 0, k - 1)) -
+                                              residualData(vLevel)(i, 0, k)) / (2.0 * (ihx2(vLevel) * xix2(vLevel)(i) + ihz2(vLevel)*ztz2(vLevel)(k)));
                 }
             }
 
@@ -140,12 +138,11 @@ void multigrid_d2::solve() {
         // GAUSS-SEIDEL ITERATIVE SOLVER
         for (int i = 0; i <= xEnd(vLevel); ++i) {
             for (int k = 0; k <= zEnd(vLevel); ++k) {
-                pressureData(vLevel)(i, 0, k) = (hz2(vLevel) * xix2(vLevel)(i) * (pressureData(vLevel)(i + 1, 0, k) + pressureData(vLevel)(i - 1, 0, k))*2.0 +
-                                                 hz2(vLevel) * xixx(vLevel)(i) * (pressureData(vLevel)(i + 1, 0, k) - pressureData(vLevel)(i - 1, 0, k))*hx(vLevel) +
-                                                 hx2(vLevel) * ztz2(vLevel)(k) * (pressureData(vLevel)(i, 0, k + 1) + pressureData(vLevel)(i, 0, k - 1))*2.0 +
-                                                 hx2(vLevel) * ztzz(vLevel)(k) * (pressureData(vLevel)(i, 0, k + 1) - pressureData(vLevel)(i, 0, k - 1))*hz(vLevel) -
-                                          2.0 * hzhx(vLevel) * residualData(vLevel)(i, 0, k))/
-                                         (4.0 * (hz2(vLevel) * xix2(vLevel)(i) + hx2(vLevel)*ztz2(vLevel)(k)));
+                pressureData(vLevel)(i, 0, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (pressureData(vLevel)(i + 1, 0, k) + pressureData(vLevel)(i - 1, 0, k)) +
+                                                 xixx(vLevel)(i) * i2hx(vLevel) * (pressureData(vLevel)(i + 1, 0, k) - pressureData(vLevel)(i - 1, 0, k)) +
+                                                 ztz2(vLevel)(k) * ihz2(vLevel) * (pressureData(vLevel)(i, 0, k + 1) + pressureData(vLevel)(i, 0, k - 1)) +
+                                                 ztzz(vLevel)(k) * i2hz(vLevel) * (pressureData(vLevel)(i, 0, k + 1) - pressureData(vLevel)(i, 0, k - 1)) -
+                                         residualData(vLevel)(i, 0, k)) / (2.0 * (ihx2(vLevel) * xix2(vLevel)(i) + ihz2(vLevel)*ztz2(vLevel)(k)));
             }
         }
 
@@ -154,10 +151,10 @@ void multigrid_d2::solve() {
         for (int i = 0; i <= xEnd(vLevel); ++i) {
             for (int k = 0; k <= zEnd(vLevel); ++k) {
                 tempValue =  fabs(residualData(vLevel)(i, 0, k) -
-                            (xix2(vLevel)(i) * (pressureData(vLevel)(i + 1, 0, k) - 2.0*pressureData(vLevel)(i, 0, k) + pressureData(vLevel)(i - 1, 0, k))/(hx(vLevel)*hx(vLevel)) +
-                             xixx(vLevel)(i) * (pressureData(vLevel)(i + 1, 0, k) - pressureData(vLevel)(i - 1, 0, k))/(2.0*hx(vLevel)) +
-                             ztz2(vLevel)(k) * (pressureData(vLevel)(i, 0, k + 1) - 2.0*pressureData(vLevel)(i, 0, k) + pressureData(vLevel)(i, 0, k - 1))/(hz(vLevel)*hz(vLevel)) +
-                             ztzz(vLevel)(k) * (pressureData(vLevel)(i, 0, k + 1) - pressureData(vLevel)(i, 0, k - 1))/(2.0*hz(vLevel))));
+                            (xix2(vLevel)(i) * ihx2(vLevel) * (pressureData(vLevel)(i + 1, 0, k) - 2.0*pressureData(vLevel)(i, 0, k) + pressureData(vLevel)(i - 1, 0, k)) +
+                             xixx(vLevel)(i) * i2hx(vLevel) * (pressureData(vLevel)(i + 1, 0, k) - pressureData(vLevel)(i - 1, 0, k)) +
+                             ztz2(vLevel)(k) * ihz2(vLevel) * (pressureData(vLevel)(i, 0, k + 1) - 2.0*pressureData(vLevel)(i, 0, k) + pressureData(vLevel)(i, 0, k - 1)) +
+                             ztzz(vLevel)(k) * i2hz(vLevel) * (pressureData(vLevel)(i, 0, k + 1) - pressureData(vLevel)(i, 0, k - 1))));
 
                 if (tempValue > localMax)
                     localMax = tempValue;
@@ -235,10 +232,11 @@ real multigrid_d2::computeError(const int normOrder) {
     // In this case, abs has to be replaced with fabs.
     for (int i = 0; i <= xEnd(0); ++i) {
         for (int k = 0; k <= zEnd(0); ++k) {
-            tempNum = fabs((xix2(0)(i) * (pressureData(0)(i + 1, 0, k) - 2.0*pressureData(0)(i, 0, k) + pressureData(0)(i - 1, 0, k))/hx2(0) +
-                            xixx(0)(i) * (pressureData(0)(i + 1, 0, k) - pressureData(0)(i - 1, 0, k))/(2.0*hx(0)) +
-                            ztz2(0)(k) * (pressureData(0)(i, 0, k + 1) - 2.0*pressureData(0)(i, 0, k) + pressureData(0)(i, 0, k - 1))/hz2(0) +
-                            ztzz(0)(k) * (pressureData(0)(i, 0, k + 1) - pressureData(0)(i, 0, k - 1))/(2.0*hz(0))) - residualData(0)(i, 0, k));
+            tempNum =  fabs(residualData(0)(i, 0, k) -
+                        (xix2(0)(i) * ihx2(0) * (pressureData(0)(i + 1, 0, k) - 2.0*pressureData(0)(i, 0, k) + pressureData(0)(i - 1, 0, k)) +
+                         xixx(0)(i) * i2hx(0) * (pressureData(0)(i + 1, 0, k) - pressureData(0)(i - 1, 0, k)) +
+                         ztz2(0)(k) * ihz2(0) * (pressureData(0)(i, 0, k + 1) - 2.0*pressureData(0)(i, 0, k) + pressureData(0)(i, 0, k - 1)) +
+                         ztzz(0)(k) * i2hz(0) * (pressureData(0)(i, 0, k + 1) - pressureData(0)(i, 0, k - 1))));
 
             tempDen = fabs(residualData(0)(i, 0, k));
 

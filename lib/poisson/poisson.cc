@@ -135,6 +135,9 @@ void poisson::mgSolve(plainsf &inFn, const plainsf &rhs) {
 
         real mgResidual = computeError(inputParams.resType);
 
+    //std::cout << pressureData(0)(5, 5, blitz::Range(-1, 4)) << std::endl;
+    std::cout << mgResidual << std::endl;
+
 #ifdef TEST_POISSON
         blitz::Array<real, 3> pAnalytic, tempArray;
 
@@ -407,51 +410,34 @@ void poisson::setStagBounds() {
  ********************************************************************************************************************************************
  */
 void poisson::setCoefficients() {
-    blitz::Array<int, 1> strideValues;
-
-    strideValues.resize(inputParams.vcDepth + 1);
-    for (int i=0; i<=inputParams.vcDepth; i++) {
-        strideValues(i) = int(pow(2, i));
-    }
-
-    hx.resize(inputParams.vcDepth + 1);
+    ihx2.resize(inputParams.vcDepth + 1);
+    i2hx.resize(inputParams.vcDepth + 1);
 #ifndef PLANAR
-    hy.resize(inputParams.vcDepth + 1);
+    ihy2.resize(inputParams.vcDepth + 1);
+    i2hy.resize(inputParams.vcDepth + 1);
 #endif
-    hz.resize(inputParams.vcDepth + 1);
-
-#ifdef PLANAR
-    hx2.resize(inputParams.vcDepth + 1);
-    hz2.resize(inputParams.vcDepth + 1);
-#else
-    hxhy.resize(inputParams.vcDepth + 1);
-    hyhz.resize(inputParams.vcDepth + 1);
-#endif
-    hzhx.resize(inputParams.vcDepth + 1);
-
-#ifndef PLANAR
-    hxhyhz.resize(inputParams.vcDepth + 1);
-#endif
+    ihz2.resize(inputParams.vcDepth + 1);
+    i2hz.resize(inputParams.vcDepth + 1);
 
     for(int i=0; i<=inputParams.vcDepth; i++) {
-        hx(i) = strideValues(i)*mesh.dXi;
-#ifndef PLANAR
-        hy(i) = strideValues(i)*mesh.dEt;
-#endif
-        hz(i) = strideValues(i)*mesh.dZt;
+        int hInc = (1 << i);
 
-#ifdef PLANAR
-        hx2(i) = pow(strideValues(i)*mesh.dXi, 2.0);
-        hz2(i) = pow(strideValues(i)*mesh.dZt, 2.0);
-#else
-        hxhy(i) = pow(strideValues(i), 4.0)*pow(mesh.dXi, 2.0)*pow(mesh.dEt, 2.0);
-        hyhz(i) = pow(strideValues(i), 4.0)*pow(mesh.dEt, 2.0)*pow(mesh.dZt, 2.0);
-#endif
-        hzhx(i) = pow(strideValues(i), 4.0)*pow(mesh.dZt, 2.0)*pow(mesh.dXi, 2.0);
+        real hx = hInc*mesh.dXi;
+        real hx2 = pow(hx, 2);
+        i2hx(i) = 0.5/hx;
+        ihx2(i) = 1.0/hx2;
 
 #ifndef PLANAR
-        hxhyhz(i) = pow(strideValues(i), 6.0)*pow(mesh.dXi, 2.0)*pow(mesh.dEt, 2.0)*pow(mesh.dZt, 2.0);
+        real hy = hInc*mesh.dEt;
+        real hy2 = pow(hy, 2);
+        i2hy(i) = 0.5/hy;
+        ihy2(i) = 1.0/hy2;
 #endif
+
+        real hz = hInc*mesh.dZt;
+        real hz2 = pow(hz, 2);
+        i2hz(i) = 0.5/hz;
+        ihz2(i) = 1.0/hz2;
     }
 };
 

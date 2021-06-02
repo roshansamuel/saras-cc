@@ -565,9 +565,9 @@ void eulerCN_d3::solveT(sfield &T, plainsf &tmpRHS) {
  ********************************************************************************************************************************************
  */
 void eulerCN_d3::setCoefficients() {
-    hx2 = pow(mesh.dXi, 2.0);
-    hy2 = pow(mesh.dEt, 2.0);
-    hz2 = pow(mesh.dZt, 2.0);
+    real hx2 = pow(mesh.dXi, 2.0);
+    real hy2 = pow(mesh.dEt, 2.0);
+    real hz2 = pow(mesh.dZt, 2.0);
 
     i2hx = 0.5/mesh.dXi;
     i2hy = 0.5/mesh.dEt;
