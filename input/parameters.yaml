@@ -139,7 +139,7 @@
     # If above flag is true, then set the value of Courant number below
     "Courant Number": 0.1
     "Time-Step": 0.01
-    "Final Time": 0.01
+    "Final Time": 1.9
 
     # Number of iterations to display output to standard I/O
     "I/O Count": 1
@@ -151,10 +151,10 @@
     "Solution Format": 1
 
     # Time interval at which solution file must be written
-    "Solution Write Interval": 0.5
+    "Solution Write Interval": 5.0
 
     # Time interval at which restart file must be written
-    "Restart Write Interval": 5.0
+    "Restart Write Interval": 1.0
 
     # Set below flag to true if data from probes have to be recorded, if true, set appropriate probe time interval
     "Record Probes": false

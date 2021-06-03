@@ -69,27 +69,27 @@ multigrid_d2::multigrid_d2(const grid &mesh, const parser &solParam): poisson(me
 
 
 void multigrid_d2::computeResidual() {
-    tmpDataArray(vLevel) = 0.0;
+    tmp(vLevel) = 0.0;
 
     // Compute Laplacian of the pressure field and subtract it from the RHS of Poisson equation to obtain the residual
-    // This residual is temporarily stored into tmpDataArray, from which it will be coarsened into residualData array.
+    // This residual is temporarily stored into tmp, from which it will be coarsened into rhs array.
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none)
     for (int i = 0; i <= xEnd(vLevel); ++i) {
         for (int k = 0; k <= zEnd(vLevel); ++k) {
-            tmpDataArray(vLevel)(i, 0, k) =  residualData(vLevel)(i, 0, k) -
-                         (xix2(vLevel)(i) * ihx2(vLevel) * (pressureData(vLevel)(i + 1, 0, k) - 2.0*pressureData(vLevel)(i, 0, k) + pressureData(vLevel)(i - 1, 0, k)) +
-                          xixx(vLevel)(i) * i2hx(vLevel) * (pressureData(vLevel)(i + 1, 0, k) - pressureData(vLevel)(i - 1, 0, k)) +
-                          ztz2(vLevel)(k) * ihz2(vLevel) * (pressureData(vLevel)(i, 0, k + 1) - 2.0*pressureData(vLevel)(i, 0, k) + pressureData(vLevel)(i, 0, k - 1)) +
-                          ztzz(vLevel)(k) * i2hz(vLevel) * (pressureData(vLevel)(i, 0, k + 1) - pressureData(vLevel)(i, 0, k - 1)));
+            tmp(vLevel)(i, 0, k) =  rhs(vLevel)(i, 0, k) -
+                         (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, 0, k) - 2.0*lhs(vLevel)(i, 0, k) + lhs(vLevel)(i - 1, 0, k)) +
+                          xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, 0, k) - lhs(vLevel)(i - 1, 0, k)) +
+                          ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, 0, k + 1) - 2.0*lhs(vLevel)(i, 0, k) + lhs(vLevel)(i, 0, k - 1)) +
+                          ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, 0, k + 1) - lhs(vLevel)(i, 0, k - 1)));
         }
     }
 
-    updatePads(tmpDataArray);
+    updatePads(tmp);
 }
 
 
 void multigrid_d2::smooth(const int smoothCount) {
-    tmpDataArray(vLevel) = 0.0;
+    tmp(vLevel) = 0.0;
 
     for(int n=0; n<smoothCount; ++n) {
         imposeBC();
@@ -100,11 +100,11 @@ void multigrid_d2::smooth(const int smoothCount) {
             // GAUSS-SEIDEL ITERATIVE SMOOTHING
             for (int i = 0; i <= xEnd(vLevel); ++i) {
                 for (int k = 0; k <= zEnd(vLevel); ++k) {
-                    pressureData(vLevel)(i, 0, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (pressureData(vLevel)(i + 1, 0, k) + pressureData(vLevel)(i - 1, 0, k)) +
-                                                     xixx(vLevel)(i) * i2hx(vLevel) * (pressureData(vLevel)(i + 1, 0, k) - pressureData(vLevel)(i - 1, 0, k)) +
-                                                     ztz2(vLevel)(k) * ihz2(vLevel) * (pressureData(vLevel)(i, 0, k + 1) + pressureData(vLevel)(i, 0, k - 1)) +
-                                                     ztzz(vLevel)(k) * i2hz(vLevel) * (pressureData(vLevel)(i, 0, k + 1) - pressureData(vLevel)(i, 0, k - 1)) -
-                                              residualData(vLevel)(i, 0, k)) / (2.0 * (ihx2(vLevel) * xix2(vLevel)(i) + ihz2(vLevel)*ztz2(vLevel)(k)));
+                    lhs(vLevel)(i, 0, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, 0, k) + lhs(vLevel)(i - 1, 0, k)) +
+                                            xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, 0, k) - lhs(vLevel)(i - 1, 0, k)) +
+                                            ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, 0, k + 1) + lhs(vLevel)(i, 0, k - 1)) +
+                                            ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, 0, k + 1) - lhs(vLevel)(i, 0, k - 1)) -
+                                             rhs(vLevel)(i, 0, k)) / (2.0 * (ihx2(vLevel) * xix2(vLevel)(i) + ihz2(vLevel)*ztz2(vLevel)(k)));
                 }
             }
         } else {
@@ -112,15 +112,15 @@ void multigrid_d2::smooth(const int smoothCount) {
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none)
             for (int i = 0; i <= xEnd(vLevel); ++i) {
                 for (int k = 0; k <= zEnd(vLevel); ++k) {
-                    tmpDataArray(vLevel)(i, 0, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (pressureData(vLevel)(i + 1, 0, k) + pressureData(vLevel)(i - 1, 0, k)) +
-                                                     xixx(vLevel)(i) * i2hx(vLevel) * (pressureData(vLevel)(i + 1, 0, k) - pressureData(vLevel)(i - 1, 0, k)) +
-                                                     ztz2(vLevel)(k) * ihz2(vLevel) * (pressureData(vLevel)(i, 0, k + 1) + pressureData(vLevel)(i, 0, k - 1)) +
-                                                     ztzz(vLevel)(k) * i2hz(vLevel) * (pressureData(vLevel)(i, 0, k + 1) - pressureData(vLevel)(i, 0, k - 1)) -
-                                              residualData(vLevel)(i, 0, k)) / (2.0 * (ihx2(vLevel) * xix2(vLevel)(i) + ihz2(vLevel)*ztz2(vLevel)(k)));
+                    tmp(vLevel)(i, 0, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, 0, k) + lhs(vLevel)(i - 1, 0, k)) +
+                                            xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, 0, k) - lhs(vLevel)(i - 1, 0, k)) +
+                                            ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, 0, k + 1) + lhs(vLevel)(i, 0, k - 1)) +
+                                            ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, 0, k + 1) - lhs(vLevel)(i, 0, k - 1)) -
+                                             rhs(vLevel)(i, 0, k)) / (2.0 * (ihx2(vLevel) * xix2(vLevel)(i) + ihz2(vLevel)*ztz2(vLevel)(k)));
                 }
             }
 
-            swap(tmpDataArray, pressureData);
+            swap(tmp, lhs);
         }
     }
 
@@ -138,11 +138,11 @@ void multigrid_d2::solve() {
         // GAUSS-SEIDEL ITERATIVE SOLVER
         for (int i = 0; i <= xEnd(vLevel); ++i) {
             for (int k = 0; k <= zEnd(vLevel); ++k) {
-                pressureData(vLevel)(i, 0, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (pressureData(vLevel)(i + 1, 0, k) + pressureData(vLevel)(i - 1, 0, k)) +
-                                                 xixx(vLevel)(i) * i2hx(vLevel) * (pressureData(vLevel)(i + 1, 0, k) - pressureData(vLevel)(i - 1, 0, k)) +
-                                                 ztz2(vLevel)(k) * ihz2(vLevel) * (pressureData(vLevel)(i, 0, k + 1) + pressureData(vLevel)(i, 0, k - 1)) +
-                                                 ztzz(vLevel)(k) * i2hz(vLevel) * (pressureData(vLevel)(i, 0, k + 1) - pressureData(vLevel)(i, 0, k - 1)) -
-                                         residualData(vLevel)(i, 0, k)) / (2.0 * (ihx2(vLevel) * xix2(vLevel)(i) + ihz2(vLevel)*ztz2(vLevel)(k)));
+                lhs(vLevel)(i, 0, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, 0, k) + lhs(vLevel)(i - 1, 0, k)) +
+                                        xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, 0, k) - lhs(vLevel)(i - 1, 0, k)) +
+                                        ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, 0, k + 1) + lhs(vLevel)(i, 0, k - 1)) +
+                                        ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, 0, k + 1) - lhs(vLevel)(i, 0, k - 1)) -
+                                         rhs(vLevel)(i, 0, k)) / (2.0 * (ihx2(vLevel) * xix2(vLevel)(i) + ihz2(vLevel)*ztz2(vLevel)(k)));
             }
         }
 
@@ -150,11 +150,11 @@ void multigrid_d2::solve() {
         localMax = -1.0e-10;
         for (int i = 0; i <= xEnd(vLevel); ++i) {
             for (int k = 0; k <= zEnd(vLevel); ++k) {
-                tempValue =  fabs(residualData(vLevel)(i, 0, k) -
-                            (xix2(vLevel)(i) * ihx2(vLevel) * (pressureData(vLevel)(i + 1, 0, k) - 2.0*pressureData(vLevel)(i, 0, k) + pressureData(vLevel)(i - 1, 0, k)) +
-                             xixx(vLevel)(i) * i2hx(vLevel) * (pressureData(vLevel)(i + 1, 0, k) - pressureData(vLevel)(i - 1, 0, k)) +
-                             ztz2(vLevel)(k) * ihz2(vLevel) * (pressureData(vLevel)(i, 0, k + 1) - 2.0*pressureData(vLevel)(i, 0, k) + pressureData(vLevel)(i, 0, k - 1)) +
-                             ztzz(vLevel)(k) * i2hz(vLevel) * (pressureData(vLevel)(i, 0, k + 1) - pressureData(vLevel)(i, 0, k - 1))));
+                tempValue =  fabs(rhs(vLevel)(i, 0, k) -
+                            (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, 0, k) - 2.0*lhs(vLevel)(i, 0, k) + lhs(vLevel)(i - 1, 0, k)) +
+                             xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, 0, k) - lhs(vLevel)(i - 1, 0, k)) +
+                             ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, 0, k + 1) - 2.0*lhs(vLevel)(i, 0, k) + lhs(vLevel)(i, 0, k - 1)) +
+                             ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, 0, k + 1) - lhs(vLevel)(i, 0, k - 1))));
 
                 if (tempValue > localMax)
                     localMax = tempValue;
@@ -190,8 +190,8 @@ void multigrid_d2::coarsen() {
         i2 = i*2;
         for (int k = 0; k <= zEnd(vLevel); ++k) {
             k2 = k*2;
-            residualData(vLevel)(i, 0, k) = (tmpDataArray(pLevel)(i2 + 1, 0, k2 + 1) + tmpDataArray(pLevel)(i2, 0, k2) +
-                                             tmpDataArray(pLevel)(i2 + 1, 0, k2) + tmpDataArray(pLevel)(i2, 0, k2 + 1))/4;
+            rhs(vLevel)(i, 0, k) = (tmp(pLevel)(i2 + 1, 0, k2 + 1) + tmp(pLevel)(i2, 0, k2) +
+                                    tmp(pLevel)(i2 + 1, 0, k2) + tmp(pLevel)(i2, 0, k2 + 1))/4;
         }
     }
 }
@@ -204,13 +204,13 @@ void multigrid_d2::prolong() {
     pLevel = vLevel;
     vLevel -= 1;
 
-    pressureData(vLevel) = 0.0;
+    lhs(vLevel) = 0.0;
 
     for (int i = 0; i <= xEnd(vLevel); ++i) {
         i2 = i/2;
         for (int k = 0; k <= zEnd(vLevel); ++k) {
             k2 = k/2;
-            pressureData(vLevel)(i, 0, k) = pressureData(pLevel)(i2, 0, k2);
+            lhs(vLevel)(i, 0, k) = lhs(pLevel)(i2, 0, k2);
         }
     }
 }
@@ -232,13 +232,13 @@ real multigrid_d2::computeError(const int normOrder) {
     // In this case, abs has to be replaced with fabs.
     for (int i = 0; i <= xEnd(0); ++i) {
         for (int k = 0; k <= zEnd(0); ++k) {
-            tempNum =  fabs(residualData(0)(i, 0, k) -
-                        (xix2(0)(i) * ihx2(0) * (pressureData(0)(i + 1, 0, k) - 2.0*pressureData(0)(i, 0, k) + pressureData(0)(i - 1, 0, k)) +
-                         xixx(0)(i) * i2hx(0) * (pressureData(0)(i + 1, 0, k) - pressureData(0)(i - 1, 0, k)) +
-                         ztz2(0)(k) * ihz2(0) * (pressureData(0)(i, 0, k + 1) - 2.0*pressureData(0)(i, 0, k) + pressureData(0)(i, 0, k - 1)) +
-                         ztzz(0)(k) * i2hz(0) * (pressureData(0)(i, 0, k + 1) - pressureData(0)(i, 0, k - 1))));
+            tempNum =  fabs(rhs(0)(i, 0, k) -
+                        (xix2(0)(i) * ihx2(0) * (lhs(0)(i + 1, 0, k) - 2.0*lhs(0)(i, 0, k) + lhs(0)(i - 1, 0, k)) +
+                         xixx(0)(i) * i2hx(0) * (lhs(0)(i + 1, 0, k) - lhs(0)(i - 1, 0, k)) +
+                         ztz2(0)(k) * ihz2(0) * (lhs(0)(i, 0, k + 1) - 2.0*lhs(0)(i, 0, k) + lhs(0)(i, 0, k - 1)) +
+                         ztzz(0)(k) * i2hz(0) * (lhs(0)(i, 0, k + 1) - lhs(0)(i, 0, k - 1))));
 
-            tempDen = fabs(residualData(0)(i, 0, k));
+            tempDen = fabs(rhs(0)(i, 0, k));
 
             switch (normOrder) {
                 case 0: // L-Infinity Norm
@@ -364,7 +364,7 @@ void multigrid_d2::imposeBC() {
 #endif
 
     // FOR PARALLEL RUNS, FIRST UPDATE GHOST POINTS OF MPI SUB-DOMAINS
-    updatePads(pressureData);
+    updatePads(lhs);
 
     if (not inputParams.xPer) {
 #ifdef TEST_POISSON
@@ -372,82 +372,82 @@ void multigrid_d2::imposeBC() {
         if (zeroBC) {
             if (xfr) {
                 if (testNeumann) {
-                    pressureData(vLevel)(-1, 0, all) = pressureData(vLevel)(0, 0, all);
+                    lhs(vLevel)(-1, 0, all) = lhs(vLevel)(0, 0, all);
                 } else {
-                    pressureData(vLevel)(-1, 0, all) = -pressureData(vLevel)(0, 0, all);
+                    lhs(vLevel)(-1, 0, all) = -lhs(vLevel)(0, 0, all);
                 }
             }
 
             if (xlr) {
                 if (testNeumann) {
-                    pressureData(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = pressureData(vLevel)(stagCore(vLevel).ubound(0), 0, all);
+                    lhs(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = lhs(vLevel)(stagCore(vLevel).ubound(0), 0, all);
                 } else {
-                    pressureData(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = -pressureData(vLevel)(stagCore(vLevel).ubound(0), 0, all);
+                    lhs(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = -lhs(vLevel)(stagCore(vLevel).ubound(0), 0, all);
                 }
             }
         } else {
             if (xfr) {
                 if (testNeumann) {
-                    pressureData(vLevel)(-1, 0, all) = 0.5*hx(vLevel) + pressureData(vLevel)(0, 0, all);
+                    lhs(vLevel)(-1, 0, all) = 0.5*hx(vLevel) + lhs(vLevel)(0, 0, all);
                 } else {
-                    pressureData(vLevel)(-1, 0, all) = 2.0*xWall(all) - pressureData(vLevel)(0, 0, all);
+                    lhs(vLevel)(-1, 0, all) = 2.0*xWall(all) - lhs(vLevel)(0, 0, all);
                 }
             }
 
             if (xlr) {
                 if (testNeumann) {
-                    pressureData(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = 0.5*hx(vLevel) + pressureData(vLevel)(stagCore(vLevel).ubound(0), 0, all);
+                    lhs(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = 0.5*hx(vLevel) + lhs(vLevel)(stagCore(vLevel).ubound(0), 0, all);
                 } else {
-                    pressureData(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = 2.0*xWall(all) - pressureData(vLevel)(stagCore(vLevel).ubound(0), 0, all);
+                    lhs(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = 2.0*xWall(all) - lhs(vLevel)(stagCore(vLevel).ubound(0), 0, all);
                 }
             }
         }
 #else
         // NEUMANN BOUNDARY CONDITION AT LEFT AND RIGHT WALLS
         if (xfr) {
-            pressureData(vLevel)(-1, 0, all) = pressureData(vLevel)(0, 0, all);
+            lhs(vLevel)(-1, 0, all) = lhs(vLevel)(0, 0, all);
         }
 
         if (xlr) {
-            pressureData(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = pressureData(vLevel)(stagCore(vLevel).ubound(0), 0, all);
+            lhs(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = lhs(vLevel)(stagCore(vLevel).ubound(0), 0, all);
         }
 #endif
     } // PERIODIC BOUNDARY CONDITIONS ARE AUTOMATICALLY IMPOSED BY PERIODIC DATA TRANSFER ACROSS PROCESSORS THROUGH updatePads()
 
     if (inputParams.zPer) {
         // PERIODIC BOUNDARY CONDITION AT BOTTOM WALL
-        pressureData(vLevel)(all, 0, -1) = pressureData(vLevel)(all, 0, stagCore(vLevel).ubound(2));
+        lhs(vLevel)(all, 0, -1) = lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2));
 
         // PERIODIC BOUNDARY CONDITION AT TOP WALL
-        pressureData(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = pressureData(vLevel)(all, 0, 0);
+        lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = lhs(vLevel)(all, 0, 0);
 
     } else {
 #ifdef TEST_POISSON
         // DIRICHLET/NEUMANN BOUNDARY CONDITION AT BOTTOM AND TOP WALLS
         if (zeroBC) {
             if (testNeumann) {
-                pressureData(vLevel)(all, 0, -1) = pressureData(vLevel)(all, 0, 0);
+                lhs(vLevel)(all, 0, -1) = lhs(vLevel)(all, 0, 0);
             } else {
-                pressureData(vLevel)(all, 0, -1) = -pressureData(vLevel)(all, 0, 0);
+                lhs(vLevel)(all, 0, -1) = -lhs(vLevel)(all, 0, 0);
             }
 
             // WHETHER testNeumann IS ENABLED OR NOT, THE TOP WALL HAS DIRICHLET BC SINCE ALL 4 WALLS SHOULD NOT HAVE NEUMANN BC
-            pressureData(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = -pressureData(vLevel)(all, 0, stagCore(vLevel).ubound(2));
+            lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = -lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2));
         } else {
             if (testNeumann) {
-                pressureData(vLevel)(all, 0, -1) = 0.5*hz(vLevel) + pressureData(vLevel)(all, 0, 0);
+                lhs(vLevel)(all, 0, -1) = 0.5*hz(vLevel) + lhs(vLevel)(all, 0, 0);
             } else {
-                pressureData(vLevel)(all, 0, -1) = 2.0*zWall(all) - pressureData(vLevel)(all, 0, 0);
+                lhs(vLevel)(all, 0, -1) = 2.0*zWall(all) - lhs(vLevel)(all, 0, 0);
             }
 
             // WHETHER testNeumann IS ENABLED OR NOT, THE TOP WALL HAS DIRICHLET BC SINCE ALL 4 WALLS SHOULD NOT HAVE NEUMANN BC
-            pressureData(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = 2.0*zWall(all) - pressureData(vLevel)(all, 0, stagCore(vLevel).ubound(2));
+            lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = 2.0*zWall(all) - lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2));
         }
 #else
         // NEUMANN BOUNDARY CONDITION AT BOTTOM AND TOP WALLS
-        pressureData(vLevel)(all, 0, -1) = pressureData(vLevel)(all, 0, 0);
+        lhs(vLevel)(all, 0, -1) = lhs(vLevel)(all, 0, 0);
 
-        pressureData(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = pressureData(vLevel)(all, 0, stagCore(vLevel).ubound(2));
+        lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2));
 #endif
     }
 }

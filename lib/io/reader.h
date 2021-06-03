@@ -43,12 +43,9 @@
 #ifndef READER_H
 #define READER_H
 
-#include <blitz/array.h>
 #include <sys/stat.h>
 #include <algorithm>
-#include <fstream>
 #include <iomanip>
-#include <sstream>
 #include <vector>
 #include <dirent.h>
 
@@ -57,8 +54,18 @@
 #include "hdf5.h"
 
 class reader {
+    public:
+        reader(const grid &mesh, std::vector<field> &rFields);
+
+        real readData();
+
+        ~reader();
+
     private:
         const grid &mesh;
+
+        // Print flag - basically flag to ease printing to I/O. It is true for root rank (0)
+        bool pf;
 
         std::vector<field> &rFields;
 
@@ -68,20 +75,15 @@ class reader {
         blitz::Array<real, 3> fieldData;
 #endif
 
-        std::vector<hid_t> sourceDSpace, targetDSpace;
+        hid_t sourceDSpace, targetDSpace;
 
-        std::vector< blitz::TinyVector<int, 3> > localSize;
+        blitz::TinyVector<int, 3> locSize;
 
-        void initLimits();
-        void copyData(field &outField);
         void restartCheck(hid_t fHandle);
 
-    public:
-        reader(const grid &mesh, std::vector<field> &rFields);
+        void initLimits();
 
-        real readData();
-
-        ~reader();
+        void copyData(field &outField);
 };
 
 /**
@@ -90,7 +92,6 @@ class reader {
  *  \brief Class for all the global variables and functions related to reading input data for the solver.
  *
  *  The computational data for the solver can be read from HDF5 file.
- *  The class allows for both collocated and staggered grid data to be read from separate input files.
  ********************************************************************************************************************************************
  */
 

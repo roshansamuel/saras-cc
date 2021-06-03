@@ -109,34 +109,31 @@ poisson::poisson(const grid &mesh, const parser &solParam): mesh(mesh), inputPar
  *          Finally, the computed solution is transferred back from the internal data-structures back into the
  *          scalar field supplied by the calling function.
  *
- * \param   inFn is a pointer to the plain scalar field (cell-centered) into which the computed soltuion must be transferred
- * \param   rhs is a const reference to the plain scalar field (cell-centered) which contains the RHS for the Poisson equation to solve
+ * \param   outLHS is a pointer to the plain scalar field (cell-centered) into which the computed soltuion must be transferred
+ * \param   inpRHS is a const reference to the plain scalar field (cell-centered) which contains the RHS for the Poisson equation to solve
  ********************************************************************************************************************************************
  */
-void poisson::mgSolve(plainsf &inFn, const plainsf &rhs) {
+void poisson::mgSolve(plainsf &outLHS, const plainsf &inpRHS) {
     vLevel = 0;
 
     for (int i=0; i <= inputParams.vcDepth; i++) {
-        pressureData(i) = 0.0;
-        residualData(i) = 0.0;
-        smoothedPres(i) = 0.0;
+        lhs(i) = 0.0;
+        rhs(i) = 0.0;
+        smd(i) = 0.0;
     }
 
     // TRANSFER DATA FROM THE INPUT SCALAR FIELDS INTO THE DATA-STRUCTURES USED BY poisson
-    residualData(0)(stagCore(0)) = rhs.F(stagCore(0));
-    pressureData(0)(stagCore(0)) = inFn.F(stagCore(0));
+    rhs(0)(stagCore(0)) = inpRHS.F(stagCore(0));
+    lhs(0)(stagCore(0)) = outLHS.F(stagCore(0));
 
-    updatePads(residualData);
-    updatePads(pressureData);
+    updatePads(rhs);
+    updatePads(lhs);
 
     // PERFORM V-CYCLES AS MANY TIMES AS REQUIRED
     for (int i=0; i<inputParams.vcCount; i++) {
         vCycle();
 
         real mgResidual = computeError(inputParams.resType);
-
-    //std::cout << pressureData(0)(5, 5, blitz::Range(-1, 4)) << std::endl;
-    std::cout << mgResidual << std::endl;
 
 #ifdef TEST_POISSON
         blitz::Array<real, 3> pAnalytic, tempArray;
@@ -172,7 +169,7 @@ void poisson::mgSolve(plainsf &inFn, const plainsf &rhs) {
 #endif
 
         tempArray.resize(pAnalytic.shape());
-        tempArray = pAnalytic - pressureData(0)(stagCore(0));
+        tempArray = pAnalytic - lhs(0)(stagCore(0));
 
         real gloMax = 0.0;
         real locMax = blitz::max(fabs(tempArray));
@@ -200,17 +197,17 @@ void poisson::mgSolve(plainsf &inFn, const plainsf &rhs) {
         // THIS CAN ENSURE THAT THE PRESSURE DOESN'T DRIFT AS THE SIMULATION EVOLVES.
         // THIS DOES NOT AFFECT THE PRESSURE GRADIENT, WHICH IS THE ACTUAL METRIC THAT
         // SATISFIES DIVERGENCE IN THIS FORMULATION OF NSE.
-        real localMean = blitz::sum(pressureData(0)(stagCore(0)))/mesh.totalPoints;
+        real localMean = blitz::sum(lhs(0)(stagCore(0)))/mesh.totalPoints;
         real globalAvg = 0.0;
 
         MPI_Allreduce(&localMean, &globalAvg, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
 
-        pressureData(0) -= globalAvg;
+        lhs(0) -= globalAvg;
     }
 #endif
 
     // RETURN CALCULATED PRESSURE DATA
-    inFn.F(stagFull(0)) = pressureData(0)(stagFull(0));
+    outLHS.F(stagFull(0)) = lhs(0)(stagFull(0));
 };
 
 
@@ -219,8 +216,8 @@ void poisson::mgSolve(plainsf &inFn, const plainsf &rhs) {
  * \brief   Function to perform one loop of V-cycle
  *
  *          The V-cycle of restrictions, prolongations and smoothings are performed within this function.
- *          First the input data contained in \ref pressureData is smoothed, after which the residual is computed and stored
- *          in the \ref residualData array.
+ *          First the input data contained in \ref lhs is smoothed, after which the residual is computed and stored
+ *          in the \ref rhs array.
  *          The restrictions, smoothing, and prolongations are performed on these two arrays subsequently.
  *
  ********************************************************************************************************************************************
@@ -257,14 +254,14 @@ void poisson::vCycle() {
         // Step 2) Compute the residual r = b - Ax
         computeResidual();
 
-        // Copy pressureData into smoothedPres
-        smoothedPres(vLevel) = pressureData(vLevel);
+        // Copy lhs into smd
+        smd(vLevel) = lhs(vLevel);
 
         // Restrict the residual to a coarser level
         coarsen();
 
-        // Initialize pressureData to 0, or the convergence will be drastically slow
-        pressureData(vLevel) = 0.0;
+        // Initialize lhs to 0, or the convergence will be drastically slow
+        lhs(vLevel) = 0.0;
 
         // Step 3) Perform pre-smoothing iterations to solve for the error: Ae = r
         (vLevel == inputParams.vcDepth)?
@@ -280,8 +277,8 @@ void poisson::vCycle() {
         // Step 6) Prolong the error 'e' to the next finer level.
         prolong();
 
-        // Step 9) Add error 'e' to the solution 'x' and perform post-smoothing iterations.
-        pressureData(vLevel) += smoothedPres(vLevel);
+        // Step 9) Add correction 'e' to the solution 'x' and perform post-smoothing iterations.
+        lhs(vLevel) += smd(vLevel);
 
         // Once the error/residual has been added to the solution at finest level, the Dirichlet BC to be applied is again non-zero
         (vLevel == 0)? zeroBC = false: zeroBC = true;
@@ -304,27 +301,27 @@ void poisson::vCycle() {
  ********************************************************************************************************************************************
  */
 void poisson::initializeArrays() {
-    pressureData.resize(inputParams.vcDepth + 1);
-    residualData.resize(inputParams.vcDepth + 1);
-    tmpDataArray.resize(inputParams.vcDepth + 1);
-    smoothedPres.resize(inputParams.vcDepth + 1);
+    lhs.resize(inputParams.vcDepth + 1);
+    rhs.resize(inputParams.vcDepth + 1);
+    tmp.resize(inputParams.vcDepth + 1);
+    smd.resize(inputParams.vcDepth + 1);
 
     for (int i=0; i <= inputParams.vcDepth; i++) {
-        pressureData(i).resize(blitz::TinyVector<int, 3>(stagFull(i).ubound() - stagFull(i).lbound() + 1));
-        pressureData(i).reindexSelf(stagFull(i).lbound());
-        pressureData(i) = 0.0;
+        lhs(i).resize(blitz::TinyVector<int, 3>(stagFull(i).ubound() - stagFull(i).lbound() + 1));
+        lhs(i).reindexSelf(stagFull(i).lbound());
+        lhs(i) = 0.0;
 
-        tmpDataArray(i).resize(blitz::TinyVector<int, 3>(stagFull(i).ubound() - stagFull(i).lbound() + 1));
-        tmpDataArray(i).reindexSelf(stagFull(i).lbound());
-        tmpDataArray(i) = 0.0;
+        tmp(i).resize(blitz::TinyVector<int, 3>(stagFull(i).ubound() - stagFull(i).lbound() + 1));
+        tmp(i).reindexSelf(stagFull(i).lbound());
+        tmp(i) = 0.0;
 
-        residualData(i).resize(blitz::TinyVector<int, 3>(stagFull(i).ubound() - stagFull(i).lbound() + 1));
-        residualData(i).reindexSelf(stagFull(i).lbound());
-        residualData(i) = 0.0;
+        rhs(i).resize(blitz::TinyVector<int, 3>(stagFull(i).ubound() - stagFull(i).lbound() + 1));
+        rhs(i).reindexSelf(stagFull(i).lbound());
+        rhs(i) = 0.0;
 
-        smoothedPres(i).resize(blitz::TinyVector<int, 3>(stagFull(i).ubound() - stagFull(i).lbound() + 1));
-        smoothedPres(i).reindexSelf(stagFull(i).lbound());
-        smoothedPres(i) = 0.0;
+        smd(i).resize(blitz::TinyVector<int, 3>(stagFull(i).ubound() - stagFull(i).lbound() + 1));
+        smd(i).reindexSelf(stagFull(i).lbound());
+        smd(i) = 0.0;
     }
 }
 
@@ -567,9 +564,9 @@ void poisson::computeResidual() { };
  ********************************************************************************************************************************************
  * \brief   Function to perform smoothing operation on the input array
  *
- *          The smoothing operation is always performed on the data contained in the array \ref pressureData.
- *          The array \ref tmpDataArray is used to store the temporary data and it is continuously swapped with the
- *          \ref pressureData array at every iteration.
+ *          The smoothing operation is always performed on the data contained in the array \ref lhs.
+ *          The array \ref tmp is used to store the temporary data and it is continuously swapped with the
+ *          \ref lhs array at every iteration.
  *          This operation can be performed at any level of the V-cycle.
  *
  * \param   smoothCount is the integer value of the number of smoothing iterations to be performed

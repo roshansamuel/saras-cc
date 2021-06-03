@@ -64,6 +64,9 @@ class writer {
     private:
         const grid &mesh;
 
+        // Print flag - basically flag to ease printing to I/O. It is true for root rank (0)
+        bool pf;
+
         std::vector<field> &wFields;
 
 #ifdef PLANAR
@@ -91,7 +94,6 @@ class writer {
  *  \brief Class for all the global variables and functions related to writing output data of the solver.
  *
  *  The computational data from the solver is written in HDF5 format in a .h5 file.
- *  The class allows for both collocated and staggered grid data to be written in separate output files.
  ********************************************************************************************************************************************
  */
 

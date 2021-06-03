@@ -67,10 +67,10 @@ class poisson {
 
         blitz::Range all;
 
-        blitz::Array<blitz::Array<real, 3>, 1> pressureData;
-        blitz::Array<blitz::Array<real, 3>, 1> residualData;
-        blitz::Array<blitz::Array<real, 3>, 1> tmpDataArray;
-        blitz::Array<blitz::Array<real, 3>, 1> smoothedPres;
+        blitz::Array<blitz::Array<real, 3>, 1> lhs;
+        blitz::Array<blitz::Array<real, 3>, 1> rhs;
+        blitz::Array<blitz::Array<real, 3>, 1> tmp;
+        blitz::Array<blitz::Array<real, 3>, 1> smd;
 
         blitz::Array<blitz::RectDomain<3>, 1> stagFull;
         blitz::Array<blitz::RectDomain<3>, 1> stagCore;
@@ -128,7 +128,7 @@ class poisson {
     public:
         poisson(const grid &mesh, const parser &solParam);
 
-        void mgSolve(plainsf &inFn, const plainsf &rhs);
+        void mgSolve(plainsf &outLHS, const plainsf &inpRHS);
 
         virtual ~poisson();
 };

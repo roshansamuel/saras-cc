@@ -53,6 +53,10 @@
  ********************************************************************************************************************************************
  */
 reader::reader(const grid &mesh, std::vector<field> &rFields): mesh(mesh), rFields(rFields) {
+    // Flag to enable printing to I/O only by 0 rank
+    pf = false;
+    if (mesh.rankData.rank == 0) pf = true;
+
     /** Initialize the common global and local limits for file writing */
     initLimits();
 }
@@ -66,12 +70,9 @@ reader::reader(const grid &mesh, std::vector<field> &rFields): mesh(mesh), rFiel
  ********************************************************************************************************************************************
  */
 void reader::initLimits() {
-    hid_t sDSpace;
-    hid_t tDSpace;
-
     herr_t status;
 
-    blitz::TinyVector<int, 3> gloSize, sdStart, locSize;
+    blitz::TinyVector<int, 3> gloSize, sdStart;
 
 #ifdef PLANAR
     hsize_t dimsf[2];           /* dataset dimensions */
@@ -81,95 +82,79 @@ void reader::initLimits() {
     hsize_t offset[3];          /* offset of hyperslab */
 #endif
 
-    for (unsigned int i=0; i < rFields.size(); i++) {
-        gloSize = mesh.globalSize;
-        locSize = mesh.coreSize;
+    locSize = mesh.coreSize;
+    gloSize = mesh.globalSize;
+    sdStart = mesh.subarrayStarts;
 
 #ifdef PLANAR
-        gloSize(1) = 1;
-        locSize(1) = 1;
+    gloSize(1) = 1;
+    locSize(1) = 1;
 #endif
 
-        // Since only the last rank along X and Y directions include the extra point (shared across processors), subArrayStarts are same for all ranks
-        sdStart = mesh.subarrayStarts;
-
-        // Create a dataspace representing the full limits of the array - this is the target dataspace
+    // Create a dataspace representing the full limits of the array - this is the target dataspace
 #ifdef PLANAR
-        dimsf[0] = locSize(0);
-        dimsf[1] = locSize(2);
-        tDSpace = H5Screate_simple(2, dimsf, NULL);
+    dimsf[0] = locSize(0);
+    dimsf[1] = locSize(2);
+    targetDSpace = H5Screate_simple(2, dimsf, NULL);
 #else
-        dimsf[0] = locSize(0);
-        dimsf[1] = locSize(1);
-        dimsf[2] = locSize(2);
-        tDSpace = H5Screate_simple(3, dimsf, NULL);
+    dimsf[0] = locSize(0);
+    dimsf[1] = locSize(1);
+    dimsf[2] = locSize(2);
+    targetDSpace = H5Screate_simple(3, dimsf, NULL);
 #endif
 
-        // Modify the view of the *target* dataspace by using a hyperslab - *this view will be used to read from memory*
-
-        // ************* NOTE: Check if the hyperslab view must be changed to take care of the common point at the the MPI decomposed sub-domain boundaries ****************//
+    // Modify the view of the *target* dataspace by using a hyperslab - *this view will be used to read from memory*
 #ifdef PLANAR
-        dimsf[0] = locSize(0);
-        dimsf[1] = locSize(2);
-        offset[0] = 0;
-        offset[1] = 0;
+    dimsf[0] = locSize(0);
+    dimsf[1] = locSize(2);
+    offset[0] = 0;
+    offset[1] = 0;
 #else
-        dimsf[0] = locSize(0);
-        dimsf[1] = locSize(1);
-        dimsf[2] = locSize(2);
-        offset[0] = 0;
-        offset[1] = 0;
-        offset[2] = 0;
+    dimsf[0] = locSize(0);
+    dimsf[1] = locSize(1);
+    dimsf[2] = locSize(2);
+    offset[0] = 0;
+    offset[1] = 0;
+    offset[2] = 0;
 #endif
+    status = H5Sselect_hyperslab(targetDSpace, H5S_SELECT_SET, offset, NULL, dimsf, NULL);
+    if (status) {
+        if (pf) std::cout << "Error in creating hyperslab while writing data. Aborting" << std::endl;
+        MPI_Finalize();
+        exit(0);
+    }
 
-        status = H5Sselect_hyperslab(tDSpace, H5S_SELECT_SET, offset, NULL, dimsf, NULL);
-        if (status) {
-            if (mesh.rankData.rank == 0) {
-                std::cout << "Error in creating hyperslab while writing data. Aborting" << std::endl;
-            }
-            MPI_Finalize();
-            exit(0);
-        }
-
-        // Create a dataspace representing the full limits of the global array - i.e. the dataspace for input file
+    // Create a dataspace representing the full limits of the global array - i.e. the dataspace for input file
 #ifdef PLANAR
-        dimsf[0] = gloSize(0);
-        dimsf[1] = gloSize(2);
-        sDSpace = H5Screate_simple(2, dimsf, NULL);
+    dimsf[0] = gloSize(0);
+    dimsf[1] = gloSize(2);
+    sourceDSpace = H5Screate_simple(2, dimsf, NULL);
 #else
-        dimsf[0] = gloSize(0);
-        dimsf[1] = gloSize(1);
-        dimsf[2] = gloSize(2);
-        sDSpace = H5Screate_simple(3, dimsf, NULL);
+    dimsf[0] = gloSize(0);
+    dimsf[1] = gloSize(1);
+    dimsf[2] = gloSize(2);
+    sourceDSpace = H5Screate_simple(3, dimsf, NULL);
 #endif
 
-        // Modify the view of the *source* dataspace by using a hyperslab according to its position in the global file dataspace
+    // Modify the view of the *source* dataspace by using a hyperslab according to its position in the global file dataspace
 #ifdef PLANAR
-        dimsf[0] = locSize(0);
-        dimsf[1] = locSize(2);
-        offset[0] = sdStart[0];
-        offset[1] = sdStart[2];
+    dimsf[0] = locSize(0);
+    dimsf[1] = locSize(2);
+    offset[0] = sdStart[0];
+    offset[1] = sdStart[2];
 #else
-        dimsf[0] = locSize(0);
-        dimsf[1] = locSize(1);
-        dimsf[2] = locSize(2);
-        offset[0] = sdStart[0];
-        offset[1] = sdStart[1];
-        offset[2] = sdStart[2];
+    dimsf[0] = locSize(0);
+    dimsf[1] = locSize(1);
+    dimsf[2] = locSize(2);
+    offset[0] = sdStart[0];
+    offset[1] = sdStart[1];
+    offset[2] = sdStart[2];
 #endif
-
-        status = H5Sselect_hyperslab(sDSpace, H5S_SELECT_SET, offset, NULL, dimsf, NULL);
-        if (status) {
-            if (mesh.rankData.rank == 0) {
-                std::cout << "Error in creating hyperslab while writing data. Aborting" << std::endl;
-            }
-            MPI_Finalize();
-            exit(0);
-        }
-
-        localSize.push_back(locSize);
-        sourceDSpace.push_back(sDSpace);
-        targetDSpace.push_back(tDSpace);
+    status = H5Sselect_hyperslab(sourceDSpace, H5S_SELECT_SET, offset, NULL, dimsf, NULL);
+    if (status) {
+        if (pf) std::cout << "Error in creating hyperslab while writing data. Aborting" << std::endl;
+        MPI_Finalize();
+        exit(0);
     }
 }
 
@@ -183,9 +168,7 @@ void reader::initLimits() {
  */
 real reader::readData() {
     hid_t plist_id;
-
     hid_t fileHandle;
-
     hid_t dataSet;
 
     herr_t status;
@@ -203,9 +186,7 @@ real reader::readData() {
 
     // Abort if file doesn't exist
     if (fileHandle < 0) {
-        if (mesh.rankData.rank == 0) {
-            std::cout << "ERROR: Restart flag is true, but could not open restart file. Aborting" << std::endl;
-        }
+        if (pf) std::cout << "ERROR: Restart flag is true, but could not open restart file. Aborting" << std::endl;
         MPI_Finalize();
         exit(0);
     }
@@ -231,9 +212,9 @@ real reader::readData() {
 
     for (unsigned int i=0; i < rFields.size(); i++) {
 #ifdef PLANAR
-        fieldData.resize(blitz::TinyVector<int, 2>(localSize[i](0), localSize[i](2)));
+        fieldData.resize(blitz::TinyVector<int, 2>(locSize(0), locSize(2)));
 #else
-        fieldData.resize(localSize[i]);
+        fieldData.resize(locSize);
 #endif
 
         // Create the dataset *for the array in memory*, linking it to the file handle.
@@ -247,11 +228,9 @@ real reader::readData() {
 
         // Note that the targetDSpace and sourceDSpace have switched positions
         // This is another point where the reader differs from the writer
-        status = H5Dread(dataSet, H5T_NATIVE_REAL, targetDSpace[i], sourceDSpace[i], plist_id, fieldData.dataFirst());
+        status = H5Dread(dataSet, H5T_NATIVE_REAL, targetDSpace, sourceDSpace, plist_id, fieldData.dataFirst());
         if (status) {
-            if (mesh.rankData.rank == 0) {
-                std::cout << "Error in reading input from HDF file. Aborting" << std::endl;
-            }
+            if (pf) std::cout << "Error in reading input from HDF file. Aborting" << std::endl;
             MPI_Finalize();
             exit(0);
         }
@@ -281,19 +260,14 @@ real reader::readData() {
  */
 void reader::copyData(field &outField) {
 #ifdef PLANAR
-    for (int i=0; i < fieldData.shape()[0]; i++) {
-        for (int k=0; k < fieldData.shape()[1]; k++) {
+    for (int i=0; i < fieldData.shape()[0]; i++)
+        for (int k=0; k < fieldData.shape()[1]; k++)
             outField.F(i, 0, k) = fieldData(i, k);
-        }
-    }
 #else
-    for (int i=0; i < fieldData.shape()[0]; i++) {
-        for (int j=0; j < fieldData.shape()[1]; j++) {
-            for (int k=0; k < fieldData.shape()[2]; k++) {
+    for (int i=0; i < fieldData.shape()[0]; i++)
+        for (int j=0; j < fieldData.shape()[1]; j++)
+            for (int k=0; k < fieldData.shape()[2]; k++)
                 outField.F(i, j, k) = fieldData(i, j, k);
-            }
-        }
-    }
 #endif
 }
 
@@ -313,17 +287,13 @@ void reader::restartCheck(hid_t fHandle) {
     const int ndims = H5Sget_simple_extent_ndims(pSpace);
 #ifdef PLANAR
     if (ndims != 2) {
-        if (mesh.rankData.rank == 0) {
-            std::cout << "ERROR: Dimensionality of restart file conflicts with solver parameters. Aborting" << std::endl;
-        }
+        if (pf) std::cout << "ERROR: Dimensionality of restart file conflicts with solver parameters. Aborting" << std::endl;
         MPI_Finalize();
         exit(0);
     }
 #else
     if (ndims != 3) {
-        if (mesh.rankData.rank == 0) {
-            std::cout << "ERROR: Dimensionality of restart file conflicts with solver parameters. Aborting" << std::endl;
-        }
+        if (pf) std::cout << "ERROR: Dimensionality of restart file conflicts with solver parameters. Aborting" << std::endl;
         MPI_Finalize();
         exit(0);
     }
@@ -333,33 +303,25 @@ void reader::restartCheck(hid_t fHandle) {
 
     // Abort if size of dataset doesn't match input parameters
     if (int(dims[0]) != mesh.globalSize(0)) {
-        if (mesh.rankData.rank == 0) {
-            std::cout << "ERROR: Array limits in restart file conflicts with solver parameters. Aborting" << std::endl;
-        }
+        if (pf) std::cout << "ERROR: Array limits in restart file conflicts with solver parameters. Aborting" << std::endl;
         MPI_Finalize();
         exit(0);
     }
 #ifdef PLANAR
     if (int(dims[1]) != mesh.globalSize(2)) {
-        if (mesh.rankData.rank == 0) {
-            std::cout << "ERROR: Array limits in restart file conflicts with solver parameters. Aborting" << std::endl;
-        }
+        if (pf) std::cout << "ERROR: Array limits in restart file conflicts with solver parameters. Aborting" << std::endl;
         MPI_Finalize();
         exit(0);
     }
 #else
     if (int(dims[1]) != mesh.globalSize(1)) {
-        if (mesh.rankData.rank == 0) {
-            std::cout << "ERROR: Array limits in restart file conflicts with solver parameters. Aborting" << std::endl;
-        }
+        if (pf) std::cout << "ERROR: Array limits in restart file conflicts with solver parameters. Aborting" << std::endl;
         MPI_Finalize();
         exit(0);
     }
 
     if (int(dims[2]) != mesh.globalSize(2)) {
-        if (mesh.rankData.rank == 0) {
-            std::cout << "ERROR: Array limits in restart file conflicts with solver parameters. Aborting" << std::endl;
-        }
+        if (pf) std::cout << "ERROR: Array limits in restart file conflicts with solver parameters. Aborting" << std::endl;
         MPI_Finalize();
         exit(0);
     }

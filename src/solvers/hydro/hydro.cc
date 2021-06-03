@@ -298,20 +298,38 @@ void hydro::initVBCs() {
  ********************************************************************************************************************************************
  */
 void hydro::initPBCs() {
+    /*******************************************************************************
+    * Note for no-slip walls:
+    * The initial condition for P satisfies Neumann BC (uniform pressure everywhere
+    * including the ghost points).
+    * P is updated using pressure correction from pressure-Poisson equation.
+    * This pressure correction (from multi-grid solver) obeys Neumann BC.
+    * Hence P satisfies Neumann BC at all times implicitly.
+    *
+    * As a result, theoretically, null BC will work for no-slip walls below.
+    * However in this case, a bug crops during restart.
+    * The initial condition for P at restart no longer satisfies Neumann BC.
+    * This is because the restart file populates only the core of the domain and
+    * excludes the ghost points.
+    * This causes the solver to diverge badly upon restart.
+    * Hence Neumann BC is applied on P below.
+    * And this BC is imposed only to help the solver restart without hiccups.
+    *******************************************************************************/
+    
     if (inputParams.probType == 3) {
         // INFLOW AND OUTFLOW BCS
         P.tLft = new nullBC(mesh, P.F, 0);
         P.tRgt = new neumann(mesh, P.F, 1, 0.0);
     } else {
-        // NO BCS REQUIRED FOR P WHEN V IS SPECIFED
-        P.tLft = new nullBC(mesh, P.F, 0);
-        P.tRgt = new nullBC(mesh, P.F, 1);
+        // NEUMANN BC FOR NO-SLIP WALLS
+        P.tLft = new neumann(mesh, P.F, 0, 0.0);
+        P.tRgt = new neumann(mesh, P.F, 1, 0.0);
     }
 
 #ifndef PLANAR
-    // NO BCS REQUIRED FOR P WHEN V IS SPECIFED ON NO-SLIP WALLS
-    P.tFrn = new nullBC(mesh, P.F, 2);
-    P.tBak = new nullBC(mesh, P.F, 3);
+    // NEUMANN BC FOR NO-SLIP WALLS
+    P.tFrn = new neumann(mesh, P.F, 2, 0.0);
+    P.tBak = new neumann(mesh, P.F, 3, 0.0);
 #endif
 
     if (inputParams.zPer) {
@@ -319,9 +337,9 @@ void hydro::initPBCs() {
         P.tBot = new periodic(mesh, P.F, 4);
         P.tTop = new periodic(mesh, P.F, 5);
     } else {
-        // NO BCS REQUIRED FOR P WHEN V IS SPECIFED
-        P.tBot = new nullBC(mesh, P.F, 4);
-        P.tTop = new nullBC(mesh, P.F, 5);
+        // NEUMANN BC FOR NO-SLIP WALLS
+        P.tBot = new neumann(mesh, P.F, 4, 0.0);
+        P.tTop = new neumann(mesh, P.F, 5, 0.0);
     }
 };
 

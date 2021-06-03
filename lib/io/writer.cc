@@ -50,10 +50,13 @@
  *
  * \param   mesh is a const reference to the global data contained in the grid class
  * \param   wField is a vector of sfields to be written
- *
  ********************************************************************************************************************************************
  */
 writer::writer(const grid &mesh, std::vector<field> &wFields): mesh(mesh), wFields(wFields) {
+    // Flag to enable printing to I/O only by 0 rank
+    pf = false;
+    if (mesh.rankData.rank == 0) pf = true;
+
     /** Initialize the common global and local limits for file writing */
     initLimits();
 
@@ -119,9 +122,7 @@ void writer::initLimits() {
 #endif
     status = H5Sselect_hyperslab(sourceDSpace, H5S_SELECT_SET, offset, NULL, dimsf, NULL);
     if (status) {
-        if (mesh.rankData.rank == 0) {
-            std::cout << "Error in creating hyperslab while writing data. Aborting" << std::endl;
-        }
+        if (pf) std::cout << "Error in creating hyperslab while writing data. Aborting" << std::endl;
         MPI_Finalize();
         exit(0);
     }
@@ -154,9 +155,7 @@ void writer::initLimits() {
 #endif
     status = H5Sselect_hyperslab(targetDSpace, H5S_SELECT_SET, offset, NULL, dimsf, NULL);
     if (status) {
-        if (mesh.rankData.rank == 0) {
-            std::cout << "Error in creating hyperslab while writing data. Aborting" << std::endl;
-        }
+        if (pf) std::cout << "Error in creating hyperslab while writing data. Aborting" << std::endl;
         MPI_Finalize();
         exit(0);
     }
@@ -190,7 +189,7 @@ void writer::outputCheck() {
     struct stat info;
     int createStatus;
 
-    if (mesh.rankData.rank == 0) {
+    if (pf) {
         // Check if output directory exists
         if (stat("output", &info) != 0) {
             createStatus = mkdir("output", S_IRWXU | S_IRWXG);
@@ -237,7 +236,7 @@ void writer::writeTarang(real time) {
     constFile << "output/real_" << std::fixed << std::setfill('0') << std::setw(9) << std::setprecision(4) << time;
     strcpy(folderName, constFile.str().c_str());
 
-    if (mesh.rankData.rank == 0) {
+    if (pf) {
         if (stat(folderName, &info) != 0) {
             createStatus = mkdir(folderName, S_IRWXU | S_IRWXG);
 
@@ -302,9 +301,7 @@ void writer::writeTarang(real time) {
 
         status = H5Dwrite(dataSet, H5T_NATIVE_REAL, sourceDSpace, targetDSpace, plist_id, fieldData.dataFirst());
         if (status) {
-            if (mesh.rankData.rank == 0) {
-                std::cout << "Error in writing output to HDF file. Aborting" << std::endl;
-            }
+            if (pf) std::cout << "Error in writing output to HDF file. Aborting" << std::endl;
             MPI_Finalize();
             exit(0);
         }
@@ -405,9 +402,7 @@ void writer::writeSolution(real time) {
 
         status = H5Dwrite(dataSet, H5T_NATIVE_REAL, sourceDSpace, targetDSpace, plist_id, fieldData.dataFirst());
         if (status) {
-            if (mesh.rankData.rank == 0) {
-                std::cout << "Error in writing output to HDF file. Aborting" << std::endl;
-            }
+            if (pf) std::cout << "Error in writing output to HDF file. Aborting" << std::endl;
             MPI_Finalize();
             exit(0);
         }
@@ -481,9 +476,7 @@ void writer::writeRestart(real time) {
 
         status = H5Dwrite(dataSet, H5T_NATIVE_REAL, sourceDSpace, targetDSpace, plist_id, fieldData.dataFirst());
         if (status) {
-            if (mesh.rankData.rank == 0) {
-                std::cout << "Error in writing output to HDF file. Aborting" << std::endl;
-            }
+            if (pf) std::cout << "Error in writing output to HDF file. Aborting" << std::endl;
             MPI_Finalize();
             exit(0);
         }
