@@ -423,7 +423,8 @@ void writer::writeSolution(real time) {
  * \brief   Function to write restart file in HDF5 format in parallel
  *
  *          It opens the restart file in the output folder and all the processors write in parallel into the file.
- *          Unlike solution writing, the data is not interpolated and is written as is.
+ *          The restart file is similar to the solution file, but it doesn't contain the extra data on grids.
+ *          The solution file at any given time can be renamed as the restart file to resume the solver from that time.
  *          The restart file is overwritten with each call to this function.
  *
  * \param   time is a real value containing the time to be added as metadata to the restart file
