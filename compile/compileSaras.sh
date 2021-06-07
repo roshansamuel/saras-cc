@@ -46,7 +46,6 @@
 
 PROC=1
 REAL_TYPE="DOUBLE"
-#REAL_TYPE="SINGLE"
 #PLANAR="PLANAR"
 #TEST_RUN="TEST_RUN"
 EXECUTE_AFTER_COMPILE="EXECUTE"
@@ -69,7 +68,7 @@ cd build
 if [ -z $PLANAR ]; then
     if [ -z $TEST_RUN ]; then
         if [ "$REAL_TYPE" == "DOUBLE" ]; then
-            CC=mpicc CXX=mpicxx cmake ../../ -DREAL_DOUBLE=ON
+            CC=mpicc CXX=mpicxx cmake ../../
         else
             CC=mpicc CXX=mpicxx cmake ../../ -DREAL_SINGLE=ON
         fi
@@ -79,7 +78,7 @@ if [ -z $PLANAR ]; then
 else
     if [ -z $TEST_RUN ]; then
         if [ "$REAL_TYPE" == "DOUBLE" ]; then
-            CC=mpicc CXX=mpicxx cmake ../../ -DPLANAR=ON -DREAL_DOUBLE=ON
+            CC=mpicc CXX=mpicxx cmake ../../ -DPLANAR=ON
         else
             CC=mpicc CXX=mpicxx cmake ../../ -DPLANAR=ON -DREAL_SINGLE=ON
         fi

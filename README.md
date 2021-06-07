@@ -61,11 +61,6 @@ On Debian based systems, the YAML library can be installed by running
 
 `sudo apt-get install libyaml-cpp-dev`
 
-However, this may install yaml-cpp 0.5 or newer, and the older version (which is still in available in many repositories)
-has to be specifically installed for ``SARAS`` to run.
-Otherwise, the compatible version of yaml-cpp library can be downloaded from [here](http://turbulencehub.org/wp-content/uploads/Download_Files/yaml-cpp-release-0.3.0.tar.gz).
-Please extract the archive and follow the installation instructions.
-
 ### HDF5
 
 The HDF5 library has to be installed with parallel writing enabled for the file writing functions of ``SARAS`` to work.
@@ -106,6 +101,7 @@ and plots the velocity profiles along with the data from Ghia et al's result.
 The following Python modules are necessary for the Python test script to execute successfully
 
 * numpy
+* scipy
 * matplotlib
 * h5py
 * yaml
@@ -148,7 +144,7 @@ The parameters are grouped under 5 sections, viz., ``Program``, ``Mesh``, ``Para
 * Grid parameters like number of points, stretching parameter for non-uniform grids, etc. are found under the ``Mesh`` section.
 * ``Parallel`` section lets the user define how many MPI sub-domains to decompose the computational domain into, and the number of OpenMP threads to use.
 * Non-dimensional time-step, file write intervals, final non-dimensional time and so on are set in the ``Solver`` section.
-* Finally, ``Multigrid`` section lets the user tweak the parameters of the Geometric Multigrid solver used to solve the pressure Poisson equation.
+* Finally, ``Multigrid`` section lets the user tweak the parameters of the Geometric Multi-grid solver used to solve the pressure Poisson equation.
 
 Each parameter has documentation written into the ``parameters.yaml`` file itself.
 
@@ -160,11 +156,9 @@ Each parameter has documentation written into the ``parameters.yaml`` file itsel
 
 ### Running and processing data
 
-The folder where the executable ``saras`` will be run must contain two subfolders - ``./input/`` and ``./output/``.
-The ``parameters.yaml`` must be saved in ``./input/``, and the solver will write data into ``./output/``.
-
-Based on the values in ``parameters.yaml``, the solver will write solution data, time series, probe measurements, etc. in the ``./output/`` folder.
-The solver will also periodically dump the entire field data into a file named ``restartFile.h5``, in the ``./output/`` folder.
+The solver will write the solution data files into ``./output/`` folder.
+Based on the values in ``parameters.yaml``, the solver may write solution data, time series, probe measurements, etc. in this folder.
+The solver will also periodically dump the entire field data into a file named ``restartFile.h5``.
 This file will be read by the solver to resume computations, should it stop before completing the simulation.
 
 The solution data is written in HDF5 format, while time-series and probe data are written in ASCII format.
