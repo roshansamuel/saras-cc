@@ -84,7 +84,7 @@ find_library(BLITZPP_FOUND NAMES blitz blitzpp libblitz)
 if (BLITZPP_FOUND)
     message (STATUS "Found Blitz++")
 else ()
-    message (FATAL_ERROR "Could not find Blitz++")
+    message (WARNING "Could not find Blitz++")
 endif ()
 
 # Search for yaml-cpp library
@@ -110,7 +110,7 @@ find_package(MPI REQUIRED)
 if (MPI_FOUND)
     message (STATUS "Found MPI ${MPI_VERSION}")
 else ()
-    message (FATAL_ERROR "Could not find MPI")
+    message (WARNING "Could not find MPI")
 endif ()
 
 # Search for HDF5 package
@@ -118,7 +118,7 @@ find_package(HDF5 REQUIRED)
 if (HDF5_FOUND)
     message (STATUS "Found HDF5 ${MPI_VERSION}")
 else ()
-    message (FATAL_ERROR "Could not find HDF5")
+    message (WARNING "Could not find HDF5")
 endif ()
 
 # Search for OpenMP package to enable hybrid parallelization and set the correct OpenMP compiler flag

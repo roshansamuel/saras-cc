@@ -361,6 +361,10 @@ void multigrid_d2::imposeBC() {
     // YOU GO LOOKING FOR TROUBLE.
 #ifdef TEST_POISSON
     bool testNeumann = false;
+
+    real hx, hz;
+    hx = 0.5/i2hx(vLevel);
+    hz = 0.5/i2hz(vLevel);
 #endif
 
     // FOR PARALLEL RUNS, FIRST UPDATE GHOST POINTS OF MPI SUB-DOMAINS
@@ -388,7 +392,7 @@ void multigrid_d2::imposeBC() {
         } else {
             if (xfr) {
                 if (testNeumann) {
-                    lhs(vLevel)(-1, 0, all) = 0.5*hx(vLevel) + lhs(vLevel)(0, 0, all);
+                    lhs(vLevel)(-1, 0, all) = 0.5*hx + lhs(vLevel)(0, 0, all);
                 } else {
                     lhs(vLevel)(-1, 0, all) = 2.0*xWall(all) - lhs(vLevel)(0, 0, all);
                 }
@@ -396,7 +400,7 @@ void multigrid_d2::imposeBC() {
 
             if (xlr) {
                 if (testNeumann) {
-                    lhs(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = 0.5*hx(vLevel) + lhs(vLevel)(stagCore(vLevel).ubound(0), 0, all);
+                    lhs(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = 0.5*hx + lhs(vLevel)(stagCore(vLevel).ubound(0), 0, all);
                 } else {
                     lhs(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = 2.0*xWall(all) - lhs(vLevel)(stagCore(vLevel).ubound(0), 0, all);
                 }
@@ -435,7 +439,7 @@ void multigrid_d2::imposeBC() {
             lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = -lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2));
         } else {
             if (testNeumann) {
-                lhs(vLevel)(all, 0, -1) = 0.5*hz(vLevel) + lhs(vLevel)(all, 0, 0);
+                lhs(vLevel)(all, 0, -1) = 0.5*hz + lhs(vLevel)(all, 0, 0);
             } else {
                 lhs(vLevel)(all, 0, -1) = 2.0*zWall(all) - lhs(vLevel)(all, 0, 0);
             }

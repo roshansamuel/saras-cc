@@ -96,7 +96,6 @@ grid::grid(const parser &solParam, parallel &parallelData): inputParams(solParam
 #ifdef PLANAR
     // IS IT OKAY TO SET BELOW VALUE AS 1 EVEN WHEN inputParams.dScheme IS NOT 1?
     padWidths(1) = 1;
-    yLen = 1.0;
     dEt = 1.0;
 #endif
 
@@ -380,8 +379,10 @@ void grid::createUniformGrid() {
     xi_x = 1.0/xLen;
     xix2 = pow(xi_x, 2.0);
 
+#ifndef PLANAR
     et_y = 1.0/yLen;
     ety2 = pow(et_y, 2.0);
+#endif
 
     zt_z = 1.0/zLen;
     ztz2 = pow(zt_z, 2.0);
@@ -490,10 +491,15 @@ void grid::createTanHypGrid(int dim, blitz::Array<real, 1> xGlo, blitz::Array<re
 void grid::mgGridMetrics() {
     blitz::TinyVector<real, 3> dLen;
     blitz::Range xRange, yRange, zRange;
-    int numLevels = blitz::min(sizeIndex);
     blitz::Array<real, 1> trnsGrid, physGrid;
 
     dLen = xLen, yLen, zLen;
+
+#ifdef PLANAR
+    int numLevels = std::min(sizeIndex(0), sizeIndex(2));
+#else
+    int numLevels = blitz::min(sizeIndex);
+#endif
 
     // FOR EACH LEVEL, THERE ARE 15 ONE-DIMENSIONAL ARRAYS:
     // xi, x, xi_x, xixx, xix2,
@@ -574,7 +580,11 @@ void grid::mgGridMetrics(int dim) {
     // Product of beta and length
     real btl = thBeta(dim)*dLen(dim);
 
+#ifdef PLANAR
+    int numLevels = std::min(sizeIndex(0), sizeIndex(2));
+#else
     int numLevels = blitz::min(sizeIndex);
+#endif
 
     for (int vLev=1; vLev<numLevels; vLev++) {
         // START INDEX FOR LEVEL

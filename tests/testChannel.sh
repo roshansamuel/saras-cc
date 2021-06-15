@@ -57,7 +57,7 @@ fi
 cd build
 
 # Run cmake with necessary flags for 3D channel flow test
-CC=mpicc CXX=mpicxx cmake ../../ -DREAL_DOUBLE=ON
+CC=mpicc CXX=mpicxx cmake ../../
 
 # Compile
 make -j8
