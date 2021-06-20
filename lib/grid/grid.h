@@ -169,6 +169,28 @@ class grid {
 
         /**
         ********************************************************************************************************************************************
+        * \brief   Function to shift a blitz RectDomain object by a given number of steps along a specified dimension.
+        *
+        *          The RectDomain objects offer a view of the blitz arrays on which the shift function operates.
+        *          These objects are shifted along the dimension specified in the argument, by <B>dim</B>, through a number of steps,
+        *          to offer offset views.
+        *
+        * \param   dim is the integer input to specify the dimension (direction) of the shift. (x -> 0, y -> 1, z -> 2)
+        * \param   core is the input RectDomain object which is to be shifted to get the new view
+        * \param   steps is the integer value by which the input view must be offset along the dimension specified by <B>dim</B>
+        *
+        * \return  A RectDomain object that specifies the new offset view of the data
+        ********************************************************************************************************************************************
+        */
+        inline blitz::RectDomain<3> shift(int dim, blitz::RectDomain<3> core, int steps) const {
+            core.lbound()(dim) += steps;
+            core.ubound()(dim) += steps;
+
+            return core;
+        }
+
+        /**
+        ********************************************************************************************************************************************
         * \brief   Function to check if a given set of global indices lie within a rank
         *
         *          Based on the data from rankData, the function checks if the given point lies within the subdomain of a processor

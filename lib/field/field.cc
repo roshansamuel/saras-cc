@@ -60,9 +60,10 @@
  * \param   gridData is a const reference to the global data in the grid class
  ********************************************************************************************************************************************
  */
-field::field(const grid &gridData, std::string fieldName):
-             gridData(gridData)
+field::field(const grid &gridData, std::string fieldName): gridData(gridData)
 {
+    blitz::TinyVector<int, 3> cuBound;
+
     this->fieldName = fieldName;
 
     fSize = gridData.fullSize;
@@ -73,7 +74,9 @@ field::field(const grid &gridData, std::string fieldName):
 
     mpiHandle = new mpidata(F, gridData.rankData);
 
-    setCoreSlice();
+    core = gridData.coreDomain;
+    cuBound = core.ubound();
+
     setWallSlices();
 
     mpiHandle->createSubarrays(fSize, cuBound + 1, gridData.padWidths);
@@ -81,53 +84,6 @@ field::field(const grid &gridData, std::string fieldName):
     F = 0.0;
 }
 
-/**
- ********************************************************************************************************************************************
- * \brief   Function to shift a blitz RectDomain object by a given number of steps along a specified dimension.
- *
- *          The RectDomain objects offer a view of the blitz arrays on which the shift function operates.
- *          These objects are shifted along the dimension specified in the argument, by <B>dim</B>, through a number of steps,
- *          to offer offset views.
- *
- * \param   dim is the integer input to specify the dimension (direction) of the shift. (x -> 0, y -> 1, z -> 2)
- * \param   core is the input RectDomain object which is to be shifted to get the new view
- * \param   steps is the integer value by which the input view must be offset along the dimension specified by <B>dim</B>
- *
- * \return  A RectDomain object that specifies the new offset view of the data
- ********************************************************************************************************************************************
- */
-blitz::RectDomain<3> field::shift(int dim, blitz::RectDomain<3> core, int steps) {
-    core.lbound()(dim) += steps;
-    core.ubound()(dim) += steps;
-
-    return core;
-}
-
-/**
- ********************************************************************************************************************************************
- * \brief   Function to create the core slice and its offset views
- *
- *          The core and full slices of the field differentiates the domain into the computational sub-domain and
- *          the ghost point/pad point regions which play only an auxilliary role in computing the derivatives.
- *          The core slice is also offset in all the directions for ease in computation of numerical derivatives.
- *
- ********************************************************************************************************************************************
- */
-void field::setCoreSlice() {
-    cuBound = gridData.coreDomain.ubound();
-
-    fCore = blitz::RectDomain<3>(blitz::TinyVector<int, 3>(0, 0, 0), cuBound);
-
-    // As of Dec 2019, the below slices are used only in the divergence calculation of vfield and gradient calculation of sfield and plainsf
-    fCLft = shift(0, fCore, -1);
-    fCRgt = shift(0, fCore,  1);
-
-    fCFrt = shift(1, fCore, -1);
-    fCBak = shift(1, fCore,  1);
-
-    fCBot = shift(2, fCore, -1);
-    fCTop = shift(2, fCore,  1);
-}
 
 /**
  ********************************************************************************************************************************************
@@ -170,27 +126,28 @@ void field::setWallSlices() {
     // Correspondingly, the boundary conditions are imposed on the layer just outside the core
 
     // UPPER BOUNDS OF LEFT WALL
-    wlBound(0)(0) = wuBound(0)(0) = fCore.lbound(0) - 1;
+    wlBound(0)(0) = wuBound(0)(0) = core.lbound(0) - 1;
 
     // LOWER BOUNDS OF RIGHT WALL
-    wuBound(1)(0) = wlBound(1)(0) = fCore.ubound(0) + 1;
+    wuBound(1)(0) = wlBound(1)(0) = core.ubound(0) + 1;
 
     // UPPER BOUNDS OF FRONT WALL
-    wlBound(2)(1) = wuBound(2)(1) = fCore.lbound(1) - 1;
+    wlBound(2)(1) = wuBound(2)(1) = core.lbound(1) - 1;
 
     // LOWER BOUNDS OF BACK WALL
-    wuBound(3)(1) = wlBound(3)(1) = fCore.ubound(1) + 1;
+    wuBound(3)(1) = wlBound(3)(1) = core.ubound(1) + 1;
 
     // UPPER BOUNDS OF BOTTOM WALL
-    wlBound(4)(2) = wuBound(4)(2) = fCore.lbound(2) - 1;
+    wlBound(4)(2) = wuBound(4)(2) = core.lbound(2) - 1;
 
     // LOWER BOUNDS OF TOP WALL
-    wuBound(5)(2) = wlBound(5)(2) = fCore.ubound(2) + 1;
+    wuBound(5)(2) = wlBound(5)(2) = core.ubound(2) + 1;
 
     for (int i=0; i<6; i++) {
         fWalls(i) = blitz::RectDomain<3>(wlBound(i), wuBound(i));
     }
 }
+
 
 /**
  ********************************************************************************************************************************************
@@ -203,6 +160,7 @@ void field::setWallSlices() {
 void field::syncData() {
     mpiHandle->syncData();
 }
+
 
 /**
  ********************************************************************************************************************************************
@@ -233,6 +191,7 @@ real field::fieldMax() {
     return globalMax;
 }
 
+
 /**
  ********************************************************************************************************************************************
  * \brief   Overloaded operator to add a given field
@@ -250,6 +209,7 @@ field& field::operator += (field &a) {
 
     return *this;
 }
+
 
 /**
  ********************************************************************************************************************************************
@@ -269,6 +229,7 @@ field& field::operator -= (field &a) {
     return *this;
 }
 
+
 /**
  ********************************************************************************************************************************************
  * \brief   Overloaded operator to add a given scalar value
@@ -286,6 +247,7 @@ field& field::operator += (real a) {
 
     return *this;
 }
+
 
 /**
  ********************************************************************************************************************************************
@@ -305,6 +267,7 @@ field& field::operator -= (real a) {
     return *this;
 }
 
+
 /**
  ********************************************************************************************************************************************
  * \brief   Overloaded operator to assign a scalar value to the field
@@ -318,6 +281,7 @@ void field::operator = (real a) {
     F = a;
 }
 
+
 /**
  ********************************************************************************************************************************************
  * \brief   Overloaded operator to assign a field to the field
@@ -330,5 +294,6 @@ void field::operator = (real a) {
 void field::operator = (field &a) {
     F = a.F;
 }
+
 
 field::~field() { }

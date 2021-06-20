@@ -64,6 +64,12 @@ class timestep {
 
         const grid &mesh;
 
+        blitz::RectDomain<3> core;
+
+        int xSt, xEn;
+        int ySt, yEn;
+        int zSt, zEn;
+
         /** Plain scalar field into which the pressure correction is calculated and written by the Poisson solver */
         plainsf Pp;
         /** Plain scalar field into which the RHS for pressure Poisson equation is written and passed to the Poisson solver */

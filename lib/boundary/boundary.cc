@@ -91,7 +91,7 @@ boundary::boundary(const grid &mesh, field &inField, const int bcWall):
 
     // Set the wall and data slices of the domain
     wallSlice = dField.fWalls(wallNum);
-    dataSlice = dField.shift(shiftDim, dField.fWalls(wallNum), shiftVal);
+    dataSlice = mesh.shift(shiftDim, dField.fWalls(wallNum), shiftVal);
 }
 
 /**

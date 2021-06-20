@@ -146,7 +146,7 @@ class constantPGrad: public force {
     public:
         constantPGrad(const grid &mesh, const vfield &U): force(mesh, U) { };
 
-        inline void addForcing(plainvf &Hv) {Hv.Vx(V.Vx.fCore) += mesh.inputParams.meanPGrad;};
+        inline void addForcing(plainvf &Hv) {Hv.Vx(mesh.coreDomain) += mesh.inputParams.meanPGrad;};
         inline void addForcing(plainsf &Ht) { };
 };
 

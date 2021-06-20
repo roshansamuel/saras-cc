@@ -101,6 +101,15 @@ timestep::timestep(const grid &mesh, const real &sTime, const real &dt, tseries 
     if (diffSwitch) {
         kappa = 0.0;
     }
+
+    core = mesh.coreDomain;
+
+    // UPPER AND LOWER LIMITS FOR LOOPS OVER CORE DOMAIN
+    xSt = core.lbound(0);        xEn = core.ubound(0);
+#ifndef PLANAR
+    ySt = core.lbound(1);        yEn = core.ubound(1);
+#endif
+    zSt = core.lbound(2);        zEn = core.ubound(2);
 }
 
 

@@ -59,7 +59,7 @@ hotPlate::hotPlate(const grid &mesh, field &inField, const int bcWall, const rea
                             boundary(mesh, inField, bcWall), patchRadius(plateRad) {
     createPatch(patchRadius);
 
-    dataSlice = dField.shift(shiftDim, dField.fWalls(wallNum), 1);
+    dataSlice = mesh.shift(shiftDim, dField.fWalls(wallNum), 1);
 }
 
 

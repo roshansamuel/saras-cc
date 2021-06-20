@@ -60,7 +60,7 @@ periodic::periodic(const grid &mesh, field &inField, const int bcWall):
     // In this case, the data next to the opposite wall (wallNum + 1) as to be used
     // If shiftVal = -1, the wall is either right (1), back (3), or top (5) wall
     // In this case, the opposite wall is wallNum - 1
-    dataSlice = dField.shift(shiftDim, dField.fWalls(wallNum + shiftVal), -shiftVal);
+    dataSlice = mesh.shift(shiftDim, dField.fWalls(wallNum + shiftVal), -shiftVal);
 }
 
 /**
