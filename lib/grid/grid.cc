@@ -256,7 +256,7 @@ void grid::setDomainSizes() {
  *          Then the local collocated grid in transformed plane is resized according to the limits defined in \ref computeGlobalLimits.
  *          Correspondingly, this function is called after the global limits have been set.
  *          After defining the transformed plane coordinates, both the staggered and collocated grids in physical plane are resized.
- *          Finally, the arrays for the grid derivative terms are also resized and initialized to 1.
+ *          Finally, the arrays for the grid derivative terms are also resized.
  ********************************************************************************************************************************************
  */
 void grid::resizeGrid() {
@@ -268,6 +268,11 @@ void grid::resizeGrid() {
     xRange = blitz::Range(-padWidths(0), globalSize(0) + padWidths(0) - 1);
     yRange = blitz::Range(-padWidths(1), globalSize(1) + padWidths(1) - 1);
     zRange = blitz::Range(-padWidths(2), globalSize(2) + padWidths(2) - 1);
+
+    // GLOBAL XI, ETA AND ZETA ARRAYS
+    xiGlo.resize(xRange);
+    etGlo.resize(xRange);
+    ztGlo.resize(xRange);
 
     // GLOBAL GRID POINTS AND THEIR METRICS
     xGlobal.resize(xRange);
@@ -284,22 +289,15 @@ void grid::resizeGrid() {
     et.resize(yRange);
     zt.resize(zRange);
 
-    // LOCAL GRID POINTS AND THEIR METRICS
+    // LOCAL GRID POINTS
     x.resize(xRange);
     y.resize(yRange);
     z.resize(zRange);
 
+    // LOCAL GRID METRICS
     xi_x.resize(xRange);        xixx.resize(xRange);        xix2.resize(xRange);
     et_y.resize(yRange);        etyy.resize(yRange);        ety2.resize(yRange);
     zt_z.resize(zRange);        ztzz.resize(zRange);        ztz2.resize(zRange);
-
-    x = 1.0;        y = 1.0;        z = 1.0;
-
-    // DEFAULT VALUES FOR A UNIFORM GRID OVER DOMAIN OF LENGTH 1.0
-    // THESE VALUES ARE OVERWRITTEN AS PER GRID TYPE
-    xi_x = 1.0;     xixx = 0.0;     xix2 = 1.0;
-    et_y = 1.0;     etyy = 0.0;     ety2 = 1.0;
-    zt_z = 1.0;     ztzz = 0.0;     ztz2 = 1.0;
 }
 
 
@@ -314,10 +312,6 @@ void grid::resizeGrid() {
  */
 void grid::createXiEtaZeta() {
     int i;
-
-    xiGlo.resize(globalSize(0) + 2*padWidths(0));          xiGlo.reindexSelf(-padWidths(0));
-    etGlo.resize(globalSize(1) + 2*padWidths(1));          etGlo.reindexSelf(-padWidths(1));
-    ztGlo.resize(globalSize(2) + 2*padWidths(2));          ztGlo.reindexSelf(-padWidths(2));
 
     // ALONG XI-DIRECTION
     for (i = -padWidths(0); i < globalSize(0) + padWidths(0); i++) {
@@ -377,14 +371,17 @@ void grid::createUniformGrid() {
     }
 
     xi_x = 1.0/xLen;
+    xixx = 0.0;
     xix2 = pow(xi_x, 2.0);
 
 #ifndef PLANAR
     et_y = 1.0/yLen;
+    etyy = 0.0;
     ety2 = pow(et_y, 2.0);
 #endif
 
     zt_z = 1.0/zLen;
+    ztzz = 0.0;
     ztz2 = pow(zt_z, 2.0);
 }
 
@@ -470,9 +467,23 @@ void grid::createTanHypGrid(int dim, blitz::Array<real, 1> xGlo, blitz::Array<re
     globalMetrics(5*dim + 3) = dfxx;
     globalMetrics(5*dim + 4) = dfx2;
 
-    xi_x = df_x(blitz::Range(subarrayStarts(dim) - padWidths(dim), subarrayEnds(dim) + padWidths(dim)));
-    xixx = dfxx(blitz::Range(subarrayStarts(dim) - padWidths(dim), subarrayEnds(dim) + padWidths(dim)));
-    xix2 = dfx2(blitz::Range(subarrayStarts(dim) - padWidths(dim), subarrayEnds(dim) + padWidths(dim)));
+    switch (dim) {
+        case 0:
+            xi_x = df_x(blitz::Range(subarrayStarts(dim) - padWidths(dim), subarrayEnds(dim) + padWidths(dim)));
+            xixx = dfxx(blitz::Range(subarrayStarts(dim) - padWidths(dim), subarrayEnds(dim) + padWidths(dim)));
+            xix2 = dfx2(blitz::Range(subarrayStarts(dim) - padWidths(dim), subarrayEnds(dim) + padWidths(dim)));
+            break;
+        case 1:
+            et_y = df_x(blitz::Range(subarrayStarts(dim) - padWidths(dim), subarrayEnds(dim) + padWidths(dim)));
+            etyy = dfxx(blitz::Range(subarrayStarts(dim) - padWidths(dim), subarrayEnds(dim) + padWidths(dim)));
+            ety2 = dfx2(blitz::Range(subarrayStarts(dim) - padWidths(dim), subarrayEnds(dim) + padWidths(dim)));
+            break;
+        case 2:
+            zt_z = df_x(blitz::Range(subarrayStarts(dim) - padWidths(dim), subarrayEnds(dim) + padWidths(dim)));
+            ztzz = dfxx(blitz::Range(subarrayStarts(dim) - padWidths(dim), subarrayEnds(dim) + padWidths(dim)));
+            ztz2 = dfx2(blitz::Range(subarrayStarts(dim) - padWidths(dim), subarrayEnds(dim) + padWidths(dim)));
+            break;
+    }
 
     mgGridMetrics(dim);
 }
