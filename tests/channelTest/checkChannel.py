@@ -51,7 +51,6 @@ if ptFile:
 else:
     import matplotlib.pyplot as plt
 
-from scipy.interpolate import griddata
 import numpy as np
 import h5py as hp
 import yaml as yl
@@ -62,52 +61,31 @@ plt.rcParams["mathtext.fontset"] = 'cm'
 plt.rcParams["font.weight"] = "medium"
 
 def init():
+    global U
+    global zLen
     global figSize
-    global U, V, W
-    global Nx, Ny, Nz
-    global xLen, yLen, zLen
 
-    Nx = 0
-    Ny = 0
-    Nz = 0
-
-    xLen = 0.0
-    yLen = 0.0
     zLen = 0.0
 
     U = np.zeros([1, 1, 1])
-    V = np.zeros([1, 1, 1])
-    W = np.zeros([1, 1, 1])
 
     figSize = (12, 6)
 
 
 def parseYAML(paraFile):
-    global zBeta
+    global zLen
     global Re, dPdX
-    global Nx, Ny, Nz
-    global xLen, yLen, zLen
 
     yamlFile = open(paraFile, 'r')
     yamlData = yl.load(yamlFile)
 
-    Nx = 2**yamlData["Mesh"]["X Index"] + 1
-    Ny = 2**yamlData["Mesh"]["Y Index"] + 1
-    Nz = 2**yamlData["Mesh"]["Z Index"] + 1
-
-    xLen = yamlData["Program"]["X Length"]
-    yLen = yamlData["Program"]["Y Length"]
     zLen = yamlData["Program"]["Z Length"]
-
     Re = yamlData["Program"]["Reynolds Number"]
     dPdX = yamlData["Program"]["Mean Pressure Gradient"]
 
-    zBeta = yamlData["Mesh"]["Z Beta"]
-
 
 def loadData(timeVal):
-    global U, V, W
-    global Nx, Ny, Nz
+    global U, Z
 
     fileName = "output/Soln_{0:09.4f}.h5".format(float(timeVal))
 
@@ -119,23 +97,11 @@ def loadData(timeVal):
 
     # Initialize and read staggered grid data
     U = np.array(f['Vx'])
-    V = np.array(f['Vy'])
-    W = np.array(f['Vz'])
-
-
-def generateZGrid():
-    global Nz
-    global zLen, zBeta
-    global zStag, zColl
-
-    zt = np.linspace(0.0, 1.0, Nz)
-    zStag = np.array([zLen*(1.0 - np.tanh(zBeta*(1.0 - 2.0*i))/np.tanh(zBeta))/2.0 for i in zt])
-    zColl = np.array([zLen*(1.0 - np.tanh(zBeta*(1.0 - 2.0*i))/np.tanh(zBeta))/2.0 for i in [(zt[j] + zt[j+1])/2 for j in range(len(zt) - 1)]])
+    Z = np.array(f['Z'])
 
 
 def computeAnalytic():
-    global zLen
-    global zStag
+    global zLen, Z
     global Re, dPdX
     global uAnalyticProfile
     global tAnalyticProfile
@@ -154,7 +120,7 @@ def computeAnalytic():
     lpFactor = tauw*delta/(2.0*rho*nu)
 
     # Laminar velocity profile
-    normZ = zStag/delta
+    normZ = Z/delta
     uAnalyticProfile = lpFactor*normZ*(2.0 - normZ)
 
     # Shear stress profile
@@ -162,11 +128,12 @@ def computeAnalytic():
 
 
 def computeProfiles():
+    global U, Z
     global Re, zLen
-    global U, Nz, zStag
     global uComputedProfile
     global tComputedProfile
 
+    Nz = U.shape[2]
     uComputedProfile = np.zeros(Nz)
     for i in range(Nz):
         uComputedProfile[i] = np.mean(U[:, :, i])
@@ -176,16 +143,15 @@ def computeProfiles():
     nu = delta/Re
     mu = nu*rho
     tComputedProfile = np.zeros(Nz)
-    for i in range(Nz-1):
-        tComputedProfile[i] = mu*np.mean((U[:, :, i+1] - U[:, :, i])/(zStag[i+1] - zStag[i]))
+    for i in range(1, Nz-1):
+        tComputedProfile[i] = mu*np.mean((U[:, :, i+1] - U[:, :, i-1])/(Z[i+1] - Z[i-1]))
 
-    i = Nz-1
-    tComputedProfile[i] = mu*np.mean((U[:, :, i] - U[:, :, i-1])/(zStag[i] - zStag[i-1]))
+    tComputedProfile[0] = mu*np.mean((U[:, :, 1] - U[:, :, 0])/(Z[1] - Z[0]))
+    tComputedProfile[-1] = mu*np.mean((U[:, :, -1] - U[:, :, -2])/(Z[-1] - Z[-2]))
 
 
 def plotProfiles():
-    global U, Nz
-    global zStag
+    global U, Z
     global uAnalyticProfile
     global uComputedProfile
     global tAnalyticProfile
@@ -195,8 +161,8 @@ def plotProfiles():
     fig, axes = plt.subplots(1, 2, figsize=figSize)
 
     # Plot mean velocity profile
-    axes[0].plot(uAnalyticProfile, zStag, linewidth=2, label='Analytic')
-    axes[0].plot(uComputedProfile, zStag, linestyle='--', label='Computed')
+    axes[0].plot(uAnalyticProfile, Z, linewidth=2, label='Analytic')
+    axes[0].plot(uComputedProfile, Z, linestyle='--', label='Computed')
     axes[0].set_xlabel(r"$u_x$", fontsize=25)
     axes[0].set_ylabel(r"$z$", fontsize=25)
     axes[0].tick_params(labelsize=20)
@@ -204,8 +170,8 @@ def plotProfiles():
     axes[0].set_title("Mean Velocity Profile", fontsize=20)
 
     # Plot shear stress profile
-    axes[1].plot(tAnalyticProfile, zStag, linewidth=2, label='Analytic')
-    axes[1].plot(tComputedProfile, zStag, linestyle='--', label='Computed')
+    axes[1].plot(tAnalyticProfile, Z, linewidth=2, label='Analytic')
+    axes[1].plot(tComputedProfile, Z, linestyle='--', label='Computed')
     axes[1].set_xlabel(r"$\tau$", fontsize=25)
     axes[1].set_ylabel(r"$z$", fontsize=25)
     axes[1].tick_params(labelsize=20)
@@ -228,8 +194,6 @@ if __name__ == "__main__":
     parseYAML("input/parameters.yaml")
 
     loadData(20.0)
-
-    generateZGrid()
 
     computeAnalytic()
     computeProfiles()

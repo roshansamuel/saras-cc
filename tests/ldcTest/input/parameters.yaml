@@ -74,7 +74,7 @@
     # 1 = Random forcing (This is yet to be implemented)
     # 2 = Coriolis force 
     # 3 = Buoyancy force (Natural convection: only applicable for flows with scalar)
-    # 4 = Buoyancy + Coriolis force (Rotatig natural convection: only applicable for flows with scalar)
+    # 4 = Buoyancy + Coriolis force (Rotating natural convection: only applicable for flows with scalar)
     # 5 = Constant pressure gradient (along X-direction: used mainly for periodic channel flows)
     "Force": 0
 
@@ -98,10 +98,10 @@
     "Y Beta": 1.0
     "Z Beta": 1.0
 
-    # Choose the grid sizes (for the staggered grid) as indices from the list below
-    # These sizes are set to allow multigrid operations on the staggered grid
+    # Choose the grid sizes (number of cells) as indices from the list below
+    # These sizes are set to allow multigrid operations on cell-centers
     # 2D simulations can be run by setting Y Index to 0
-    # Grid sizes: 2 3 5 9 17 33 65 129 257 513 1025 2049 4097 8193 16385]
+    # Grid sizes: 1 2 4 8 15 32 64 128 256 512 1024 2048 4096 8192 16384]
     # Size index: 0 1 2 3  4  5  6  7   8   9   10   11   12   13    14
     "X Index": 7
     "Y Index": 0

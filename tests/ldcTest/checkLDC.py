@@ -120,31 +120,11 @@ def loadData(timeVal):
     Z = np.array(f['Z'])
 
 
-def getVorticity():
-    global Nx, Nz
-
-    wy = np.zeros((Nx-2, Nz-2))
-
-    hx = 1.0/(Nx - 1)
-    hz = 1.0/(Nz - 1)
-
-    for i in range(1, Nx-1):
-        for k in range(1, Nz-1):
-            dux_dz = (U[i, k+1] - U[i, k-1])*0.5/hz
-            duz_dx = (W[i+1, k] - W[i-1, k])*0.5/hx
-
-            wy[i-1, k-1] = dux_dz - duz_dx
-
-    return wy
-
-
 def plotProfile():
     global X, Z
     global U, W
     global Nx, Nz
     global u_ghia, v_ghia
-
-    wy = getVorticity()
 
     if ptFile:
         plt.switch_backend('agg')
@@ -152,7 +132,7 @@ def plotProfile():
     # Plot a data frame
     fig, axes = plt.subplots(1, 2, figsize=figSize)
 
-    uProfile = U[int(Nx/2), :]
+    uProfile = (U[int(Nx/2), :] + U[int(Nx/2) - 1, :])/2
     axes[0].plot(u_ghia[:,2], u_ghia[:,1], marker='*', markersize=10, linestyle=' ', label='Ghia et al')
     axes[0].plot(uProfile, Z, linewidth=2, label='SARAS')
     axes[0].set_xlim([-0.6, 1.1])
@@ -162,7 +142,7 @@ def plotProfile():
     axes[0].legend(fontsize=20)
     axes[0].set_title(r"$u_x$ at $x=0.5$", fontsize=25)
 
-    vProfile = W[:, int(Nz/2)]
+    vProfile = (W[:, int(Nz/2)] + W[:, int(Nz/2) - 1])/2
     axes[1].plot(v_ghia[:,1], v_ghia[:,2], marker='*', markersize=10, linestyle=' ', label='Ghia et al')
     axes[1].plot(X, vProfile, linewidth=2, label='SARAS')
     axes[1].set_ylim([-0.62, 0.42])
@@ -189,26 +169,28 @@ def checkTolerance():
     global Nx, Nz
     global u_ghia, v_ghia
 
-    uProfile = U[int(Nx/2), :]
+    uProfile = (U[int(Nx/2), :] + U[int(Nx/2) - 1, :])/2
     intpAxis = u_ghia[:,1]
     intpData = griddata(Z, uProfile, intpAxis)
+    intpData[0] = 1.0;      intpData[-1] = 0.0
 
-    avgError = sum(np.absolute(u_ghia[:,2] - intpData))/len(intpData)
-    avgValue = sum(np.absolute(u_ghia[:,2]))/len(intpData)
+    avgError = np.mean(np.absolute(u_ghia[:,2] - intpData))
+    avgValue = np.mean(np.absolute(u_ghia[:,2]))
 
     print("")
     print(r"Average absolute value of horizontal velocity, Ux = " + str(avgValue) + "\n")
-    print("Average absolute value of deviation = " + str(avgError) + "\n")
+    print("Average absolute error = " + str(avgError) + "\n")
 
-    vProfile = W[:, int(Nz/2)]
+    vProfile = (W[:, int(Nz/2)] + W[:, int(Nz/2) - 1])/2
     intpAxis = v_ghia[:,1]
     intpData = griddata(X, vProfile, intpAxis)
+    intpData[0] = 0.0;      intpData[-1] = 0.0
 
-    avgError = sum(np.absolute(v_ghia[:,2] - intpData))/len(intpData)
-    avgValue = sum(np.absolute(v_ghia[:,2]))/len(intpData)
+    avgError = np.mean(np.absolute(v_ghia[:,2] - intpData))
+    avgValue = np.mean(np.absolute(v_ghia[:,2]))
 
     print(r"Average absolute value of vertical velocity, Uz = " + str(avgValue) + "\n")
-    print("Average absolute value of deviation = " + str(avgError) + "\n")
+    print("Average absolute error = " + str(avgError) + "\n")
 
 
 if __name__ == "__main__":
