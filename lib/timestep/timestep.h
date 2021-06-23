@@ -98,7 +98,7 @@ class eulerCN_d2: public timestep {
         void timeAdvance(vfield &V, sfield &P, sfield &T);
 
     private:
-        /** Maximum number of iterations for the iterative solvers \ref hydro#solveVx, \ref hydro#solveVy and \ref hydro#solveVz */
+        /** Maximum number of iterations for the iterative solvers solveVx, solveVy and solveVz */
         int maxIterations;
 
         real ihx2, ihz2;
@@ -130,7 +130,7 @@ class eulerCN_d3: public timestep {
         void timeAdvance(vfield &V, sfield &P, sfield &T);
 
     private:
-        /** Maximum number of iterations for the iterative solvers \ref hydro#solveVx, \ref hydro#solveVy and \ref hydro#solveVz */
+        /** Maximum number of iterations for the iterative solvers solveVx, solveVy and solveVz */
         int maxIterations;
 
         real ihx2, ihy2, ihz2;
@@ -152,6 +152,43 @@ class eulerCN_d3: public timestep {
 /**
  ********************************************************************************************************************************************
  *  \class eulerCN_d3 timestep.h "lib/timestep/timestep.h"
+ *  \brief The derived class from timestep to advance the 3D solution using explicit Euler and implicit Crank-Nicholson methods
+ *
+ ********************************************************************************************************************************************
+ */
+
+class lsRK3_d3: public timestep {
+    public:
+        lsRK3_d3(const grid &mesh, const real &sTime, const real &dt, tseries &tsIO, vfield &V, sfield &P);
+
+        void timeAdvance(vfield &V, sfield &P);
+        void timeAdvance(vfield &V, sfield &P, sfield &T);
+
+    private:
+        /** Maximum number of iterations for the iterative solvers solveVx, solveVy and solveVz */
+        int maxIterations;
+
+        real ihx2, ihy2, ihz2;
+        real i2hx, i2hy, i2hz;
+
+        blitz::TinyVector<real, 3> alphRK3, betaRK3, zetaRK3, gammRK3;
+
+        multigrid_d3 mgSolver;
+
+        les *sgsLES;
+
+        void solveVx(vfield &V, plainvf &nseRHS, real beta);
+        void solveVy(vfield &V, plainvf &nseRHS, real beta);
+        void solveVz(vfield &V, plainvf &nseRHS, real beta);
+
+        void solveT(sfield &T, plainsf &tmpRHS, real beta);
+
+        void setCoefficients();
+};
+
+/**
+ ********************************************************************************************************************************************
+ *  \class lsRK3_d3 timestep.h "lib/timestep/timestep.h"
  *  \brief The derived class from timestep to advance the 3D solution using explicit Euler and implicit Crank-Nicholson methods
  *
  ********************************************************************************************************************************************

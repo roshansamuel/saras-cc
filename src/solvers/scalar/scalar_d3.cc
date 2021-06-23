@@ -151,8 +151,15 @@ void scalar_d3::solvePDE() {
     // Output file and I/O writer to write time-series of various variables
     tseries tsWriter(mesh, V, time, dt);
 
-    // Initialize semi-implicit Euler-CN time-stepping method
-    ivpSolver = new eulerCN_d3(mesh, time, dt, tsWriter, V, P);
+    // Initialize time-stepping method
+    switch (inputParams.iScheme) {
+        case 1:
+            ivpSolver = new eulerCN_d3(mesh, time, dt, tsWriter, V, P);
+            break;
+        case 2:
+            ivpSolver = new lsRK3_d3(mesh, time, dt, tsWriter, V, P);
+            break;
+    }
 
     // FILE WRITING TIME
     fwTime = time;

@@ -155,7 +155,7 @@ void vfield::computeNLin(const vfield &V, plainvf &H) {
     derVx.calcDerivative1_z(derivTemp);
     H.Vx(core) -= V.Vz.F(core)*derivTemp(core);
 
-// Compute non-linear term for the Vy component
+    // Compute non-linear term for the Vy component
 #ifndef PLANAR
     derivTemp = 0.0;
     derVy.calcDerivative1_x(derivTemp);

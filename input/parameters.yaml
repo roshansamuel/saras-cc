@@ -8,7 +8,7 @@
     # 5 = Flows with scalar: Heated bottom plate 
     # 6 = Flows with scalar: Heated upper plate
     # 7 = Flows with scalar: Heated sidewall
-    "Problem Type": 5
+    "Problem Type": 2
 
     # Choose from the following initial conditions
     # 0 = Zero-initial condition
@@ -20,7 +20,7 @@
     # 6 = Linear Temperature Profile (for Scalar Flow)
     # 7 = Cosine Temperature Profile (for Scalar Flow)
     # 8 = Sine Temperature Profile (for Scalar Flow)
-    "Initial Condition": 8
+    "Initial Condition": 1
 
     # Mean flow velocity (for Channel Flow)
     # If option 3 or 4 is selected above, the perturbation is imposed on a background uniform flow
@@ -76,7 +76,7 @@
     # 3 = Buoyancy force (Natural convection: only applicable for flows with scalar)
     # 4 = Buoyancy + Coriolis force (Rotating natural convection: only applicable for flows with scalar)
     # 5 = Constant pressure gradient (along X-direction: used mainly for periodic channel flows)
-    "Force": 3
+    "Force": 0
 
     # If constant pressure gradient is chosen as forcing, set the value of mean pressure gradient
     "Mean Pressure Gradient": 1.0
@@ -124,8 +124,8 @@
 
     # Choose from following list of integration schemes:
     # 1 = Implicit Crank-Nicholson
-    # 2 = Euler Method (To Be Implemented)
-    "Integration Scheme": 1
+    # 2 = Low Storage 3rd Order Runge-Kutta
+    "Integration Scheme": 2
 
     # Tolerance used in iterative method (if Implicit Crank-Nicholson scheme is chosen above)
     "Solve Tolerance": 1.0e-6
@@ -138,8 +138,8 @@
     "Use CFL Condition": false
     # If above flag is true, then set the value of Courant number below
     "Courant Number": 0.1
-    "Time-Step": 0.01
-    "Final Time": 2.0
+    "Time-Step": 0.001
+    "Final Time": 0.1
 
     # Number of iterations to display output to standard I/O
     "I/O Count": 1

@@ -124,7 +124,7 @@
 
     # Choose from following list of integration schemes:
     # 1 = Implicit Crank-Nicholson
-    # 2 = Euler Method (To Be Implemented)
+    # 2 = Low Storage 3rd Order Runge-Kutta
     "Integration Scheme": 1
 
     # Tolerance used in iterative method (if Implicit Crank-Nicholson scheme is chosen above)
