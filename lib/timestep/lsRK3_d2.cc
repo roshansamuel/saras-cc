@@ -29,7 +29,7 @@
  *
  ********************************************************************************************************************************************
  */
-/*! \file lsRK3_d3.cc
+/*! \file lsRK3_d2.cc
  *
  *  \brief Definitions for functions of class timestep
  *  \sa timestep.h
@@ -55,7 +55,7 @@
  * \param   mesh is a const reference to the global data contained in the grid class.
  ********************************************************************************************************************************************
  */
-lsRK3_d3::lsRK3_d3(const grid &mesh, const real &sTime, const real &dt, tseries &tsIO, vfield &V, sfield &P):
+lsRK3_d2::lsRK3_d2(const grid &mesh, const real &sTime, const real &dt, tseries &tsIO, vfield &V, sfield &P):
     timestep(mesh, sTime, dt, tsIO, V, P),
     mgSolver(mesh, mesh.inputParams)
 {
@@ -72,22 +72,6 @@ lsRK3_d3::lsRK3_d3(const grid &mesh, const real &sTime, const real &dt, tseries 
     betaRK3 = 4.0/15.0, 1.0/15.0, 1.0/6.0;
     gammRK3 = 8.0/15.0, 5.0/12.0, 3.0/4.0;
     zetaRK3 = 0.0, -17.0/60.0, -5.0/12.0;
-
-    /** The paper by Spalart ([2] in Journal references of README) uses different coefficients for alpha and beta
-    alphRK3 = 29.0/96.0, -3.0/40.0, 1.0/6.0;
-    betaRK3 = 37.0/160.0, 5.0/24.0, 1.0/6.0;
-    **/
-
-    // If LES switch is enabled, initialize LES model
-    if (mesh.inputParams.lesModel) {
-        if (mesh.inputParams.lesModel == 1) {
-            if (mesh.rankData.rank == 0) {
-                std::cout << "LES Switch is ON. Using stretched spiral vortex LES Model\n" << std::endl;
-            }
-
-            sgsLES = new spiral(mesh, nu);
-        }
-    }
 }
 
 
@@ -101,15 +85,13 @@ lsRK3_d3::lsRK3_d3(const grid &mesh, const real &sTime, const real &dt, tseries 
  *
  ********************************************************************************************************************************************
  */
-void lsRK3_d3::timeAdvance(vfield &V, sfield &P) {
+void lsRK3_d2::timeAdvance(vfield &V, sfield &P) {
     int rkLev;
 
     static plainvf nseRHS(mesh);
     static plainvf nltVel(mesh);
 
     static vfield Vp(mesh, "Vp");
-
-    real subgridKE;
 
     Vp = V;
 
@@ -142,12 +124,6 @@ void lsRK3_d3::timeAdvance(vfield &V, sfield &P) {
         // Add the velocity forcing term
         V.vForcing->addForcing(nseRHS);
 
-        // Add sub-grid stress contribution from LES Model, if enabled
-        if (mesh.inputParams.lesModel and solTime > 5*mesh.inputParams.tStp) {
-            subgridKE = sgsLES->computeSG(nseRHS, V);
-            tsWriter.subgridEnergy = subgridKE;
-        }
-
         // Subtract the pressure gradient term - this seems to be excluded in LS-RK3 - Check!
         pressureGradient = 0.0;
         P.gradient(pressureGradient);
@@ -162,7 +138,6 @@ void lsRK3_d3::timeAdvance(vfield &V, sfield &P) {
 
         // Using the RHS term computed, compute the guessed velocity of CN method iteratively (and store it in V)
         solveVx(V, nseRHS, betaRK3(rkLev));
-        solveVy(V, nseRHS, betaRK3(rkLev));
         solveVz(V, nseRHS, betaRK3(rkLev));
 
         // Calculate the rhs for the poisson solver (mgRHS) using the divergence of guessed velocity in V
@@ -202,7 +177,7 @@ void lsRK3_d3::timeAdvance(vfield &V, sfield &P) {
  *
  ********************************************************************************************************************************************
  */
-void lsRK3_d3::timeAdvance(vfield &V, sfield &P, sfield &T) {
+void lsRK3_d2::timeAdvance(vfield &V, sfield &P, sfield &T) {
     int rkLev;
 
     static plainvf nseRHS(mesh);
@@ -213,8 +188,6 @@ void lsRK3_d3::timeAdvance(vfield &V, sfield &P, sfield &T) {
 
     static vfield Vp(mesh, "Vp");
     static sfield Tp(mesh, "Tp");
-
-    real subgridKE;
 
     Vp = V;
     Tp = T;
@@ -269,12 +242,6 @@ void lsRK3_d3::timeAdvance(vfield &V, sfield &P, sfield &T) {
         // Add the scalar forcing term
         T.tForcing->addForcing(tmpRHS);
 
-        // Add sub-grid stress contribution from LES Model, if enabled
-        if (mesh.inputParams.lesModel and solTime > 5*mesh.inputParams.tStp) {
-            subgridKE = sgsLES->computeSG(nseRHS, tmpRHS, V, T);
-            tsWriter.subgridEnergy = subgridKE;
-        }
-
         // Subtract the pressure gradient term from momentum equation - this seems to be excluded in LS-RK3 - Check!
         pressureGradient = 0.0;
         P.gradient(pressureGradient);
@@ -294,7 +261,6 @@ void lsRK3_d3::timeAdvance(vfield &V, sfield &P, sfield &T) {
 
         // Using the RHS term computed, compute the guessed velocity of CN method iteratively (and store it in V)
         solveVx(V, nseRHS, betaRK3(rkLev));
-        solveVy(V, nseRHS, betaRK3(rkLev));
         solveVz(V, nseRHS, betaRK3(rkLev));
 
         // Using the RHS term computed, compute the temperature at next time-step iteratively (and store it in T)
@@ -343,25 +309,22 @@ void lsRK3_d3::timeAdvance(vfield &V, sfield &P, sfield &T) {
  *
  ********************************************************************************************************************************************
  */
-void lsRK3_d3::solveVx(vfield &V, plainvf &nseRHS, real beta) {
+void lsRK3_d2::solveVx(vfield &V, plainvf &nseRHS, real beta) {
     int iterCount = 0;
     real locMax = 0.0;
     real gloMax = 0.0;
     static blitz::Array<real, 3> tempVx(V.Vx.F.lbound(), V.Vx.F.shape());
 
     while (true) {
+        int iY = 0;
         for (int iX = xSt; iX <= xEn; iX++) {
-            for (int iY = ySt; iY <= yEn; iY++) {
-                for (int iZ = zSt; iZ <= zEn; iZ++) {
-                    tempVx(iX, iY, iZ) = ((ihx2 * mesh.xix2(iX) * (V.Vx.F(iX+1, iY, iZ) + V.Vx.F(iX-1, iY, iZ)) +
-                                           i2hx * mesh.xixx(iX) * (V.Vx.F(iX+1, iY, iZ) - V.Vx.F(iX-1, iY, iZ)) +
-                                           ihy2 * mesh.ety2(iY) * (V.Vx.F(iX, iY+1, iZ) + V.Vx.F(iX, iY-1, iZ)) +
-                                           i2hy * mesh.etyy(iY) * (V.Vx.F(iX, iY+1, iZ) - V.Vx.F(iX, iY-1, iZ)) +
-                                           ihz2 * mesh.ztz2(iZ) * (V.Vx.F(iX, iY, iZ+1) + V.Vx.F(iX, iY, iZ-1)) +
-                                           i2hz * mesh.ztzz(iZ) * (V.Vx.F(iX, iY, iZ+1) - V.Vx.F(iX, iY, iZ-1))) *
-                            dt * nu * beta + nseRHS.Vx(iX, iY, iZ)) /
-               (1.0 + 2.0 * dt * nu * beta * (ihx2 * mesh.xix2(iX) + ihy2 * mesh.ety2(iY) + ihz2 * mesh.ztz2(iZ)));
-                }
+            for (int iZ = zSt; iZ <= zEn; iZ++) {
+                tempVx(iX, iY, iZ) = ((ihx2 * mesh.xix2(iX) * (V.Vx.F(iX+1, iY, iZ) + V.Vx.F(iX-1, iY, iZ)) +
+                                       i2hx * mesh.xixx(iX) * (V.Vx.F(iX+1, iY, iZ) - V.Vx.F(iX-1, iY, iZ)) +
+                                       ihz2 * mesh.ztz2(iZ) * (V.Vx.F(iX, iY, iZ+1) + V.Vx.F(iX, iY, iZ-1)) +
+                                       i2hz * mesh.ztzz(iZ) * (V.Vx.F(iX, iY, iZ+1) - V.Vx.F(iX, iY, iZ-1))) *
+                        dt * nu * beta + nseRHS.Vx(iX, iY, iZ)) /
+           (1.0 + 2.0 * dt * nu * beta * (ihx2 * mesh.xix2(iX) + ihz2 * mesh.ztz2(iZ)));
             }
         }
 
@@ -370,16 +333,12 @@ void lsRK3_d3::solveVx(vfield &V, plainvf &nseRHS, real beta) {
         V.imposeVxBC();
 
         for (int iX = xSt; iX <= xEn; iX++) {
-            for (int iY = ySt; iY <= yEn; iY++) {
-                for (int iZ = zSt; iZ <= zEn; iZ++) {
-                    tempVx(iX, iY, iZ) = V.Vx.F(iX, iY, iZ) - beta * dt * nu * (
-                              mesh.xix2(iX) * (V.Vx.F(iX+1, iY, iZ) - 2.0 * V.Vx.F(iX, iY, iZ) + V.Vx.F(iX-1, iY, iZ)) * ihx2 +
-                              mesh.xixx(iX) * (V.Vx.F(iX+1, iY, iZ) - V.Vx.F(iX-1, iY, iZ)) * i2hx +
-                              mesh.ety2(iY) * (V.Vx.F(iX, iY+1, iZ) - 2.0 * V.Vx.F(iX, iY, iZ) + V.Vx.F(iX, iY-1, iZ)) * ihy2 +
-                              mesh.etyy(iY) * (V.Vx.F(iX, iY+1, iZ) - V.Vx.F(iX, iY-1, iZ)) * i2hy +
-                              mesh.ztz2(iZ) * (V.Vx.F(iX, iY, iZ+1) - 2.0 * V.Vx.F(iX, iY, iZ) + V.Vx.F(iX, iY, iZ-1)) * ihz2 +
-                              mesh.ztzz(iZ) * (V.Vx.F(iX, iY, iZ+1) - V.Vx.F(iX, iY, iZ-1)) * i2hz);
-                }
+            for (int iZ = zSt; iZ <= zEn; iZ++) {
+                tempVx(iX, iY, iZ) = V.Vx.F(iX, iY, iZ) - beta * dt * nu * (
+                          mesh.xix2(iX) * (V.Vx.F(iX+1, iY, iZ) - 2.0 * V.Vx.F(iX, iY, iZ) + V.Vx.F(iX-1, iY, iZ)) * ihx2 +
+                          mesh.xixx(iX) * (V.Vx.F(iX+1, iY, iZ) - V.Vx.F(iX-1, iY, iZ)) * i2hx +
+                          mesh.ztz2(iZ) * (V.Vx.F(iX, iY, iZ+1) - 2.0 * V.Vx.F(iX, iY, iZ) + V.Vx.F(iX, iY, iZ-1)) * ihz2 +
+                          mesh.ztzz(iZ) * (V.Vx.F(iX, iY, iZ+1) - V.Vx.F(iX, iY, iZ-1)) * i2hz);
             }
         }
 
@@ -405,79 +364,6 @@ void lsRK3_d3::solveVx(vfield &V, plainvf &nseRHS, real beta) {
 
 /**
  ********************************************************************************************************************************************
- * \brief   Function to solve the implicit equation for y-velocity
- *
- *          The implicit equation for \f$ u_y' \f$ of the implicit Crank-Nicholson method is solved using the Jacobi
- *          iterative method here.
- *
- *          The loop exits when the global maximum of the error in computed solution falls below the specified tolerance.
- *          If the solution doesn't converge even after an internally assigned maximum number for iterations, the solver
- *          aborts with an error message.
- *
- ********************************************************************************************************************************************
- */
-void lsRK3_d3::solveVy(vfield &V, plainvf &nseRHS, real beta) {
-    int iterCount = 0;
-    real locMax = 0.0;
-    real gloMax = 0.0;
-    static blitz::Array<real, 3> tempVy(V.Vy.F.lbound(), V.Vy.F.shape());
-
-    while (true) {
-        for (int iX = xSt; iX <= xEn; iX++) {
-            for (int iY = ySt; iY <= yEn; iY++) {
-                for (int iZ = zSt; iZ <= zEn; iZ++) {
-                    tempVy(iX, iY, iZ) = ((ihx2 * mesh.xix2(iX) * (V.Vy.F(iX+1, iY, iZ) + V.Vy.F(iX-1, iY, iZ)) +
-                                           i2hx * mesh.xixx(iX) * (V.Vy.F(iX+1, iY, iZ) - V.Vy.F(iX-1, iY, iZ)) +
-                                           ihy2 * mesh.ety2(iY) * (V.Vy.F(iX, iY+1, iZ) + V.Vy.F(iX, iY-1, iZ)) +
-                                           i2hy * mesh.etyy(iY) * (V.Vy.F(iX, iY+1, iZ) - V.Vy.F(iX, iY-1, iZ)) +
-                                           ihz2 * mesh.ztz2(iZ) * (V.Vy.F(iX, iY, iZ+1) + V.Vy.F(iX, iY, iZ-1)) +
-                                           i2hz * mesh.ztzz(iZ) * (V.Vy.F(iX, iY, iZ+1) - V.Vy.F(iX, iY, iZ-1))) *
-                            dt * nu * beta + nseRHS.Vy(iX, iY, iZ)) /
-               (1.0 + 2.0 * dt * nu * beta * (ihx2 * mesh.xix2(iX) + ihy2 * mesh.ety2(iY) + ihz2 * mesh.ztz2(iZ)));
-                }
-            }
-        }
-
-        V.Vy.F = tempVy;
-
-        V.imposeVyBC();
-
-        for (int iX = xSt; iX <= xEn; iX++) {
-            for (int iY = ySt; iY <= yEn; iY++) {
-                for (int iZ = zSt; iZ <= zEn; iZ++) {
-                    tempVy(iX, iY, iZ) = V.Vy.F(iX, iY, iZ) - beta * dt * nu * (
-                              mesh.xix2(iX) * (V.Vy.F(iX+1, iY, iZ) - 2.0 * V.Vy.F(iX, iY, iZ) + V.Vy.F(iX-1, iY, iZ)) * ihx2 +
-                              mesh.xixx(iX) * (V.Vy.F(iX+1, iY, iZ) - V.Vy.F(iX-1, iY, iZ)) * i2hx +
-                              mesh.ety2(iY) * (V.Vy.F(iX, iY+1, iZ) - 2.0 * V.Vy.F(iX, iY, iZ) + V.Vy.F(iX, iY-1, iZ)) * ihy2 +
-                              mesh.etyy(iY) * (V.Vy.F(iX, iY+1, iZ) - V.Vy.F(iX, iY-1, iZ)) * i2hy +
-                              mesh.ztz2(iZ) * (V.Vy.F(iX, iY, iZ+1) - 2.0 * V.Vy.F(iX, iY, iZ) + V.Vy.F(iX, iY, iZ-1)) * ihz2 +
-                              mesh.ztzz(iZ) * (V.Vy.F(iX, iY, iZ+1) - V.Vy.F(iX, iY, iZ-1)) * i2hz);
-                }
-            }
-        }
-
-        tempVy(core) = abs(tempVy(core) - nseRHS.Vy(core));
-
-        locMax = blitz::max(tempVy(core));
-        MPI_Allreduce(&locMax, &gloMax, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);
-
-        if (gloMax < mesh.inputParams.cnTolerance) break;
-
-        iterCount += 1;
-
-        if (iterCount > maxIterations) {
-            if (mesh.rankData.rank == 0) {
-                std::cout << "ERROR: Jacobi iterations for solution of Vy not converging. Aborting" << std::endl;
-            }
-            MPI_Finalize();
-            exit(0);
-        }
-    }
-}
-
-
-/**
- ********************************************************************************************************************************************
  * \brief   Function to solve the implicit equation for z-velocity
  *
  *          The implicit equation for \f$ u_z' \f$ of the implicit Crank-Nicholson method is solved using the Jacobi
@@ -489,25 +375,22 @@ void lsRK3_d3::solveVy(vfield &V, plainvf &nseRHS, real beta) {
  *
  ********************************************************************************************************************************************
  */
-void lsRK3_d3::solveVz(vfield &V, plainvf &nseRHS, real beta) {
+void lsRK3_d2::solveVz(vfield &V, plainvf &nseRHS, real beta) {
     int iterCount = 0;
     real locMax = 0.0;
     real gloMax = 0.0;
     static blitz::Array<real, 3> tempVz(V.Vz.F.lbound(), V.Vz.F.shape());
 
     while (true) {
+        int iY = 0;
         for (int iX = xSt; iX <= xEn; iX++) {
-            for (int iY = ySt; iY <= yEn; iY++) {
-                for (int iZ = zSt; iZ <= zEn; iZ++) {
-                    tempVz(iX, iY, iZ) = ((ihx2 * mesh.xix2(iX) * (V.Vz.F(iX+1, iY, iZ) + V.Vz.F(iX-1, iY, iZ)) +
-                                           i2hx * mesh.xixx(iX) * (V.Vz.F(iX+1, iY, iZ) - V.Vz.F(iX-1, iY, iZ)) +
-                                           ihy2 * mesh.ety2(iY) * (V.Vz.F(iX, iY+1, iZ) + V.Vz.F(iX, iY-1, iZ)) +
-                                           i2hy * mesh.etyy(iY) * (V.Vz.F(iX, iY+1, iZ) - V.Vz.F(iX, iY-1, iZ)) +
-                                           ihz2 * mesh.ztz2(iZ) * (V.Vz.F(iX, iY, iZ+1) + V.Vz.F(iX, iY, iZ-1)) +
-                                           i2hz * mesh.ztzz(iZ) * (V.Vz.F(iX, iY, iZ+1) - V.Vz.F(iX, iY, iZ-1))) *
-                            dt * nu * beta + nseRHS.Vz(iX, iY, iZ)) /
-               (1.0 + 2.0 * dt * nu * beta * (ihx2 * mesh.xix2(iX) + ihy2 * mesh.ety2(iY) + ihz2 * mesh.ztz2(iZ)));
-                }
+            for (int iZ = zSt; iZ <= zEn; iZ++) {
+                tempVz(iX, iY, iZ) = ((ihx2 * mesh.xix2(iX) * (V.Vz.F(iX+1, iY, iZ) + V.Vz.F(iX-1, iY, iZ)) +
+                                       i2hx * mesh.xixx(iX) * (V.Vz.F(iX+1, iY, iZ) - V.Vz.F(iX-1, iY, iZ)) +
+                                       ihz2 * mesh.ztz2(iZ) * (V.Vz.F(iX, iY, iZ+1) + V.Vz.F(iX, iY, iZ-1)) +
+                                       i2hz * mesh.ztzz(iZ) * (V.Vz.F(iX, iY, iZ+1) - V.Vz.F(iX, iY, iZ-1))) *
+                        dt * nu * beta + nseRHS.Vz(iX, iY, iZ)) /
+           (1.0 + 2.0 * dt * nu * beta * (ihx2 * mesh.xix2(iX) + ihz2 * mesh.ztz2(iZ)));
             }
         }
 
@@ -516,16 +399,12 @@ void lsRK3_d3::solveVz(vfield &V, plainvf &nseRHS, real beta) {
         V.imposeVzBC();
 
         for (int iX = xSt; iX <= xEn; iX++) {
-            for (int iY = ySt; iY <= yEn; iY++) {
-                for (int iZ = zSt; iZ <= zEn; iZ++) {
-                    tempVz(iX, iY, iZ) = V.Vz.F(iX, iY, iZ) - beta * dt * nu * (
-                              mesh.xix2(iX) * (V.Vz.F(iX+1, iY, iZ) - 2.0 * V.Vz.F(iX, iY, iZ) + V.Vz.F(iX-1, iY, iZ)) * ihx2 +
-                              mesh.xixx(iX) * (V.Vz.F(iX+1, iY, iZ) - V.Vz.F(iX-1, iY, iZ)) * i2hx +
-                              mesh.ety2(iY) * (V.Vz.F(iX, iY+1, iZ) - 2.0 * V.Vz.F(iX, iY, iZ) + V.Vz.F(iX, iY-1, iZ)) * ihy2 +
-                              mesh.etyy(iY) * (V.Vz.F(iX, iY+1, iZ) - V.Vz.F(iX, iY-1, iZ)) * i2hy +
-                              mesh.ztz2(iZ) * (V.Vz.F(iX, iY, iZ+1) - 2.0 * V.Vz.F(iX, iY, iZ) + V.Vz.F(iX, iY, iZ-1)) * ihz2 +
-                              mesh.ztzz(iZ) * (V.Vz.F(iX, iY, iZ+1) - V.Vz.F(iX, iY, iZ-1)) * i2hz);
-                }
+            for (int iZ = zSt; iZ <= zEn; iZ++) {
+                tempVz(iX, iY, iZ) = V.Vz.F(iX, iY, iZ) - beta * dt * nu * (
+                          mesh.xix2(iX) * (V.Vz.F(iX+1, iY, iZ) - 2.0 * V.Vz.F(iX, iY, iZ) + V.Vz.F(iX-1, iY, iZ)) * ihx2 +
+                          mesh.xixx(iX) * (V.Vz.F(iX+1, iY, iZ) - V.Vz.F(iX-1, iY, iZ)) * i2hx +
+                          mesh.ztz2(iZ) * (V.Vz.F(iX, iY, iZ+1) - 2.0 * V.Vz.F(iX, iY, iZ) + V.Vz.F(iX, iY, iZ-1)) * ihz2 +
+                          mesh.ztzz(iZ) * (V.Vz.F(iX, iY, iZ+1) - V.Vz.F(iX, iY, iZ-1)) * i2hz);
             }
         }
 
@@ -549,25 +428,35 @@ void lsRK3_d3::solveVz(vfield &V, plainvf &nseRHS, real beta) {
 }
 
 
-void lsRK3_d3::solveT(sfield &T, plainsf &tmpRHS, real beta) {
+/**
+ ********************************************************************************************************************************************
+ * \brief   Function to solve the implicit equation for scalar field
+ *
+ *          The implicit equation for \f$ \theta' \f$ of the implicit Crank-Nicholson method is solved using the Jacobi
+ *          iterative method here.
+ *
+ *          The loop exits when the global maximum of the error in computed solution falls below the specified tolerance.
+ *          If the solution doesn't converge even after an internally assigned maximum number for iterations, the solver
+ *          aborts with an error message.
+ *
+ ********************************************************************************************************************************************
+ */
+void lsRK3_d2::solveT(sfield &T, plainsf &tmpRHS, real beta) {
     int iterCount = 0;
     real locMax = 0.0;
     real gloMax = 0.0;
     static blitz::Array<real, 3> tempT(T.F.F.lbound(), T.F.F.shape());
 
     while (true) {
+        int iY = 0;
         for (int iX = xSt; iX <= xEn; iX++) {
-            for (int iY = ySt; iY <= yEn; iY++) {
-                for (int iZ = zSt; iZ <= zEn; iZ++) {
-                    tempT(iX, iY, iZ) = ((ihx2 * mesh.xix2(iX) * (T.F.F(iX+1, iY, iZ) + T.F.F(iX-1, iY, iZ)) +
-                                          i2hx * mesh.xixx(iX) * (T.F.F(iX+1, iY, iZ) - T.F.F(iX-1, iY, iZ)) +
-                                          ihy2 * mesh.ety2(iY) * (T.F.F(iX, iY+1, iZ) + T.F.F(iX, iY-1, iZ)) +
-                                          i2hy * mesh.etyy(iY) * (T.F.F(iX, iY+1, iZ) - T.F.F(iX, iY-1, iZ)) +
-                                          ihz2 * mesh.ztz2(iZ) * (T.F.F(iX, iY, iZ+1) + T.F.F(iX, iY, iZ-1)) +
-                                          i2hz * mesh.ztzz(iZ) * (T.F.F(iX, iY, iZ+1) - T.F.F(iX, iY, iZ-1))) *
-                        dt * kappa * beta + tmpRHS.F(iX, iY, iZ)) /
-           (1.0 + 2.0 * dt * kappa * beta * (ihx2 * mesh.xix2(iX) + ihy2 * mesh.ety2(iY) + ihz2 * mesh.ztz2(iZ)));
-                }
+            for (int iZ = zSt; iZ <= zEn; iZ++) {
+                tempT(iX, iY, iZ) = ((ihx2 * mesh.xix2(iX) * (T.F.F(iX+1, iY, iZ) + T.F.F(iX-1, iY, iZ)) +
+                                      i2hx * mesh.xixx(iX) * (T.F.F(iX+1, iY, iZ) - T.F.F(iX-1, iY, iZ)) +
+                                      ihz2 * mesh.ztz2(iZ) * (T.F.F(iX, iY, iZ+1) + T.F.F(iX, iY, iZ-1)) +
+                                      i2hz * mesh.ztzz(iZ) * (T.F.F(iX, iY, iZ+1) - T.F.F(iX, iY, iZ-1))) *
+                    dt * kappa * beta + tmpRHS.F(iX, iY, iZ)) /
+       (1.0 + 2.0 * dt * kappa * beta * (ihx2 * mesh.xix2(iX) + ihz2 * mesh.ztz2(iZ)));
             }
         }
 
@@ -576,16 +465,12 @@ void lsRK3_d3::solveT(sfield &T, plainsf &tmpRHS, real beta) {
         T.imposeBCs();
 
         for (int iX = xSt; iX <= xEn; iX++) {
-            for (int iY = ySt; iY <= yEn; iY++) {
-                for (int iZ = zSt; iZ <= zEn; iZ++) {
-                    tempT(iX, iY, iZ) = T.F.F(iX, iY, iZ) - beta * dt * kappa * (
-                           mesh.xix2(iX) * (T.F.F(iX+1, iY, iZ) - 2.0 * T.F.F(iX, iY, iZ) + T.F.F(iX-1, iY, iZ)) * ihx2 +
-                           mesh.xixx(iX) * (T.F.F(iX+1, iY, iZ) - T.F.F(iX-1, iY, iZ)) * i2hx +
-                           mesh.ety2(iY) * (T.F.F(iX, iY+1, iZ) - 2.0 * T.F.F(iX, iY, iZ) + T.F.F(iX, iY-1, iZ)) * ihy2 +
-                           mesh.etyy(iY) * (T.F.F(iX, iY+1, iZ) - T.F.F(iX, iY-1, iZ)) * i2hy +
-                           mesh.ztz2(iZ) * (T.F.F(iX, iY, iZ+1) - 2.0 * T.F.F(iX, iY, iZ) + T.F.F(iX, iY, iZ-1)) * ihz2 +
-                           mesh.ztzz(iZ) * (T.F.F(iX, iY, iZ+1) - T.F.F(iX, iY, iZ-1)) * i2hz);
-                }
+            for (int iZ = zSt; iZ <= zEn; iZ++) {
+                tempT(iX, iY, iZ) = T.F.F(iX, iY, iZ) - beta * dt * kappa * (
+                       mesh.xix2(iX) * (T.F.F(iX+1, iY, iZ) - 2.0 * T.F.F(iX, iY, iZ) + T.F.F(iX-1, iY, iZ)) * ihx2 +
+                       mesh.xixx(iX) * (T.F.F(iX+1, iY, iZ) - T.F.F(iX-1, iY, iZ)) * i2hx +
+                       mesh.ztz2(iZ) * (T.F.F(iX, iY, iZ+1) - 2.0 * T.F.F(iX, iY, iZ) + T.F.F(iX, iY, iZ-1)) * ihz2 +
+                       mesh.ztzz(iZ) * (T.F.F(iX, iY, iZ+1) - T.F.F(iX, iY, iZ-1)) * i2hz);
             }
         }
 
@@ -617,16 +502,13 @@ void lsRK3_d3::solveT(sfield &T, plainsf &tmpRHS, real beta) {
  *          These coefficients are repeatedly used at many places in the iterative solver for implicit calculation of velocities.
  ********************************************************************************************************************************************
  */
-void lsRK3_d3::setCoefficients() {
+void lsRK3_d2::setCoefficients() {
     real hx2 = pow(mesh.dXi, 2.0);
-    real hy2 = pow(mesh.dEt, 2.0);
     real hz2 = pow(mesh.dZt, 2.0);
 
     i2hx = 0.5/mesh.dXi;
-    i2hy = 0.5/mesh.dEt;
     i2hz = 0.5/mesh.dZt;
 
     ihx2 = 1.0/hx2;
-    ihy2 = 1.0/hy2;
     ihz2 = 1.0/hz2;
 };

@@ -195,3 +195,6 @@ Various articles and pages used to make programming decisions during development
 ### Journal references
 
 1. Ghia, U., Ghia, K. N., & Shin, C. T. (1982). High-Re solutions for incompressible flow using the Navier-Stokes equations and a multigrid method. J. Comput. Phys., 48(3), 387-411. 
+2. Spalart, P. R., Moser, R. D., Rogers, M. M. (1991). Spectral methods for the Navier-Stokes equations with one infinite and two periodic directions. J. Comput. Phys., 96(2), 297-324. 
+3. Orlandi, Paolo (2000). Fluid Flow Phenomena - A Numerical Toolkit. Fluid Mechanics and Its Applications (Springer).
+4. Cheng, W., Samtaney, R. (2014). A high-resolution code for large eddy simulation of incompressible turbulent boundary layer flows. Comput. Fluids, 92, 82-92.
