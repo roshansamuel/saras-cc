@@ -165,9 +165,12 @@ void derivative::calcDerivative1_z(blitz::Array<real, 3> outArray) {
         // 2ND ORDER CENTRAL DIFFERENCE AT BOUNDARIES
         outArray(z0Mid) = 0.5*(F(z0Rgt) - F(z0Lft));
         outArray(z1Mid) = 0.5*(F(z1Rgt) - F(z1Lft));
-    }
-    outArray *= ihz;
 
+    } else if (gridData.inputParams.dScheme == 3) {
+        // COMPACT SCHEME FOR UNIFORM GRID
+    }
+
+    outArray *= ihz;
     outArray = gridData.zt_z(k)*outArray(i, j, k);
 }
 

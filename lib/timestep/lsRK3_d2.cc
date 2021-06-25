@@ -101,7 +101,18 @@ void lsRK3_d2::timeAdvance(vfield &V, sfield &P) {
 
         // Compute the diffusion term for current sub-step
         V.computeDiff(nseRHS);
-        nseRHS *= nu*alphRK3(rkLev);
+        nseRHS *= nu;
+
+        // Add the velocity forcing term
+        V.vForcing->addForcing(nseRHS);
+
+        // Subtract the pressure gradient term
+        pressureGradient = 0.0;
+        P.gradient(pressureGradient);
+        nseRHS -= pressureGradient;
+
+        // Multiply all the collected linear terms of NSE with alpha coefficient
+        nseRHS *= alphRK3(rkLev);
 
         // Compute the non-linear term for current sub-step
         V.computeNLin(V, nltVel);
@@ -120,14 +131,6 @@ void lsRK3_d2::timeAdvance(vfield &V, sfield &P) {
 
             Vp = V;
         }
-
-        // Add the velocity forcing term
-        V.vForcing->addForcing(nseRHS);
-
-        // Subtract the pressure gradient term - this seems to be excluded in LS-RK3 - Check!
-        pressureGradient = 0.0;
-        P.gradient(pressureGradient);
-        nseRHS -= pressureGradient;
 
         // Multiply the entire RHS with dt and add the velocity of previous time-step
         nseRHS *= dt;
@@ -200,11 +203,26 @@ void lsRK3_d2::timeAdvance(vfield &V, sfield &P, sfield &T) {
 
         // Compute the diffusion term of momentum equation for current sub-step
         V.computeDiff(nseRHS);
-        nseRHS *= nu*alphRK3(rkLev);
+        nseRHS *= nu;
 
         // Compute the diffusion term of scalar equation for current sub-step
         T.computeDiff(tmpRHS);
-        tmpRHS *= kappa*alphRK3(rkLev);
+        tmpRHS *= kappa;
+
+        // Add the velocity forcing term
+        V.vForcing->addForcing(nseRHS);
+
+        // Add the scalar forcing term
+        T.tForcing->addForcing(tmpRHS);
+
+        // Subtract the pressure gradient term from momentum equation
+        pressureGradient = 0.0;
+        P.gradient(pressureGradient);
+        nseRHS -= pressureGradient;
+
+        // Multiply all the collected linear terms with alpha coefficient
+        nseRHS *= alphRK3(rkLev);
+        tmpRHS *= alphRK3(rkLev);
 
         // Compute the non-linear term of momentum equation for current sub-step
         V.computeNLin(V, nltVel);
@@ -235,17 +253,6 @@ void lsRK3_d2::timeAdvance(vfield &V, sfield &P, sfield &T) {
             Vp = V;
             Tp = T;
         }
-
-        // Add the velocity forcing term
-        V.vForcing->addForcing(nseRHS);
-
-        // Add the scalar forcing term
-        T.tForcing->addForcing(tmpRHS);
-
-        // Subtract the pressure gradient term from momentum equation - this seems to be excluded in LS-RK3 - Check!
-        pressureGradient = 0.0;
-        P.gradient(pressureGradient);
-        nseRHS -= pressureGradient;
 
         // Multiply the entire RHS with dt and add the velocity of previous time-step
         nseRHS *= dt;
