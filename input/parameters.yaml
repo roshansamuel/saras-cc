@@ -54,7 +54,7 @@
     "Reynolds Number": 1000
     "Rossby Number": 12
     "Rayleigh Number": 1.0e5
-    "Prandtl Number": 0.71
+    "Prandtl Number": 0.786
     "Taylor Number": 0.0
 
     # Dimensions of the domain

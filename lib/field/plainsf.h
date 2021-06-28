@@ -66,6 +66,8 @@ class plainsf {
 
         void gradient(plainvf &gradF);
 
+        plainsf& multAdd(const plainsf &a, real k);
+
         plainsf& operator += (plainsf &a);
         plainsf& operator -= (plainsf &a);
 

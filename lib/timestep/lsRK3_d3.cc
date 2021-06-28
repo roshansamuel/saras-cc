@@ -105,7 +105,7 @@ void lsRK3_d3::timeAdvance(vfield &V, sfield &P) {
     int rkLev;
 
     static plainvf nseRHS(mesh);
-    static plainvf nltVel(mesh);
+    static plainvf tempVF(mesh);
 
     static vfield Vp(mesh, "Vp");
 
@@ -115,7 +115,7 @@ void lsRK3_d3::timeAdvance(vfield &V, sfield &P) {
 
     for (rkLev = 0; rkLev < 3; rkLev++) {
         nseRHS = 0.0;
-        nltVel = 0.0;
+        tempVF = 0.0;
 
         // Compute the diffusion term for current sub-step
         V.computeDiff(nseRHS);
@@ -133,19 +133,19 @@ void lsRK3_d3::timeAdvance(vfield &V, sfield &P) {
         nseRHS *= alphRK3(rkLev);
 
         // Compute the non-linear term for current sub-step
-        V.computeNLin(V, nltVel);
-        nltVel *= gammRK3(rkLev);
+        V.computeNLin(V, tempVF);
+        tempVF *= gammRK3(rkLev);
 
         // Add non-linear term to RHS
-        nseRHS += nltVel;
+        nseRHS += tempVF;
 
         // Compute non-linear term of previous sub-step
         if (rkLev > 0) {
-            nltVel = 0.0;
+            tempVF = 0.0;
 
-            Vp.computeNLin(Vp, nltVel);
-            nltVel *= zetaRK3(rkLev);
-            nseRHS += nltVel;
+            Vp.computeNLin(Vp, tempVF);
+            tempVF *= zetaRK3(rkLev);
+            nseRHS += tempVF;
 
             Vp = V;
         }
@@ -209,10 +209,10 @@ void lsRK3_d3::timeAdvance(vfield &V, sfield &P, sfield &T) {
     int rkLev;
 
     static plainvf nseRHS(mesh);
-    static plainvf nltVel(mesh);
+    static plainvf tempVF(mesh);
 
     static plainsf tmpRHS(mesh);
-    static plainsf nltTmp(mesh);
+    static plainsf tempSF(mesh);
 
     static vfield Vp(mesh, "Vp");
     static sfield Tp(mesh, "Tp");
@@ -225,67 +225,55 @@ void lsRK3_d3::timeAdvance(vfield &V, sfield &P, sfield &T) {
     for (rkLev = 0; rkLev < 3; rkLev++) {
         nseRHS = 0.0;
         tmpRHS = 0.0;
-        nltTmp = 0.0;
-        nltVel = 0.0;
 
-        // Compute the diffusion term of momentum equation for current sub-step
-        V.computeDiff(nseRHS);
-        nseRHS *= nu;
+        // Add the contribution from previous sub-step non-linear terms
+        if (rkLev > 0) {
+            nseRHS = nseRHS.multAdd(tempVF, zetaRK3(rkLev));
+            tmpRHS = tmpRHS.multAdd(tempSF, zetaRK3(rkLev));
+        }
 
-        // Compute the diffusion term of scalar equation for current sub-step
-        T.computeDiff(tmpRHS);
-        tmpRHS *= kappa;
+        tempSF = 0.0;
+        tempVF = 0.0;
 
-        // Add the velocity forcing term
-        V.vForcing->addForcing(nseRHS);
+        // Compute the diffusion terms (linear terms) for current sub-step
+        V.computeDiff(tempVF);
+        T.computeDiff(tempSF);
 
-        // Add the scalar forcing term
-        T.tForcing->addForcing(tmpRHS);
+        nseRHS = nseRHS.multAdd(tempVF, alphRK3(rkLev)*nu);
+        tmpRHS = tmpRHS.multAdd(tempSF, alphRK3(rkLev)*kappa);
 
-        // Subtract the pressure gradient term from momentum equation
+        tempSF = 0.0;
+        tempVF = 0.0;
+
+        // Add the forcing terms
+        V.vForcing->addForcing(tempVF);
+        T.tForcing->addForcing(tempSF);
+
+        // Subtract the pressure gradient term
         pressureGradient = 0.0;
         P.gradient(pressureGradient);
-        nseRHS -= pressureGradient;
+        tempVF -= pressureGradient;
 
-        // Multiply all the collected linear terms with alpha coefficient
-        nseRHS *= alphRK3(rkLev);
-        tmpRHS *= alphRK3(rkLev);
+        // Multiply the forcing and pressure gradient terms to the RHS
+        nseRHS = nseRHS.multAdd(tempVF, alphRK3(rkLev) + betaRK3(rkLev));
+        tmpRHS = tmpRHS.multAdd(tempSF, alphRK3(rkLev) + betaRK3(rkLev));
 
-        // Compute the non-linear term of momentum equation for current sub-step
-        V.computeNLin(V, nltVel);
-        nltVel *= gammRK3(rkLev);
+        tempVF = 0.0;
+        tempSF = 0.0;
 
-        // Compute the non-linear term of scalar equation for current sub-step
-        T.computeNLin(V, nltTmp);
-        nltTmp *= gammRK3(rkLev);
+        // Compute the non-linear terms for current sub-step
+        V.computeNLin(V, tempVF);
+        T.computeNLin(V, tempSF);
 
-        // Add non-linear terms
-        nseRHS += nltVel;
-        tmpRHS += nltTmp;
-
-        // Compute non-linear terms of previous sub-step fields
-        if (rkLev > 0) {
-            nltVel = 0.0;
-            nltTmp = 0.0;
-
-            Vp.computeNLin(Vp, nltVel);
-            Tp.computeNLin(Vp, nltTmp);
-
-            nltVel *= zetaRK3(rkLev);
-            nltTmp *= zetaRK3(rkLev);
-
-            nseRHS += nltVel;
-            tmpRHS += nltTmp;
-
-            Vp = V;
-            Tp = T;
-        }
-
-        // Add sub-grid stress contribution from LES Model, if enabled
+        // Add sub-grid stress contribution from LES Model to the non-linear term, if enabled
         if (mesh.inputParams.lesModel and solTime > 5*mesh.inputParams.tStp) {
-            subgridKE = sgsLES->computeSG(nseRHS, tmpRHS, V, T);
+            subgridKE = sgsLES->computeSG(tempVF, tempSF, V, T);
             tsWriter.subgridEnergy = subgridKE;
         }
+
+        // Add non-linear terms
+        nseRHS = nseRHS.multAdd(tempVF, gammRK3(rkLev));
+        tmpRHS = tmpRHS.multAdd(tempSF, gammRK3(rkLev));
 
         // Multiply the entire RHS with dt and add the velocity of previous time-step
         nseRHS *= dt;
@@ -309,7 +297,7 @@ void lsRK3_d3::timeAdvance(vfield &V, sfield &P, sfield &T) {
 
         // Calculate the rhs for the poisson solver (mgRHS) using the divergence of guessed velocity in V
         V.divergence(mgRHS);
-        mgRHS *= 1.0/dt;
+        mgRHS *= 1.0/((alphRK3(rkLev) + betaRK3(rkLev))*dt);
 
         // Using the calculated mgRHS, evaluate pressure correction (Pp) using multi-grid method
         mgSolver.mgSolve(Pp, mgRHS);
@@ -322,7 +310,7 @@ void lsRK3_d3::timeAdvance(vfield &V, sfield &P, sfield &T) {
 
         // Finally get the velocity field at end of time-step by subtracting the gradient of pressure correction from V
         Pp.gradient(pressureGradient);
-        pressureGradient *= dt;
+        pressureGradient *= (alphRK3(rkLev) + betaRK3(rkLev))*dt;
         V -= pressureGradient;
 
         // Impose boundary conditions on the updated velocity field, V

@@ -84,6 +84,19 @@ derivative::derivative(const grid &gridData, const blitz::Array<real, 3> &F): gr
     yfr = (gridData.rankData.yRank == 0)? true: false;
     xlr = (gridData.rankData.xRank == gridData.rankData.npX - 1)? true: false;
     ylr = (gridData.rankData.yRank == gridData.rankData.npY - 1)? true: false;
+
+    // Set compact finite difference scheme coefficients
+    // These values are taken from [5] of Journal references in README
+    real csD = 0.3793894912;
+    real csE = 1.57557379;
+    real csF = 0.183205192;
+
+    pm1 = csD;
+    pp1 = csD;
+    qm2 = -csF/4.0;
+    qp2 =  csF/4.0;
+    qm1 = -csE/2.0;
+    qp1 =  csE/2.0;
 }
 
 

@@ -81,6 +81,27 @@ plainvf::plainvf(const grid &gridData): gridData(gridData) {
 
 /**
  ********************************************************************************************************************************************
+ * \brief   Function to multiply a given plainvf by a constant and add it to the result
+ *
+ *          The function serves to simplify the operation a = a + k*b.
+ *          It combines the unary += operator with multiplication by scalar.
+ *
+ * \param   a is a const reference to the plainvf to be added to the member fields
+ * \param   k is the real value to be multiplied to a before adding it to the member fields
+ *
+ * \return  A pointer to itself is returned by the plain vector field object to which the operator belongs
+ ********************************************************************************************************************************************
+ */
+plainvf& plainvf::multAdd(const plainvf &a, real k) {
+    Vx += k*a.Vx;
+    Vy += k*a.Vy;
+    Vz += k*a.Vz;
+
+    return *this;
+}
+
+/**
+ ********************************************************************************************************************************************
  * \brief   Overloaded operator to add a given plain vector field
  *
  *          The unary operator += adds a given plain vector field to the plainvf and returns

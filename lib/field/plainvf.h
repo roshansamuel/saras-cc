@@ -56,6 +56,8 @@ class plainvf {
 
         mpidata *mpiVxData, *mpiVyData, *mpiVzData;
 
+        plainvf& multAdd(const plainvf &a, real k);
+
         plainvf& operator += (plainvf &a);
         plainvf& operator -= (plainvf &a);
 

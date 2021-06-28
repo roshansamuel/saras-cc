@@ -89,7 +89,7 @@ void lsRK3_d2::timeAdvance(vfield &V, sfield &P) {
     int rkLev;
 
     static plainvf nseRHS(mesh);
-    static plainvf nltVel(mesh);
+    static plainvf tempVF(mesh);
 
     static vfield Vp(mesh, "Vp");
 
@@ -97,7 +97,7 @@ void lsRK3_d2::timeAdvance(vfield &V, sfield &P) {
 
     for (rkLev = 0; rkLev < 3; rkLev++) {
         nseRHS = 0.0;
-        nltVel = 0.0;
+        tempVF = 0.0;
 
         // Compute the diffusion term for current sub-step
         V.computeDiff(nseRHS);
@@ -115,19 +115,19 @@ void lsRK3_d2::timeAdvance(vfield &V, sfield &P) {
         nseRHS *= alphRK3(rkLev);
 
         // Compute the non-linear term for current sub-step
-        V.computeNLin(V, nltVel);
-        nltVel *= gammRK3(rkLev);
+        V.computeNLin(V, tempVF);
+        tempVF *= gammRK3(rkLev);
 
         // Add non-linear term to RHS
-        nseRHS += nltVel;
+        nseRHS += tempVF;
 
         // Compute non-linear term of previous sub-step
         if (rkLev > 0) {
-            nltVel = 0.0;
+            tempVF = 0.0;
 
-            Vp.computeNLin(Vp, nltVel);
-            nltVel *= zetaRK3(rkLev);
-            nseRHS += nltVel;
+            Vp.computeNLin(Vp, tempVF);
+            tempVF *= zetaRK3(rkLev);
+            nseRHS += tempVF;
 
             Vp = V;
         }
@@ -184,10 +184,10 @@ void lsRK3_d2::timeAdvance(vfield &V, sfield &P, sfield &T) {
     int rkLev;
 
     static plainvf nseRHS(mesh);
-    static plainvf nltVel(mesh);
+    static plainvf tempVF(mesh);
 
     static plainsf tmpRHS(mesh);
-    static plainsf nltTmp(mesh);
+    static plainsf tempSF(mesh);
 
     static vfield Vp(mesh, "Vp");
     static sfield Tp(mesh, "Tp");
@@ -198,57 +198,64 @@ void lsRK3_d2::timeAdvance(vfield &V, sfield &P, sfield &T) {
     for (rkLev = 0; rkLev < 3; rkLev++) {
         nseRHS = 0.0;
         tmpRHS = 0.0;
-        nltTmp = 0.0;
-        nltVel = 0.0;
+        tempSF = 0.0;
+        tempVF = 0.0;
 
         // Compute the diffusion term of momentum equation for current sub-step
         V.computeDiff(nseRHS);
-        nseRHS *= nu;
+        nseRHS *= alphRK3(rkLev)*nu;
 
         // Compute the diffusion term of scalar equation for current sub-step
         T.computeDiff(tmpRHS);
-        tmpRHS *= kappa;
+        tmpRHS *= alphRK3(rkLev)*kappa;
 
         // Add the velocity forcing term
-        V.vForcing->addForcing(nseRHS);
+        V.vForcing->addForcing(tempVF);
 
         // Add the scalar forcing term
-        T.tForcing->addForcing(tmpRHS);
+        T.tForcing->addForcing(tempSF);
 
         // Subtract the pressure gradient term from momentum equation
         pressureGradient = 0.0;
         P.gradient(pressureGradient);
-        nseRHS -= pressureGradient;
+        tempVF -= pressureGradient;
 
         // Multiply all the collected linear terms with alpha coefficient
-        nseRHS *= alphRK3(rkLev);
-        tmpRHS *= alphRK3(rkLev);
+        tempVF *= alphRK3(rkLev) + betaRK3(rkLev);
+        tempSF *= alphRK3(rkLev) + betaRK3(rkLev);
+
+        // Add the forcing and pressure gradient terms to the RHS
+        nseRHS += tempVF;
+        tmpRHS += tempSF;
+
+        tempVF = 0.0;
+        tempSF = 0.0;
 
         // Compute the non-linear term of momentum equation for current sub-step
-        V.computeNLin(V, nltVel);
-        nltVel *= gammRK3(rkLev);
+        V.computeNLin(V, tempVF);
+        tempVF *= gammRK3(rkLev);
 
         // Compute the non-linear term of scalar equation for current sub-step
-        T.computeNLin(V, nltTmp);
-        nltTmp *= gammRK3(rkLev);
+        T.computeNLin(V, tempSF);
+        tempSF *= gammRK3(rkLev);
 
         // Add non-linear terms
-        nseRHS += nltVel;
-        tmpRHS += nltTmp;
+        nseRHS += tempVF;
+        tmpRHS += tempSF;
 
         // Compute non-linear terms of previous sub-step fields
         if (rkLev > 0) {
-            nltVel = 0.0;
-            nltTmp = 0.0;
+            tempVF = 0.0;
+            tempSF = 0.0;
 
-            Vp.computeNLin(Vp, nltVel);
-            Tp.computeNLin(Vp, nltTmp);
+            Vp.computeNLin(Vp, tempVF);
+            Tp.computeNLin(Vp, tempSF);
 
-            nltVel *= zetaRK3(rkLev);
-            nltTmp *= zetaRK3(rkLev);
+            tempVF *= zetaRK3(rkLev);
+            tempSF *= zetaRK3(rkLev);
 
-            nseRHS += nltVel;
-            tmpRHS += nltTmp;
+            nseRHS += tempVF;
+            tmpRHS += tempSF;
 
             Vp = V;
             Tp = T;
