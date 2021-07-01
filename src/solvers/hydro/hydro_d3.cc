@@ -218,9 +218,9 @@ void hydro_d3::solvePDE() {
 
         if (inputParams.useCFL) {
             V.computeTStp(dt);
-            if (dt > inputParams.tStp) {
+
+            if (dt > inputParams.tStp)
                 dt = inputParams.tStp;
-            }
         }
 
         timeStepCount += 1;

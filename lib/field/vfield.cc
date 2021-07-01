@@ -188,33 +188,31 @@ void vfield::computeNLin(const vfield &V, plainvf &H) {
 
 /**
  ********************************************************************************************************************************************
- * \brief   Operator is used to calculate time step #dt_out using CFL Condition
+ * \brief   Operator is used to calculate time step #dt using CFL Condition
  *           
  *          When the parameters specify that time-step must be adaptively
  *          calculated using the Courant Number given in the parameters file,
  *          this function will provide the \f$ dt \f$ using the maximum values
  *          of the components of the vfield.
  *
- * \param   dt_out is a reference to the real value into which the calculated value of time-step is written
+ * \param   dt is a reference to the real value into which the calculated value of time-step is written
  *********************************************************************************************************************************************
  */
-void vfield::computeTStp(real &dt_out) {
-    real Umax, Vmax, Wmax;
-    real delx, dely, delz; 
+void vfield::computeTStp(real &dt) {
+    real locMax, gloMax;
 
-    delx = gridData.dXi;
-    Umax = Vx.fieldMax();
 #ifdef PLANAR
-    dely = 0.0;
-    Vmax = 1.0;
+    locMax = blitz::max((blitz::abs(Vx.F)/gridData.dXi) +
+                        (blitz::abs(Vz.F)/gridData.dZt));
 #else
-    dely = gridData.dEt;
-    Vmax = Vy.fieldMax();
+    locMax = blitz::max((blitz::abs(Vx.F)/gridData.dXi) +
+                        (blitz::abs(Vy.F)/gridData.dEt) +
+                        (blitz::abs(Vz.F)/gridData.dZt));
 #endif
-    delz = gridData.dZt;
-    Wmax = Vz.fieldMax();
 
-    dt_out = real(gridData.inputParams.courantNumber*(delx/Umax + dely/Vmax + delz/Wmax));
+    MPI_Allreduce(&locMax, &gloMax, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);
+
+    dt = gridData.inputParams.courantNumber/gloMax;
 }
 
 /**

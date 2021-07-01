@@ -86,7 +86,7 @@ class vfield {
         vfield(const grid &gridData, std::string fieldName);
 
         void computeDiff(plainvf &H);
-        void computeTStp(real &dt_out);
+        void computeTStp(real &dt);
         void computeNLin(const vfield &V, plainvf &H);
 
         void divergence(plainsf &divV);
