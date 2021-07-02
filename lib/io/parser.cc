@@ -378,6 +378,11 @@ void parser::checkData() {
         MPI_Finalize();
         exit(0);
     }
+
+    if ((probType < 5) and (lesModel == 2)) {
+        std::cout << "WARNING: The specified LES Model is incompatible with the problem type. Resetting LES Model to 1" << std::endl;
+        lesModel = 1;
+    }
 }
 
 /**

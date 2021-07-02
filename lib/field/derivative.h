@@ -61,10 +61,6 @@ class derivative {
         real ihx, ihy, ihz;
         real ihx2, ihy2, ihz2;
 
-        // Compact scheme coefficients
-        real pm1, pp1;
-        real qm2, qm1, qp1, qp2;
-
         blitz::firstIndex i;
         blitz::secondIndex j;
         blitz::thirdIndex k;    

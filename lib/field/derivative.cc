@@ -84,19 +84,6 @@ derivative::derivative(const grid &gridData, const blitz::Array<real, 3> &F): gr
     yfr = (gridData.rankData.yRank == 0)? true: false;
     xlr = (gridData.rankData.xRank == gridData.rankData.npX - 1)? true: false;
     ylr = (gridData.rankData.yRank == gridData.rankData.npY - 1)? true: false;
-
-    // Set compact finite difference scheme coefficients
-    // These values are taken from [5] of Journal references in README
-    real csD = 0.3793894912;
-    real csE = 1.57557379;
-    real csF = 0.183205192;
-
-    pm1 = csD;
-    pp1 = csD;
-    qm2 = -csF/4.0;
-    qp2 =  csF/4.0;
-    qm1 = -csE/2.0;
-    qp1 =  csE/2.0;
 }
 
 
@@ -124,7 +111,6 @@ void derivative::calcDerivative1_x(blitz::Array<real, 3> outArray) {
     }
 
     outArray *= ihx;
-
     outArray = gridData.xi_x(i)*outArray(i, j, k);
 }
 
@@ -151,8 +137,8 @@ void derivative::calcDerivative1_y(blitz::Array<real, 3> outArray) {
         if (yfr) outArray(y0Mid) = 0.5*(F(y0Rgt) - F(y0Lft));
         if (ylr) outArray(y1Mid) = 0.5*(F(y1Rgt) - F(y1Lft));
     }
-    outArray *= ihy;
 
+    outArray *= ihy;
     outArray = gridData.et_y(j)*outArray(i, j, k);
 }
 
@@ -178,9 +164,6 @@ void derivative::calcDerivative1_z(blitz::Array<real, 3> outArray) {
         // 2ND ORDER CENTRAL DIFFERENCE AT BOUNDARIES
         outArray(z0Mid) = 0.5*(F(z0Rgt) - F(z0Lft));
         outArray(z1Mid) = 0.5*(F(z1Rgt) - F(z1Lft));
-
-    } else if (gridData.inputParams.dScheme == 3) {
-        // COMPACT SCHEME FOR UNIFORM GRID
     }
 
     outArray *= ihz;

@@ -47,7 +47,8 @@
 
     # Enable/Disable LES by choosing LES Model
     # 0 = Disable LES
-    # 1 = Stretched Spiral Vortex LES
+    # 1 = Stretched Spiral Vortex LES (velocity field only)
+    # 2 = Stretched Spiral Vortex LES (both velocity and scalar fields)
     "LES Model": 0
 
     # Non-dimensional parameters

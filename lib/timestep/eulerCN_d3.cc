@@ -211,7 +211,13 @@ void eulerCN_d3::timeAdvance(vfield &V, sfield &P, sfield &T) {
 
     // Add sub-grid stress contribution from LES Model, if enabled
     if (mesh.inputParams.lesModel and solTime > 5*mesh.inputParams.tStp) {
-        subgridKE = sgsLES->computeSG(nseRHS, tmpRHS, V, T);
+        subgridKE = 0.0;
+
+        if (mesh.inputParams.lesModel == 1)
+            subgridKE = sgsLES->computeSG(nseRHS, V);
+        else if (mesh.inputParams.lesModel == 2)
+            subgridKE = sgsLES->computeSG(nseRHS, tmpRHS, V, T);
+
         tsWriter.subgridEnergy = subgridKE;
     }
 

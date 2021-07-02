@@ -253,7 +253,13 @@ void lsRK3_d3::timeAdvance(vfield &V, sfield &P, sfield &T) {
 
         // Add sub-grid stress contribution from LES Model to the non-linear term, if enabled
         if (mesh.inputParams.lesModel and solTime > 5*mesh.inputParams.tStp) {
-            subgridKE = sgsLES->computeSG(tempVF, tempSF, V, T);
+            subgridKE = 0.0;
+
+            if (mesh.inputParams.lesModel == 1)
+                subgridKE = sgsLES->computeSG(tempVF, V);
+            else if (mesh.inputParams.lesModel == 2)
+                subgridKE = sgsLES->computeSG(tempVF, tempSF, V, T);
+
             tsWriter.subgridEnergy = subgridKE;
         }
 

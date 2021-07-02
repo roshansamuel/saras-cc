@@ -95,10 +95,10 @@ spiral::spiral(const grid &mesh, const real &kDiff): les(mesh), nu(kDiff) {
     A32.resize(dSize);      A32.reindexSelf(dlBnd);
     A33.resize(dSize);      A33.reindexSelf(dlBnd);
 
-    // The 9 arrays of vector components have the same dimensions and limits as the cell centered variable
+    // The 9 arrays of vector components have the same dimensions and limits as the cell centered variable.
     // These arrays are needed only when computing the sub-grid scalar flux.
-    // Hence they are initialized only for thermal convection problems (probType > 4)
-    if (mesh.inputParams.probType > 4) {
+    // Hence they are initialized only when the scalar flux model must also be included in the LES.
+    if (mesh.inputParams.lesModel == 2) {
         B1.resize(dSize);       B1.reindexSelf(dlBnd);
         B2.resize(dSize);       B2.reindexSelf(dlBnd);
         B3.resize(dSize);       B3.reindexSelf(dlBnd);
