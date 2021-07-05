@@ -69,13 +69,11 @@ eulerCN_d3::eulerCN_d3(const grid &mesh, const real &sTime, const real &dt, tser
 
     // If LES switch is enabled, initialize LES model
     if (mesh.inputParams.lesModel) {
-        if (mesh.inputParams.lesModel == 1) {
-            if (mesh.rankData.rank == 0) {
-                std::cout << "LES Switch is ON. Using stretched spiral vortex LES Model\n" << std::endl;
-            }
-
-            sgsLES = new spiral(mesh, nu);
+        if (mesh.rankData.rank == 0) {
+            std::cout << "LES Switch is ON. Using stretched spiral vortex LES Model\n" << std::endl;
         }
+
+        sgsLES = new spiral(mesh, nu);
     }
 }
 
