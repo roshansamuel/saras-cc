@@ -44,7 +44,9 @@
 #include <math.h>
 #include "les.h"
 
-#define EPS (2e-15)
+// The unusually high value of EPS defined below is taken from the KAUST LES code.
+// The original spiral solver used a value of 2e-15, which is too low.
+#define EPS (2e-3)
 
 /**
  ********************************************************************************************************************************************
@@ -628,14 +630,11 @@ real spiral::eigenvalueSymm() {
 blitz::TinyVector<real, 3> spiral::eigenvectorSymm(real eigval) {
     blitz::TinyVector<real, 3> eigvec;
 
-    /*
-    // Frobenius norm
+    // Frobenius norm for normalization
     real fNorm = std::sqrt(Sxx*Sxx + Syy*Syy + Szz*Szz +
                            Sxy*Sxy + Syz*Syz + Szx*Szx);
 
-    // The original unscaled check for zero had problems.
-    // A below version normalized by Frobenius norm was obtained
-    // from the version provided by Wan Cheng at KAUST.
+    // Check if the given value is indeed an eigenvalue of the matrix
     if (fabs((Sxx - eigval) * ((Syy - eigval) * (Szz - eigval) - Syz * Syz)
             + Sxy * (Syz * Szx - Sxy * (Szz - eigval))
             + Szx * (Sxy * Syz - (Syy - eigval) * Szx))/fabs(fNorm) > EPS) {
@@ -645,9 +644,6 @@ blitz::TinyVector<real, 3> spiral::eigenvectorSymm(real eigval) {
         MPI_Finalize();
         exit(0);
     }
-    */
-    // The above section had to be commented since the spiral LES solver kept failing with this check
-    // for almost every input velocity field given to it.
 
     real det[3] = { (Syy - eigval) * (Szz - eigval) - Syz * Syz,
                     (Szz - eigval) * (Sxx - eigval) - Szx * Szx,
