@@ -110,6 +110,9 @@ timestep::timestep(const grid &mesh, const real &sTime, const real &dt, tseries 
     ySt = core.lbound(1);        yEn = core.ubound(1);
 #endif
     zSt = core.lbound(2);        zEn = core.ubound(2);
+
+    tsWriter.mDiff = nu;
+    tsWriter.tDiff = kappa;
 }
 
 

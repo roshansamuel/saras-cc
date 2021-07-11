@@ -226,12 +226,10 @@ void tseries::writeTSData() {
  *          One line is written to the standard I/O, while another is written to the time series dat file.
  *
  * \param   T is a const reference to the temperature scalar field whose data is used to compute Nusselt number
- * \param   nu is a const reference to the real variable containing the value of kinematic viscosity
- * \param   kappa is a const reference to the real variable containing the value of thermal diffusion
  *
  ********************************************************************************************************************************************
  */
-void tseries::writeTSData(const sfield &T, const real nu, const real kappa) {
+void tseries::writeTSData(const sfield &T) {
     real theta = 0.0;
 
     // COMPUTE ENERGY AND DIVERGENCE FOR THE INITIAL CONDITION
@@ -290,8 +288,8 @@ void tseries::writeTSData(const sfield &T, const real nu, const real kappa) {
     MPI_Allreduce(&localUzT, &totalUzT, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
     totalKineticEnergy /= totalVol;
     totalThermalEnergy /= totalVol;
-    NusseltNo = 1.0 + (totalUzT/totalVol)/kappa;
-    ReynoldsNo = sqrt(2.0*totalKineticEnergy)/nu;
+    NusseltNo = 1.0 + (totalUzT/totalVol)/tDiff;
+    ReynoldsNo = sqrt(2.0*totalKineticEnergy)/mDiff;
     if (mesh.inputParams.lesModel) subgridEnergy /= totalVol;
 
     if (mesh.rankData.rank == 0) {

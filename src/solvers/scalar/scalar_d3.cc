@@ -176,7 +176,7 @@ void scalar_d3::solvePDE() {
     tsWriter.writeTSHeader();
 
     // COMPUTE ENERGY AND DIVERGENCE FOR THE INITIAL CONDITION
-    tsWriter.writeTSData(T, nu, kappa);
+    tsWriter.writeTSData(T);
 
     // WRITE DATA AT t = 0 OR INCREMENT INTERVAL IF RESTARTING
     if (inputParams.restartFlag) {
@@ -226,7 +226,7 @@ void scalar_d3::solvePDE() {
         time += dt;
 
         if (timeStepCount % inputParams.ioCnt == 0) {
-            tsWriter.writeTSData(T, nu, kappa);
+            tsWriter.writeTSData(T);
         }
 
         if (inputParams.readProbes and std::abs(prTime - time) < 0.5*dt) {

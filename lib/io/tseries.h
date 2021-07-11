@@ -52,11 +52,14 @@ class tseries {
         /** The real value for sub-grid energy computed by LES model is used only when LES switch is on */
         real subgridEnergy;
 
+        /** Values momentum and thermal diffusion constants - these are set externally */
+        real mDiff, tDiff;
+
         tseries(const grid &mesh, vfield &solverV, const real &solverTime, const real &timeStep);
 
         void writeTSHeader();
         void writeTSData();
-        void writeTSData(const sfield &T, const real nu, const real kappa);
+        void writeTSData(const sfield &T);
 
         ~tseries();
 

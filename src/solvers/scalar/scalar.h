@@ -50,8 +50,6 @@ class scalar: public hydro {
         /** The scalar field that stores the temperature field */
         sfield T;
 
-        real nu, kappa; 
-
         scalar(const grid &mesh, const parser &solParam, parallel &mpiParam);
 
         virtual ~scalar() { };

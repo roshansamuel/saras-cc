@@ -60,40 +60,7 @@
  */
 scalar::scalar(const grid &mesh, const parser &solParam, parallel &mpiParam):
             hydro(mesh, solParam, mpiParam),
-            T(mesh, "T")
-{
-    // Below flags may be turned on for debugging/dignostic runs only
-    bool viscSwitch = false;
-    bool diffSwitch = false;
-
-    if (inputParams.rbcType == 1) {
-        nu = inputParams.Pr;
-        kappa = 1.0;
-    } else if (inputParams.rbcType == 2) {
-        nu = sqrt(inputParams.Pr/inputParams.Ra);
-        kappa = 1.0/sqrt(inputParams.Pr*inputParams.Ra);
-    } else if (inputParams.rbcType == 3) {
-        nu = 1.0;
-        kappa = 1.0/inputParams.Pr;
-    } else if (inputParams.rbcType == 4) {
-        nu = sqrt(inputParams.Pr/inputParams.Ra);
-        kappa = 1.0/sqrt(inputParams.Pr*inputParams.Ra);
-    } else {
-        if (mpiData.rank == 0) {
-            std::cout << "ERROR: Invalid RBC non-dimensionalization type. Aborting" << std::endl;
-        }
-        exit(0);
-    }
-
-    // Additional option of turning off diffusion for debugging/diagnostics only
-    if (viscSwitch) {
-        nu = 0.0;
-    }
-
-    if (diffSwitch) {
-        kappa = 0.0;
-    }
-}
+            T(mesh, "T") { }
 
 
 /**
