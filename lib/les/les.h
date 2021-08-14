@@ -81,6 +81,8 @@ class les {
 
 class spiral: public les {
     public:
+        bool sgfFlag;
+
         spiral(const grid &mesh, const real &kDiff);
 
         real computeSG(plainvf &nseRHS, vfield &V);

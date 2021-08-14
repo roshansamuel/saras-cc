@@ -31,7 +31,7 @@
  */
 /*! \file hydro.cc
  *
- *  \brief Definitions of common functions for both 2D and 3D runs of the solver class hydro - this class solves the basic Navier-Stokes equation.
+ *  \brief Definitions of common functions for 2D and 3D versions of the solver class hydro - solves the basic Navier-Stokes equation.
  *  \sa hydro.h
  *  \author Roshan Samuel
  *  \date Nov 2019

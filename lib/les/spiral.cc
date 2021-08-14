@@ -104,6 +104,10 @@ spiral::spiral(const grid &mesh, const real &kDiff): les(mesh), nu(kDiff) {
         B1.resize(dSize);       B1.reindexSelf(dlBnd);
         B2.resize(dSize);       B2.reindexSelf(dlBnd);
         B3.resize(dSize);       B3.reindexSelf(dlBnd);
+
+        // If true, compute sub-grid thermal diffusion using the sub-grid scalar flux function.
+        // If false, use sub-grid momentum diffusion and Prandtl number to compute sub-grid thermal diffusion.
+        sgfFlag = true;
     }
 }
 
@@ -222,8 +226,8 @@ real spiral::computeSG(plainvf &nseRHS, vfield &V) {
 
     // Add the divergence of the stress tensor field to the RHS of NSE provided as argument to the function
     nseRHS.Vx(core) = nseRHS.Vx(core) + A11(core) + A21(core) + A31(core);
-    nseRHS.Vy(core) = nseRHS.Vy(core) + A22(core) + A22(core) + A32(core);
-    nseRHS.Vz(core) = nseRHS.Vz(core) + A33(core) + A23(core) + A33(core);
+    nseRHS.Vy(core) = nseRHS.Vy(core) + A12(core) + A22(core) + A32(core);
+    nseRHS.Vz(core) = nseRHS.Vz(core) + A13(core) + A23(core) + A33(core);
 
     return totalSGKE;
 }
@@ -267,9 +271,11 @@ real spiral::computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T) {
     // Compute the x, y and z derivatives of the temperature field and store them into
     // the arrays B1, B2, and B3. These arrays will be later accessed when constructing
     // the temperature gradient tensor at each point in the domain.
-    T.derS.calcDerivative1_x(B1);
-    T.derS.calcDerivative1_y(B2);
-    T.derS.calcDerivative1_z(B3);
+    if (sgfFlag) {
+        T.derS.calcDerivative1_x(B1);
+        T.derS.calcDerivative1_y(B2);
+        T.derS.calcDerivative1_z(B3);
+    }
 
     // Set the array limits when looping over the domain to compute SG contribution.
     // Since correct U, V, and W data is available only in the core,
@@ -321,18 +327,20 @@ real spiral::computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T) {
                 Tyz->F.F(iX, iY, iZ) = sTyz;
                 Tzx->F.F(iX, iY, iZ) = sTzx;
 
-                // To compute sub-grid scalar flux, the sgsStress calculations have already provided
-                // most of the necessary values. Only an additional temperature gradient vector is needed
-                // 5. The temperature gradient vector specified as a 3 component tiny vector
-                dsdx = B1(iX, iY, iZ), B2(iX, iY, iZ), B3(iX, iY, iZ);
+                if (sgfFlag) {
+                    // To compute sub-grid scalar flux, the sgsStress calculations have already provided
+                    // most of the necessary values. Only an additional temperature gradient vector is needed
+                    // 5. The temperature gradient vector specified as a 3 component tiny vector
+                    dsdx = B1(iX, iY, iZ), B2(iX, iY, iZ), B3(iX, iY, iZ);
 
-                // Now the sub-grid scalar flus can be calculated
-                sgsFlux(&sQx, &sQy, &sQz);
+                    // Now the sub-grid scalar flus can be calculated
+                    sgsFlux(&sQx, &sQy, &sQz);
 
-                // Copy the calculated values to the sub-grid scalar flux vector field
-                qX->F.F(iX, iY, iZ) = sQx;
-                qY->F.F(iX, iY, iZ) = sQy;
-                qZ->F.F(iX, iY, iZ) = sQz;
+                    // Copy the calculated values to the sub-grid scalar flux vector field
+                    qX->F.F(iX, iY, iZ) = sQx;
+                    qY->F.F(iX, iY, iZ) = sQy;
+                    qZ->F.F(iX, iY, iZ) = sQz;
+                }
 
                 localSGKE += abs(K)*(mesh.dXi/mesh.xi_x(iX))*(mesh.dEt/mesh.et_y(iY))*(mesh.dZt/mesh.zt_z(iZ));
             }
@@ -360,24 +368,58 @@ real spiral::computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T) {
     Tyz->derS.calcDerivative1_z(A32);
     Tzz->derS.calcDerivative1_z(A33);
 
-    // Add the divergence of the stress tensor field to the RHS of NSE provided as argument to the function
-    nseRHS.Vx(core) = nseRHS.Vx(core) + A11(core) + A21(core) + A31(core);
-    nseRHS.Vy(core) = nseRHS.Vy(core) + A22(core) + A22(core) + A32(core);
-    nseRHS.Vz(core) = nseRHS.Vz(core) + A33(core) + A23(core) + A33(core);
+    // Compute the divergence of the sub-grid stress tensor field
+    B1 = A11 + A21 + A31;
+    B2 = A12 + A22 + A32;
+    B3 = A13 + A23 + A33;
 
-    // Synchronize the sub-grid scalar flux vector field data across MPI processors
-    qX->syncData();
-    qY->syncData();
-    qZ->syncData();
+    // Add the divergence to the RHS of NSE provided as argument to the function
+    nseRHS.Vx(core) = nseRHS.Vx(core) + B1(core);
+    nseRHS.Vy(core) = nseRHS.Vy(core) + B2(core);
+    nseRHS.Vz(core) = nseRHS.Vz(core) + B3(core);
 
-    // Compute the components of the divergence of sub-grid scalar flux vector field
-    qX->derS.calcDerivative1_x(B1);
-    qY->derS.calcDerivative1_y(B2);
-    qZ->derS.calcDerivative1_z(B3);
+    if (sgfFlag) {
+        // Synchronize the sub-grid scalar flux vector field data across MPI processors
+        qX->syncData();
+        qY->syncData();
+        qZ->syncData();
 
-    // Sum the components to get the divergence of scalar flux, and add its contribution
-    // to the RHS of the temperature field equation provided as argument to the function
-    tmpRHS.F(core) = tmpRHS.F(core) + B1(core) + B2(core) + B3(core);
+        // Compute the components of the divergence of sub-grid scalar flux vector field
+        qX->derS.calcDerivative1_x(B1);
+        qY->derS.calcDerivative1_y(B2);
+        qZ->derS.calcDerivative1_z(B3);
+
+        // Sum the components to get the divergence of scalar flux, and add its contribution
+        // to the RHS of the temperature field equation provided as argument to the function
+        tmpRHS.F(core) = tmpRHS.F(core) + B1(core) + B2(core) + B3(core);
+
+    } else {
+        V.derVx.calcDerivative2xx(A11);
+        V.derVx.calcDerivative2yy(A12);
+        V.derVx.calcDerivative2zz(A13);
+        V.derVy.calcDerivative2xx(A21);
+        V.derVy.calcDerivative2yy(A22);
+        V.derVy.calcDerivative2zz(A23);
+        V.derVz.calcDerivative2xx(A31);
+        V.derVz.calcDerivative2yy(A32);
+        V.derVz.calcDerivative2zz(A33);
+
+        A11 = A11 + A12 + A13;
+        A22 = A21 + A22 + A23;
+        A33 = A31 + A32 + A33;
+
+        B1 /= A11;
+        B2 /= A22;
+        B3 /= A33;
+
+        B1 = (B1 + B2 + B3)/(mesh.inputParams.Pr*3.0);
+
+        T.derS.calcDerivative2xx(A11);
+        T.derS.calcDerivative2yy(A22);
+        T.derS.calcDerivative2zz(A33);
+
+        tmpRHS.F(core) = tmpRHS.F(core) + B1(core)*(A11(core) + A22(core) + A33(core));
+    }
 
     return totalSGKE;
 }

@@ -75,6 +75,7 @@ poisson::poisson(const grid &mesh, const parser &solParam): mesh(mesh), inputPar
 
     mgSizeArray(0) = 1;
 
+    // SET FLAGS FOR FIRST AND LAST RANKS ALONG X AND Y DIRECTIONS
     xfr = (mesh.rankData.xRank == 0)? true: false;
     yfr = (mesh.rankData.yRank == 0)? true: false;
     xlr = (mesh.rankData.xRank == mesh.rankData.npX - 1)? true: false;
@@ -89,7 +90,7 @@ poisson::poisson(const grid &mesh, const parser &solParam): mesh(mesh), inputPar
     // COPY THE STAGGERED GRID DERIVATIVES TO LOCAL ARRAYS
     copyDerivs();
 
-    // RESIZE AND INITIALIZE NECESSARY DATA-STRUCTURES
+    // RESIZE AND INITIALIZE ARRAYS
     initializeArrays();
 
     // THE allNeumann FLAG IMPOSES AN ADDITIONAL COMPATIBILITY CONDITION

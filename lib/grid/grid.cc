@@ -271,8 +271,8 @@ void grid::resizeGrid() {
 
     // GLOBAL XI, ETA AND ZETA ARRAYS
     xiGlo.resize(xRange);
-    etGlo.resize(xRange);
-    ztGlo.resize(xRange);
+    etGlo.resize(yRange);
+    ztGlo.resize(zRange);
 
     // GLOBAL GRID POINTS AND THEIR METRICS
     xGlobal.resize(xRange);
