@@ -75,14 +75,17 @@ boundary::boundary(const grid &mesh, field &inField, const int bcWall):
 #ifndef PLANAR
     // Update rankFlag for the front wall (along Y)
     if (wallNum == 2) rankFlag = mesh.rankData.yRank == 0;
-    // Update rankFlag and shiftVal for the front wall (along Y)
+    // Update rankFlag and shiftVal for the back wall (along Y)
     if (wallNum == 3) {
         rankFlag = mesh.rankData.yRank == mesh.rankData.npY - 1;
         shiftVal = -1;
     }
 #endif
-    // Update shiftVal for the top wall (along Z)
+    // Update rankFlag for the bottom wall (along Z)
+    if (wallNum == 4) rankFlag = mesh.rankData.zRank == 0;
+    // Update rankFlag and shiftVal for the top wall (along Z)
     if (wallNum == 5) {
+        rankFlag = mesh.rankData.zRank == mesh.rankData.npZ - 1;
         shiftVal = -1;
     }
 

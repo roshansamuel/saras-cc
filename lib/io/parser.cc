@@ -122,6 +122,7 @@ void parser::parseYAML() {
 
     yamlNode["Parallel"]["X Number of Procs"] >> npX;
     yamlNode["Parallel"]["Y Number of Procs"] >> npY;
+    yamlNode["Parallel"]["Z Number of Procs"] >> npZ;
 
     /********** Solver parameters **********/
 
@@ -208,6 +209,7 @@ void parser::parseYAML() {
 
     npX = yamlNode["Parallel"]["X Number of Procs"].as<int>();
     npY = yamlNode["Parallel"]["Y Number of Procs"].as<int>();
+    npZ = yamlNode["Parallel"]["Z Number of Procs"].as<int>();
 
     /********** Solver parameters **********/
 
@@ -288,6 +290,12 @@ void parser::checkData() {
         npY = 1;
     }
 
+    // CHECK IF LESS THAN 1 PROCESSOR IS ASKED FOR ALONG Z-DIRECTION. IF SO, WARN AND SET IT TO DEFAULT VALUE OF 1
+    if (npZ < 1) {
+        std::cout << "WARNING: Number of processors in Z-direction is less than 1. Setting it to 1" << std::endl;
+        npZ = 1;
+    }
+
     // CHECK IF DOMAIN TYPE STRING IS OF CORRECT LENGTH
     if (domainType.length() != 3) {
         std::cout << "ERROR: Domain type string is not correct. Aborting" << std::endl;
@@ -354,15 +362,16 @@ void parser::checkData() {
 
     // ALONG Z-DIRECTION
     gridSize = int(pow(2, zInd));
+    localSize = gridSize/npZ;
     coarsestSize = int(pow(2, vcDepth+1));
-    if (gridSize < coarsestSize) {
+    if (localSize < coarsestSize) {
         int origDepth = vcDepth;
-        while (gridSize < coarsestSize) {
+        while (localSize < coarsestSize) {
             vcDepth -= 1;
             coarsestSize = int(pow(2, vcDepth+1));
         }
 
-        std::cout << "WARNING: The grid size along Z-direction is too small to reach the V-Cycle depth specified. Reducing depth from " << origDepth << " to " << vcDepth << std::endl;
+        std::cout << "WARNING: The grid size and domain decomposition along Z-direction results in sub-domains too small to reach the V-Cycle depth specified. Reducing depth from " << origDepth << " to " << vcDepth << std::endl;
     }
 
 #ifdef REAL_SINGLE

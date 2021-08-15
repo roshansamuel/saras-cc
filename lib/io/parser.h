@@ -65,9 +65,9 @@ class parser {
         int ioCnt;
         int rbcType;
         int nThreads;
-        int npY, npX;
         int forceType;
         int solnFormat;
+        int npX, npY, npZ;
         int xInd, yInd, zInd;
         int resType, vcDepth, vcCount;
         int gsSmooth, preSmooth, postSmooth;

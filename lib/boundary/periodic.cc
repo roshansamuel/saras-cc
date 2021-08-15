@@ -67,11 +67,11 @@ periodic::periodic(const grid &mesh, field &inField, const int bcWall):
  ********************************************************************************************************************************************
  * \brief   Function to impose periodic BC on a cell centered variable
  *
- *          For Saras solver, the wall passes through the cell centers of the variables.
- *          Hence the variable is lying on the wall for this case.
- *          This BC is used mainly in the Z-direction, because Saras supports pencil/slab decomposition only.
- *          Along Z, no MPI structures exist at all.
- *          Hence no MPI data transfer takes place, and this BC imposes periodic BC along Z.
+ *          For Saras solver, all variables are at cell-centers, while the walls pass along
+ *          the faces of the cells.
+ *          Hence the ghost point and adjacent point just inside the domain are lying on either side of the wall.
+ *          This BC is used only when running a periodic simulation on a single core.
+ *          When using multiple cores, the MPI data-transfer normally handles this BC.
  *
  ********************************************************************************************************************************************
  */

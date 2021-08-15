@@ -4,3 +4,4 @@ In the iterative solvers for U, V, W and T, it might be better (and faster) to c
 The Doxygen documentation in many of the older libraries (esp field) is very outdated and mentions the use of pointers where references are being used now. The docs must be updated.
 Parallelize spiral LES code
 Update checkLDC.py script so that data is interpolated properly before plotting
+Check if periodic BC along Y is working for slab decomposition.

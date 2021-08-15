@@ -51,7 +51,6 @@ class parallel {
     private:
         inline void assignRanks();
         void getNeighbours();
-        void createComms();
 
     public:
         // ALL THE INTEGERS USED BELOW ARE POSITIVE. STILL IT IS BETTER TO USE int INSTEAD OF unsigned int
@@ -61,27 +60,33 @@ class parallel {
         /** The total number of cores available for computation */
         int nProc;
 
-        /** npX and npY indicates the number of sub-domain divisions along the X and Y directions respectively */
+        /** npX, npY and npZ indicates the number of sub-domain divisions along the X, Y and Z directions respectively */
         //@{
-        const int npX, npY;
+        const int npX, npY, npZ;
         //@}
 
-        /** Row and column communicators */
+        /** xRank, yRank and zRank indicates the rank in terms of sub-domain divisions along the X, Y and Z directions respectively.
+         *  Like the global rank variable, these values also start from 0 to npX - 1, npY - 1, and npZ - 1 respectively. */
         //@{
-        MPI_Comm MPI_ROW_COMM, MPI_COL_COMM;
+        int xRank, yRank, zRank;
         //@}
 
-        /** xRank and yRank indicates the rank in terms of sub-domain divisions along the X and Y directions respectively.
-         *  Like the global rank variable, these values also start from 0 to npX - 1 and npY - 1 respectively. */
-        //@{
-        int xRank, yRank;
-        //@}
-
-        /** Array of ranks of the 4 neighbouring sub-domains across faces - Left, Right, Front, Back */
+        /** Array of ranks of the 6 neighbouring sub-domains across faces:
+          * Left, Right, Front, Back, Top, Bottom
+          * */
         blitz::Array<int, 1> faceRanks;
 
-        /** Array of ranks of the 4 neighbouring sub-domains across edges - Left-Front, Left-Back, Right-Front, Right-Back */
+        /** Array of ranks of the 12 neighbouring sub-domains across edges:
+          * Left-Front, Left-Back, Right-Front, Right-Back
+          * Front-Bottom, Front-Top, Back-Bottom, Back-Top
+          * Bottom-Left, Bottom-Right, Top-Left, Top-Right
+          * */
         blitz::Array<int, 1> edgeRanks;
+
+        /** Array of ranks of the 8 neighbouring sub-domains across corners:
+          * Left, Right, Front, Back, Top, Bottom
+          * */
+        blitz::Array<int, 1> cornRanks;
 
         parallel(const parser &iDat);
 

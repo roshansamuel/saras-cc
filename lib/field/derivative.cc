@@ -82,8 +82,11 @@ derivative::derivative(const grid &gridData, const blitz::Array<real, 3> &F): gr
 
     xfr = (gridData.rankData.xRank == 0)? true: false;
     yfr = (gridData.rankData.yRank == 0)? true: false;
+    zfr = (gridData.rankData.zRank == 0)? true: false;
+
     xlr = (gridData.rankData.xRank == gridData.rankData.npX - 1)? true: false;
     ylr = (gridData.rankData.yRank == gridData.rankData.npY - 1)? true: false;
+    zlr = (gridData.rankData.zRank == gridData.rankData.npZ - 1)? true: false;
 }
 
 
@@ -162,8 +165,8 @@ void derivative::calcDerivative1_z(blitz::Array<real, 3> outArray) {
         outArray(fullRange, fullRange, zRange) = central14n(F, 2);
 
         // 2ND ORDER CENTRAL DIFFERENCE AT BOUNDARIES
-        outArray(z0Mid) = 0.5*(F(z0Rgt) - F(z0Lft));
-        outArray(z1Mid) = 0.5*(F(z1Rgt) - F(z1Lft));
+        if (zfr) outArray(z0Mid) = 0.5*(F(z0Rgt) - F(z0Lft));
+        if (zlr) outArray(z1Mid) = 0.5*(F(z1Rgt) - F(z1Lft));
     }
 
     outArray *= ihz;
@@ -268,11 +271,14 @@ void derivative::calcDerivative2zz(blitz::Array<real, 3> outArray) {
         outArray(fullRange, fullRange, zRange) = central24n(F, 2);
 
         // 2ND ORDER CENTRAL DIFFERENCE AT BOUNDARIES
-        tmpArray(z0Mid) = 0.5*(F(z0Rgt) - F(z0Lft));
-        outArray(z0Mid) = F(z0Rgt) - 2.0*F(z0Mid) + F(z0Lft);
-
-        tmpArray(z1Mid) = 0.5*(F(z1Rgt) - F(z1Lft));
-        outArray(z1Mid) = F(z1Rgt) - 2.0*F(z1Mid) + F(z1Lft);
+        if (zfr) {
+            tmpArray(z0Mid) = 0.5*(F(z0Rgt) - F(z0Lft));
+            outArray(z0Mid) = F(z0Rgt) - 2.0*F(z0Mid) + F(z0Lft);
+        }
+        if (zlr) {
+            tmpArray(z1Mid) = 0.5*(F(z1Rgt) - F(z1Lft));
+            outArray(z1Mid) = F(z1Rgt) - 2.0*F(z1Mid) + F(z1Lft);
+        }
     }
 
     tmpArray *= ihz;
