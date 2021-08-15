@@ -78,8 +78,11 @@ poisson::poisson(const grid &mesh, const parser &solParam): mesh(mesh), inputPar
     // SET FLAGS FOR FIRST AND LAST RANKS ALONG X AND Y DIRECTIONS
     xfr = (mesh.rankData.xRank == 0)? true: false;
     yfr = (mesh.rankData.yRank == 0)? true: false;
+    zfr = (mesh.rankData.zRank == 0)? true: false;
+
     xlr = (mesh.rankData.xRank == mesh.rankData.npX - 1)? true: false;
     ylr = (mesh.rankData.yRank == mesh.rankData.npY - 1)? true: false;
+    zlr = (mesh.rankData.zRank == mesh.rankData.npZ - 1)? true: false;
 
     // SET THE ARRAY LIMITS OF FULL AND CORE DOMAINS
     setStagBounds();

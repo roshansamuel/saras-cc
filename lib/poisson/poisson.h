@@ -55,8 +55,8 @@ class poisson {
 
         bool zeroBC;
 
-        /** Flags for first rank (fr) and last rank (lr) along X and Y directions */
-        bool xfr, xlr, yfr, ylr;
+        /** Flags for first rank (fr) and last rank (lr) along X, Y and Z directions */
+        bool xfr, xlr, yfr, ylr, zfr, zlr;
 
         // THIS FLAG IS true WHEN USING NEUMANN BC ON ALL WALLS.
         // USING THIS, THE SOLVER IMPOSES COMPATIBILITY CONDITION. 

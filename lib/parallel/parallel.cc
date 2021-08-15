@@ -97,34 +97,67 @@ inline void parallel::assignRanks() {
  ********************************************************************************************************************************************
  */
 void parallel::getNeighbours() {
-    // EACH PROCESS HAS 4 NEIGHBOURS CORRESPONDING TO THE 4 FACES OF EACH CUBOIDAL SUB-DOMAIN
-    faceRanks.resize(4);
+    // EACH PROCESS HAS 6 NEIGHBOURS CORRESPONDING TO THE 6 FACES OF EACH CUBOIDAL SUB-DOMAIN
+    faceRanks.resize(6);
 
-    // EACH PROCESS ALSO HAS 4 DIAGONAL NEIGHBOURS CORRESPONDING TO THE 4 EDGES OF EACH CUBOIDAL SUB-DOMAIN
-    edgeRanks.resize(4);
+    // EACH PROCESS ALSO HAS 12 EDGE NEIGHBOURS CORRESPONDING TO THE 12 EDGES OF EACH CUBOIDAL SUB-DOMAIN
+    edgeRanks.resize(12);
+
+    // EACH PROCESS ALSO HAS 8 CORNER NEIGHBOURS CORRESPONDING TO THE 8 CORNER OF EACH CUBOIDAL SUB-DOMAIN
+    cornRanks.resize(8);
 
     // EACH PROCESS IS ASSUMED TO HAVE NO NEIGHBOURS INITIALLY
     faceRanks = MPI_PROC_NULL;
     edgeRanks = MPI_PROC_NULL;
+    cornRanks = MPI_PROC_NULL;
 
     // INITIAL FACE NEIGHBOUR ASSIGNMENTS ARE DONE ASSUMING PERIODIC DOMAIN
     // ALONG X/XI DIRECTION
-    faceRanks(0) = findRank(xRank - 1, yRank);
-    faceRanks(1) = findRank(xRank + 1, yRank);
+    faceRanks(0) = findRank(xRank - 1, yRank, zRank);
+    faceRanks(1) = findRank(xRank + 1, yRank, zRank);
 
     // ALONG Y/ETA DIRECTION
 #ifndef PLANAR
-    faceRanks(2) = findRank(xRank, yRank - 1);
-    faceRanks(3) = findRank(xRank, yRank + 1);
+    faceRanks(2) = findRank(xRank, yRank - 1, zRank);
+    faceRanks(3) = findRank(xRank, yRank + 1, zRank);
 #endif
+
+    // ALONG Z/ZETA DIRECTION
+    faceRanks(4) = findRank(xRank, yRank, zRank - 1);
+    faceRanks(5) = findRank(xRank, yRank, zRank + 1);
 
     // PROCESS HAS EDGE NEIGHBOURS ONLY IN 3D SIMULATIONS
 #ifndef PLANAR
-    edgeRanks(0) = findRank(xRank - 1, yRank - 1);
-    edgeRanks(1) = findRank(xRank - 1, yRank + 1);
+    edgeRanks(0)  = findRank(xRank - 1, yRank - 1, zRank);
+    edgeRanks(1)  = findRank(xRank - 1, yRank + 1, zRank);
 
-    edgeRanks(2) = findRank(xRank + 1, yRank - 1);
-    edgeRanks(3) = findRank(xRank + 1, yRank + 1);
+    edgeRanks(2)  = findRank(xRank + 1, yRank - 1, zRank);
+    edgeRanks(3)  = findRank(xRank + 1, yRank + 1, zRank);
+
+    edgeRanks(4)  = findRank(xRank, yRank - 1, zRank - 1);
+    edgeRanks(5)  = findRank(xRank, yRank - 1, zRank + 1);
+
+    edgeRanks(6)  = findRank(xRank, yRank + 1, zRank - 1);
+    edgeRanks(7)  = findRank(xRank, yRank + 1, zRank + 1);
+
+    edgeRanks(8)  = findRank(xRank - 1, yRank, zRank - 1);
+    edgeRanks(9)  = findRank(xRank + 1, yRank, zRank - 1);
+
+    edgeRanks(10) = findRank(xRank - 1, yRank, zRank + 1);
+    edgeRanks(11) = findRank(xRank + 1, yRank, zRank + 1);
+#endif
+                                                        
+    // PROCESS HAS CORNER NEIGHBOURS ONLY IN 3D SIMULATIONS
+#ifndef PLANAR
+    cornRanks(0)  = findRank(xRank - 1, yRank - 1, zRank - 1);
+    cornRanks(1)  = findRank(xRank - 1, yRank + 1, zRank - 1);
+    cornRanks(2)  = findRank(xRank + 1, yRank - 1, zRank - 1);
+    cornRanks(3)  = findRank(xRank + 1, yRank + 1, zRank - 1);
+
+    cornRanks(4)  = findRank(xRank - 1, yRank - 1, zRank + 1);
+    cornRanks(5)  = findRank(xRank - 1, yRank + 1, zRank + 1);
+    cornRanks(6)  = findRank(xRank + 1, yRank - 1, zRank + 1);
+    cornRanks(7)  = findRank(xRank + 1, yRank + 1, zRank + 1);
 #endif
 }
 

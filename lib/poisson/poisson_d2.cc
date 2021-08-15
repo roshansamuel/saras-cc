@@ -408,52 +408,44 @@ void multigrid_d2::imposeBC() {
         }
 #else
         // NEUMANN BOUNDARY CONDITION AT LEFT AND RIGHT WALLS
-        if (xfr) {
-            lhs(vLevel)(-1, 0, all) = lhs(vLevel)(0, 0, all);
-        }
-
-        if (xlr) {
-            lhs(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = lhs(vLevel)(stagCore(vLevel).ubound(0), 0, all);
-        }
+        if (xfr) lhs(vLevel)(-1, 0, all) = lhs(vLevel)(0, 0, all);
+        if (xlr) lhs(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = lhs(vLevel)(stagCore(vLevel).ubound(0), 0, all);
 #endif
     } // PERIODIC BOUNDARY CONDITIONS ARE AUTOMATICALLY IMPOSED BY PERIODIC DATA TRANSFER ACROSS PROCESSORS THROUGH updatePads()
 
-    if (inputParams.zPer) {
-        // PERIODIC BOUNDARY CONDITION AT BOTTOM WALL
-        lhs(vLevel)(all, 0, -1) = lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2));
-
-        // PERIODIC BOUNDARY CONDITION AT TOP WALL
-        lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = lhs(vLevel)(all, 0, 0);
-
-    } else {
+    if (not inputParams.zPer) {
 #ifdef TEST_POISSON
         // DIRICHLET/NEUMANN BOUNDARY CONDITION AT BOTTOM AND TOP WALLS
         if (zeroBC) {
-            if (testNeumann) {
-                lhs(vLevel)(all, 0, -1) = lhs(vLevel)(all, 0, 0);
-            } else {
-                lhs(vLevel)(all, 0, -1) = -lhs(vLevel)(all, 0, 0);
+            if (zfr) {
+                if (testNeumann) {
+                    lhs(vLevel)(all, 0, -1) = lhs(vLevel)(all, 0, 0);
+                } else {
+                    lhs(vLevel)(all, 0, -1) = -lhs(vLevel)(all, 0, 0);
+                }
             }
 
             // WHETHER testNeumann IS ENABLED OR NOT, THE TOP WALL HAS DIRICHLET BC SINCE ALL 4 WALLS SHOULD NOT HAVE NEUMANN BC
-            lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = -lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2));
+            if (zlr) lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = -lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2));
+
         } else {
-            if (testNeumann) {
-                lhs(vLevel)(all, 0, -1) = 0.5*hz + lhs(vLevel)(all, 0, 0);
-            } else {
-                lhs(vLevel)(all, 0, -1) = 2.0*zWall(all) - lhs(vLevel)(all, 0, 0);
+            if (zfr) {
+                if (testNeumann) {
+                    lhs(vLevel)(all, 0, -1) = 0.5*hz + lhs(vLevel)(all, 0, 0);
+                } else {
+                    lhs(vLevel)(all, 0, -1) = 2.0*zWall(all) - lhs(vLevel)(all, 0, 0);
+                }
             }
 
             // WHETHER testNeumann IS ENABLED OR NOT, THE TOP WALL HAS DIRICHLET BC SINCE ALL 4 WALLS SHOULD NOT HAVE NEUMANN BC
-            lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = 2.0*zWall(all) - lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2));
+            if (zlr) lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = 2.0*zWall(all) - lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2));
         }
 #else
         // NEUMANN BOUNDARY CONDITION AT BOTTOM AND TOP WALLS
-        lhs(vLevel)(all, 0, -1) = lhs(vLevel)(all, 0, 0);
-
-        lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2));
+        if (zfr) lhs(vLevel)(all, 0, -1) = lhs(vLevel)(all, 0, 0);
+        if (zlr) lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2));
 #endif
-    }
+    } // PERIODIC BOUNDARY CONDITIONS ARE AUTOMATICALLY IMPOSED BY PERIODIC DATA TRANSFER ACROSS PROCESSORS THROUGH updatePads()
 }
 
 

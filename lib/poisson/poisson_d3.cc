@@ -466,20 +466,13 @@ void multigrid_d3::imposeBC() {
             if (xfr) lhs(vLevel)(-1, all, all) = -lhs(vLevel)(0, all, all);
             if (xlr) lhs(vLevel)(stagCore(vLevel).ubound(0) + 1, all, all) = -lhs(vLevel)(stagCore(vLevel).ubound(0), all, all);
 
-            //if (xfr) lhs(vLevel)(-1, all, all) = 0.0;
-            //if (xlr) lhs(vLevel)(stagCore(vLevel).ubound(0) + 1, all, all) = 0.0;
-
         } else {
             if (xfr) lhs(vLevel)(-1, all, all) = 2.0*xWall(all, all) - lhs(vLevel)(0, all, all);
             if (xlr) lhs(vLevel)(stagCore(vLevel).ubound(0) + 1, all, all) = 2.0*xWall(all, all) - lhs(vLevel)(stagCore(vLevel).ubound(0), all, all);
-
-            //if (xfr) lhs(vLevel)(-1, all, all) = xWall(all, all);
-            //if (xlr) lhs(vLevel)(stagCore(vLevel).ubound(0) + 1, all, all) = xWall(all, all);
         }
 #else
         // NEUMANN BOUNDARY CONDITION AT LEFT AND RIGHT WALLS
         if (xfr) lhs(vLevel)(-1, all, all) = lhs(vLevel)(0, all, all);
-
         if (xlr) lhs(vLevel)(stagCore(vLevel).ubound(0) + 1, all, all) = lhs(vLevel)(stagCore(vLevel).ubound(0), all, all);
 #endif
     } // PERIODIC BOUNDARY CONDITIONS ARE AUTOMATICALLY IMPOSED BY PERIODIC DATA TRANSFER ACROSS PROCESSORS THROUGH updatePads()
@@ -492,55 +485,34 @@ void multigrid_d3::imposeBC() {
             if (yfr) lhs(vLevel)(all, -1, all) = -lhs(vLevel)(all, 0, all);
             if (ylr) lhs(vLevel)(all, stagCore(vLevel).ubound(1) + 1, all) = -lhs(vLevel)(all, stagCore(vLevel).ubound(1), all);
 
-            //if (yfr) lhs(vLevel)(all, -1, all) = 0.0;
-            //if (ylr) lhs(vLevel)(all, stagCore(vLevel).ubound(1) + 1, all) = 0.0;
-
         } else {
             if (yfr) lhs(vLevel)(all, -1, all) = 2.0*yWall(all, all) - lhs(vLevel)(all, 0, all);
             if (ylr) lhs(vLevel)(all, stagCore(vLevel).ubound(1) + 1, all) = 2.0*yWall(all, all) - lhs(vLevel)(all, stagCore(vLevel).ubound(1), all);
-
-            //if (yfr) lhs(vLevel)(all, -1, all) = yWall(all, all);
-            //if (ylr) lhs(vLevel)(all, stagCore(vLevel).ubound(1) + 1, all) = yWall(all, all);
         }
 #else
         // NEUMANN BOUNDARY CONDITION AT FRONT AND BACK WALLS
         if (yfr) lhs(vLevel)(all, -1, all) = lhs(vLevel)(all, 0, all);
-
         if (ylr) lhs(vLevel)(all, stagCore(vLevel).ubound(1) + 1, all) = lhs(vLevel)(all, stagCore(vLevel).ubound(1), all);
 #endif
     } // PERIODIC BOUNDARY CONDITIONS ARE AUTOMATICALLY IMPOSED BY PERIODIC DATA TRANSFER ACROSS PROCESSORS THROUGH updatePads()
 
 
-    if (inputParams.zPer) {
-        // PERIODIC BOUNDARY CONDITION AT BOTTOM WALL
-        lhs(vLevel)(all, all, -1) = lhs(vLevel)(all, all, stagCore(vLevel).ubound(2));
-
-        // PERIODIC BOUNDARY CONDITION AT TOP WALL
-        lhs(vLevel)(all, all, stagCore(vLevel).ubound(2) + 1) = lhs(vLevel)(all, all, 0);
-
-    } else {
+    if (not inputParams.zPer) {
 #ifdef TEST_POISSON
         // DIRICHLET BOUNDARY CONDITION AT BOTTOM AND TOP WALLS
         if (zeroBC) {
-            lhs(vLevel)(all, all, -1) = -lhs(vLevel)(all, all, 0);
-            lhs(vLevel)(all, all, stagCore(vLevel).ubound(2) + 1) = -lhs(vLevel)(all, all, stagCore(vLevel).ubound(2));
-
-            //lhs(vLevel)(all, all, -1) = 0.0;
-            //lhs(vLevel)(all, all, stagCore(vLevel).ubound(2) + 1) = 0.0;
+            if (zfr) lhs(vLevel)(all, all, -1) = -lhs(vLevel)(all, all, 0);
+            if (zlr) lhs(vLevel)(all, all, stagCore(vLevel).ubound(2) + 1) = -lhs(vLevel)(all, all, stagCore(vLevel).ubound(2));
         } else {
-            lhs(vLevel)(all, all, -1) = 2.0*zWall(all, all) - lhs(vLevel)(all, all, 0);
-            lhs(vLevel)(all, all, stagCore(vLevel).ubound(2) + 1) = 2.0*zWall(all, all) - lhs(vLevel)(all, all, stagCore(vLevel).ubound(2));
-
-            //lhs(vLevel)(all, all, -1) = zWall(all, all);
-            //lhs(vLevel)(all, all, stagCore(vLevel).ubound(2) + 1) = zWall(all, all);
+            if (zfr) lhs(vLevel)(all, all, -1) = 2.0*zWall(all, all) - lhs(vLevel)(all, all, 0);
+            if (zlr) lhs(vLevel)(all, all, stagCore(vLevel).ubound(2) + 1) = 2.0*zWall(all, all) - lhs(vLevel)(all, all, stagCore(vLevel).ubound(2));
         }
 #else
         // NEUMANN BOUNDARY CONDITION AT BOTTOM AND TOP WALLS
-        lhs(vLevel)(all, all, -1) = lhs(vLevel)(all, all, 0);
-
-        lhs(vLevel)(all, all, stagCore(vLevel).ubound(2) + 1) = lhs(vLevel)(all, all, stagCore(vLevel).ubound(2));
+        if (zfr) lhs(vLevel)(all, all, -1) = lhs(vLevel)(all, all, 0);
+        if (zlr) lhs(vLevel)(all, all, stagCore(vLevel).ubound(2) + 1) = lhs(vLevel)(all, all, stagCore(vLevel).ubound(2));
 #endif
-    }
+    } // PERIODIC BOUNDARY CONDITIONS ARE AUTOMATICALLY IMPOSED BY PERIODIC DATA TRANSFER ACROSS PROCESSORS THROUGH updatePads()
 }
 
 

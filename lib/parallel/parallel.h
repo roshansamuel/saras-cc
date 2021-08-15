@@ -84,7 +84,8 @@ class parallel {
         blitz::Array<int, 1> edgeRanks;
 
         /** Array of ranks of the 8 neighbouring sub-domains across corners:
-          * Left, Right, Front, Back, Top, Bottom
+          * Left-Front-Bottom, Left-Back-Bottom, Right-Front-Bottom, Right-Back-Bottom
+          * Left-Front-Top, Left-Back-Top, Right-Front-Top, Right-Back-Top
           * */
         blitz::Array<int, 1> cornRanks;
 
@@ -109,20 +110,21 @@ class parallel {
 
 /**
  ********************************************************************************************************************************************
- * \brief   Function to calculate the global rank of a sub-domain using its xRank and yRank
+ * \brief   Function to calculate the global rank of a sub-domain using its xRank, yRank and zRank
  *
- *          The inline function computes the global rank of the processor using xRank and yRank.
+ *          The inline function computes the global rank of the processor using xRank, yRank and zRank.
  *          In doing so, a periodic domain is assumed. Non-periodic problems must have ranks set specifically.
  *
  *
  * \param   xR is the integer value of the sub-domain's xRank
  * \param   yR is the integer value of the sub-domain's yRank
+ * \param   zR is the integer value of the sub-domain's zRank
  *
  * \return  The integer value of the rank of the sub-domain
  ********************************************************************************************************************************************
  */
 
-        inline int findRank(int xR, int yR) {return pmod(yR, npY)*npX + pmod(xR, npX);};
+        inline int findRank(int xR, int yR, int zR) {return pmod(zR, npZ)*npX*npY + pmod(yR, npY)*npX + pmod(xR, npX);};
 };
 
 /**
