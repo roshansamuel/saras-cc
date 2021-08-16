@@ -179,7 +179,7 @@ void grid::makeSizeArray() {
  * \brief   Function to set the extent of local sub-domains in terms of the global index of the full domain
  *
  *          Depending on the number of processor divisions along each direction, the limits of the grid for each local
- *          sub-domain is set based on its \ref parallel#xRank "xRank" and \ref parallel#yRank "yRank".
+ *          sub-domain is set based on its \ref parallel#xRank "xRank", \ref parallel#yRank "yRank" and \ref parallel#zRank "zRank".
  *          These limits are used to locate the local sub-domains within the full domain later.
  ********************************************************************************************************************************************
  */
@@ -190,12 +190,12 @@ void grid::computeGlobalLimits() {
 
     // NUMBER OF STAGGERED POINTS IN EACH SUB-DOMAIN EXCLUDING PAD POINTS
     localNx = (globalSize(0) - 1)/rankData.npX + 1;
-#ifndef PLANAR
     localNy = (globalSize(1) - 1)/rankData.npY + 1;
-#else
+    localNz = (globalSize(2) - 1)/rankData.npZ + 1;
+
+#ifdef PLANAR
     localNy = 1;
 #endif
-    localNz = (globalSize(2));
 
     // SETTING GLOBAL LIMITS
     // ADD ONE EXTRA POINT EACH AT FIRST AND LAST SUB-DOMAINS
@@ -213,7 +213,7 @@ void grid::computeGlobalLimits() {
     etEn = etSt + localNy - 1;
 
     // ALONG ZETA-DIRECTION
-    ztSt = 0;
+    ztSt = rankData.zRank*localNz;
     ztEn = ztSt + localNz - 1;
 
     coreSize = localNx, localNy, localNz;

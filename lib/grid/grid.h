@@ -202,7 +202,9 @@ class grid {
         ********************************************************************************************************************************************
         */
         inline bool pointInDomain(blitz::TinyVector<int, 3> gloIndex) const {
-            if ((gloIndex(0) < subarrayEnds(0)) and (gloIndex(0) >= subarrayStarts(0)) and (gloIndex(1) < subarrayEnds(1)) and (gloIndex(1) >= subarrayStarts(1))) return true;
+            if ((gloIndex(0) < subarrayEnds(0)) and (gloIndex(0) >= subarrayStarts(0)) and
+                (gloIndex(1) < subarrayEnds(1)) and (gloIndex(1) >= subarrayStarts(1)) and
+                (gloIndex(2) < subarrayEnds(2)) and (gloIndex(2) >= subarrayStarts(2))) return true;
 
             return false;
         };
@@ -225,7 +227,7 @@ class grid {
             if (pointInDomain(gloIndex)) {
                 locIndex(0) = gloIndex(0) % coreSize(0);
                 locIndex(1) = gloIndex(1) % coreSize(1);
-                locIndex(2) = gloIndex(2);
+                locIndex(2) = gloIndex(2) % coreSize(2);
             } else {
                 locIndex = 0, 0, 0;
             }
@@ -250,7 +252,7 @@ class grid {
 
             gloIndex(0) = rankData.xRank*coreSize(0) + locIndex(0);
             gloIndex(1) = rankData.yRank*coreSize(1) + locIndex(1);
-            gloIndex(2) = locIndex(2);
+            gloIndex(2) = rankData.zRank*coreSize(2) + locIndex(2);
 
             return gloIndex;
         };

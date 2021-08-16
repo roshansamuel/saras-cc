@@ -109,6 +109,13 @@ void hydro::checkPeriodic() {
 
             mpiData.edgeRanks(0) = MPI_PROC_NULL;
             mpiData.edgeRanks(1) = MPI_PROC_NULL;
+            mpiData.edgeRanks(8) = MPI_PROC_NULL;
+            mpiData.edgeRanks(10) = MPI_PROC_NULL;
+
+            mpiData.cornRanks(0) = MPI_PROC_NULL;
+            mpiData.cornRanks(1) = MPI_PROC_NULL;
+            mpiData.cornRanks(4) = MPI_PROC_NULL;
+            mpiData.cornRanks(5) = MPI_PROC_NULL;
         }
 
         if (mpiData.xRank == mpiData.npX-1) {
@@ -116,6 +123,13 @@ void hydro::checkPeriodic() {
 
             mpiData.edgeRanks(2) = MPI_PROC_NULL;
             mpiData.edgeRanks(3) = MPI_PROC_NULL;
+            mpiData.edgeRanks(9) = MPI_PROC_NULL;
+            mpiData.edgeRanks(11) = MPI_PROC_NULL;
+
+            mpiData.cornRanks(2) = MPI_PROC_NULL;
+            mpiData.cornRanks(3) = MPI_PROC_NULL;
+            mpiData.cornRanks(6) = MPI_PROC_NULL;
+            mpiData.cornRanks(7) = MPI_PROC_NULL;
         }
     }
 
@@ -137,6 +151,13 @@ void hydro::checkPeriodic() {
 
             mpiData.edgeRanks(0) = MPI_PROC_NULL;
             mpiData.edgeRanks(2) = MPI_PROC_NULL;
+            mpiData.edgeRanks(4) = MPI_PROC_NULL;
+            mpiData.edgeRanks(5) = MPI_PROC_NULL;
+
+            mpiData.cornRanks(0) = MPI_PROC_NULL;
+            mpiData.cornRanks(2) = MPI_PROC_NULL;
+            mpiData.cornRanks(4) = MPI_PROC_NULL;
+            mpiData.cornRanks(6) = MPI_PROC_NULL;
         }
 
         if (mpiData.yRank == mpiData.npY-1) {
@@ -144,15 +165,50 @@ void hydro::checkPeriodic() {
 
             mpiData.edgeRanks(1) = MPI_PROC_NULL;
             mpiData.edgeRanks(3) = MPI_PROC_NULL;
+            mpiData.edgeRanks(6) = MPI_PROC_NULL;
+            mpiData.edgeRanks(7) = MPI_PROC_NULL;
+
+            mpiData.cornRanks(1) = MPI_PROC_NULL;
+            mpiData.cornRanks(3) = MPI_PROC_NULL;
+            mpiData.cornRanks(5) = MPI_PROC_NULL;
+            mpiData.cornRanks(7) = MPI_PROC_NULL;
         }
     }
 #endif
 
-    // Inform user about BC along top and bottom walls
+    // Top and bottom walls
     if (not inputParams.zPer) {
         if (mpiData.rank == 0) {
             std::cout << "Using non-periodic boundary conditions along Z Direction" << std::endl;
             std::cout << std::endl;
+        }
+
+        if (mpiData.zRank == 0) {
+            mpiData.faceRanks(4) = MPI_PROC_NULL;
+
+            mpiData.edgeRanks(4) = MPI_PROC_NULL;
+            mpiData.edgeRanks(6) = MPI_PROC_NULL;
+            mpiData.edgeRanks(8) = MPI_PROC_NULL;
+            mpiData.edgeRanks(9) = MPI_PROC_NULL;
+
+            mpiData.cornRanks(0) = MPI_PROC_NULL;
+            mpiData.cornRanks(1) = MPI_PROC_NULL;
+            mpiData.cornRanks(2) = MPI_PROC_NULL;
+            mpiData.cornRanks(3) = MPI_PROC_NULL;
+        }
+
+        if (mpiData.zRank == mpiData.npZ-1) {
+            mpiData.faceRanks(5) = MPI_PROC_NULL;
+
+            mpiData.edgeRanks(5) = MPI_PROC_NULL;
+            mpiData.edgeRanks(7) = MPI_PROC_NULL;
+            mpiData.edgeRanks(10) = MPI_PROC_NULL;
+            mpiData.edgeRanks(11) = MPI_PROC_NULL;
+
+            mpiData.cornRanks(4) = MPI_PROC_NULL;
+            mpiData.cornRanks(5) = MPI_PROC_NULL;
+            mpiData.cornRanks(6) = MPI_PROC_NULL;
+            mpiData.cornRanks(7) = MPI_PROC_NULL;
         }
     }
 };
