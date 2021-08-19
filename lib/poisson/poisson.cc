@@ -364,11 +364,11 @@ void poisson::setStagBounds() {
 #ifdef PLANAR
     localSizeIndex = blitz::TinyVector<int, 3>(mesh.sizeIndex(0) - int(log2(inputParams.npX)),
                                                mesh.sizeIndex(1),
-                                               mesh.sizeIndex(2));
+                                               mesh.sizeIndex(2) - int(log2(inputParams.npZ)));
 #else
     localSizeIndex = blitz::TinyVector<int, 3>(mesh.sizeIndex(0) - int(log2(inputParams.npX)),
                                                mesh.sizeIndex(1) - int(log2(inputParams.npY)),
-                                               mesh.sizeIndex(2));
+                                               mesh.sizeIndex(2) - int(log2(inputParams.npZ)));
 #endif
 
     for (int i=0; i<=inputParams.vcDepth; i++) {

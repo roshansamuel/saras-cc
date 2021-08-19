@@ -47,41 +47,17 @@
 
 class mpidata {
     private:
-        /** MPI subarray datatype for the slice of data to be sent to the neighbouring sub-domain to left along x-direction */
-        MPI_Datatype sendSubarrayX0;
-        /** MPI subarray datatype for the slice of data to be sent to the neighbouring sub-domain to right along x-direction */
-        MPI_Datatype sendSubarrayX1;
-        /** MPI subarray datatype for the slice of data to be sent to the neighbouring sub-domain to left along y-direction (front side) */
-        MPI_Datatype sendSubarrayY0;
-        /** MPI subarray datatype for the slice of data to be sent to the neighbouring sub-domain to right along y-direction (rear side) */
-        MPI_Datatype sendSubarrayY1;
+        /** MPI derived datatypes for data to be sent/received across the faces of sub-domains */
+        blitz::Array<MPI_Datatype, 1> fsSubs, frSubs;
 
-        /** MPI subarray datatype for the slice of data to be received from the neighbouring sub-domain to left along x-direction */
-        MPI_Datatype recvSubarrayX0;
-        /** MPI subarray datatype for the slice of data to be received from the neighbouring sub-domain to right along x-direction */
-        MPI_Datatype recvSubarrayX1;
-        /** MPI subarray datatype for the slice of data to be received from the neighbouring sub-domain to left along y-direction (front side) */
-        MPI_Datatype recvSubarrayY0;
-        /** MPI subarray datatype for the slice of data to be received from the neighbouring sub-domain to right along y-direction (rear side) */
-        MPI_Datatype recvSubarrayY1;
+        /** MPI derived datatypes for data to be sent/received across the edges of sub-domains */
+        blitz::Array<MPI_Datatype, 1> esSubs, erSubs;
 
-        /** MPI subarray datatype for the slice of data to be sent to the neighbouring sub-domain along the left-front edge */
-        MPI_Datatype sendSubarrayX0Y0;
-        /** MPI subarray datatype for the slice of data to be sent to the neighbouring sub-domain along the left-back edge */
-        MPI_Datatype sendSubarrayX0Y1;
-        /** MPI subarray datatype for the slice of data to be sent to the neighbouring sub-domain along the right-front edge */
-        MPI_Datatype sendSubarrayX1Y0;
-        /** MPI subarray datatype for the slice of data to be sent to the neighbouring sub-domain along the right-back edge */
-        MPI_Datatype sendSubarrayX1Y1;
+        /** MPI derived datatypes for data to be sent/received across the corners of sub-domains */
+        blitz::Array<MPI_Datatype, 1> csSubs, crSubs;
 
-        /** MPI subarray datatype for the slice of data to be received from the neighbouring sub-domain along the left-front edge */
-        MPI_Datatype recvSubarrayX0Y0;                                                                                             
-        /** MPI subarray datatype for the slice of data to be received from the neighbouring sub-domain along the left-back edge */
-        MPI_Datatype recvSubarrayX0Y1;                                                                                             
-        /** MPI subarray datatype for the slice of data to be received from the neighbouring sub-domain along the right-front edge */
-        MPI_Datatype recvSubarrayX1Y0;                                                                                             
-        /** MPI subarray datatype for the slice of data to be received from the neighbouring sub-domain along the right-back edge */
-        MPI_Datatype recvSubarrayX1Y1;
+        /** Array of tags for receiving data. */
+        blitz::Array<int, 1> fTags, eTags, cTags;
 
         /** An array of MPI_Request data-types necessary for obtaining output from the non-blocking receive MPI_Irecv in the syncData function. */
         blitz::Array<MPI_Request, 1> recvRequest;

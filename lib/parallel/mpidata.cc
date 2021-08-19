@@ -55,8 +55,26 @@
  ********************************************************************************************************************************************
  */
 mpidata::mpidata(blitz::Array<real, 3> inputArray, const parallel &parallelData): dataField(inputArray), rankData(parallelData) {
-    recvStatus.resize(4);
-    recvRequest.resize(4);
+    recvStatus.resize(12);
+    recvRequest.resize(12);
+
+    fsSubs.resize(6);
+    frSubs.resize(6);
+    fTags.resize(6);
+
+    fTags = 2, 1, 4, 3, 6, 5;
+
+    esSubs.resize(12);
+    erSubs.resize(12);
+    eTags.resize(12);
+
+    eTags = 4, 3, 2, 1, 8, 7, 6, 5, 12, 11, 10, 9;
+
+    csSubs.resize(8);
+    crSubs.resize(8);
+    cTags.resize(8);
+
+    cTags = 8, 7, 6, 5, 4, 3, 2, 1;
 }
 
 /**
@@ -80,122 +98,258 @@ mpidata::mpidata(blitz::Array<real, 3> inputArray, const parallel &parallelData)
 void mpidata::createSubarrays(const blitz::TinyVector<int, 3> globSize,
                               const blitz::TinyVector<int, 3> coreSize,
                               const blitz::TinyVector<int, 3> padWidth) {
-    /** The <B>loclSize</B> variable holds the local size of the sub-array slice to be sent/received within the sub-domain. */
-    blitz::TinyVector<int, 3> loclSize;
-
-    /** The <B>saStarts</B> variable holds the starting coordinates of the sub-array slice. */
-    blitz::TinyVector<int, 3> saStarts;
-
-    /** The <B>globCopy</B> variable holds a copy of the global size of the sub-domain. This keeps the original array safe*/
     blitz::TinyVector<int, 3> globCopy;
+    blitz::TinyVector<int, 3> loclSize;
+    blitz::TinyVector<int, 3> saStarts;
 
     globCopy = globSize;
 
-    /************************************************************** NOTE ************************************************************\
-     * MPI Subarrays assume that the starting index of arrays is 0, 0, 0                                                            *
-     * But the arrays used here through Blitz start with the index (-padX, -padY, -padZ)                                            *
-     * Hence the saStarts variable is shifted accordingly                                                                           *
-    \********************************************************************************************************************************/
+    /********************************************************************************************************/
+    /************************ MPI SUB-ARRAY DATATYPES FOR DATA TRANSFER ACROSS FACES ************************/
+    /********************************************************************************************************/
 
-    // CREATING SUBARRAYS FOR TRANSFER ACROSS THE 4 FACES OF EACH SUB-DOMAIN
+    /** ALONG X-DIRECTION **/
 
-    //*****************************************************! ALONG XI-DIRECTION !***************************************************//
-    // LOCAL SIZE FOR DATA TRANSFER ALONG XI-DIRECTION
     loclSize = coreSize;            loclSize(0) = padWidth(0);
 
-    // SEND SUB-ARRAY ON LEFT SIDE
+    /////// LEFT FACE ///////
     saStarts = padWidth;
-    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &sendSubarrayX0);
-    MPI_Type_commit(&sendSubarrayX0);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &fsSubs(0));
 
-    // RECEIVE SUB-ARRAY ON LEFT SIDE
     saStarts = padWidth;            saStarts(0) = 0;
-    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &recvSubarrayX0);
-    MPI_Type_commit(&recvSubarrayX0);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &frSubs(0));
 
-    // SEND SUB-ARRAY ON RIGHT SIDE
+    /////// RIGHT FACE //////
     saStarts = padWidth;            saStarts(0) = coreSize(0);
-    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &sendSubarrayX1);
-    MPI_Type_commit(&sendSubarrayX1);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &fsSubs(1));
 
-    // RECEIVE SUB-ARRAY ON RIGHT SIDE
     saStarts = padWidth;            saStarts(0) = coreSize(0) + padWidth(0);
-    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &recvSubarrayX1);
-    MPI_Type_commit(&recvSubarrayX1);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &frSubs(1));
 
 
-    //****************************************************! ALONG ETA-DIRECTION !***************************************************//
-    // LOCAL SIZE FOR DATA TRANSFER ALONG ETA-DIRECTION
+    /** ALONG Y-DIRECTION **/
+
     loclSize = coreSize;            loclSize(1) = padWidth(1);
 
-    // SEND SUB-ARRAY ON FRONT SIDE
+    /////// FRONT FACE //////
     saStarts = padWidth;
-    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &sendSubarrayY0);
-    MPI_Type_commit(&sendSubarrayY0);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &fsSubs(2));
 
-    // RECEIVE SUB-ARRAY ON FRONT SIDE
     saStarts = padWidth;            saStarts(1) = 0;
-    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &recvSubarrayY0);
-    MPI_Type_commit(&recvSubarrayY0);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &frSubs(2));
 
-    // SEND SUB-ARRAY ON REAR SIDE
+    /////// BACK FACE ///////
     saStarts = padWidth;            saStarts(1) = coreSize(1);
-    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &sendSubarrayY1);
-    MPI_Type_commit(&sendSubarrayY1);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &fsSubs(3));
 
-    // RECEIVE SUB-ARRAY ON REAR SIDE
     saStarts = padWidth;            saStarts(1) = coreSize(1) + padWidth(1);
-    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &recvSubarrayY1);
-    MPI_Type_commit(&recvSubarrayY1);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &frSubs(3));
 
 
-    // CREATING SUBARRAYS FOR TRANSFER ACROSS THE 4 EDGES OF EACH SUB-DOMAIN
+    /** ALONG Z-DIRECTION **/
 
-    //*****************************************************! ALONG LEFT-FACE !***************************************************//
-    // LOCAL SIZE OF SUB-ARRAY FOR EDGE TRANSFER IS SAME FOR ALL 4 EDGES
+    loclSize = coreSize;            loclSize(2) = padWidth(2);
+
+    ////// BOTTOM FACE //////
+    saStarts = padWidth;
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &fsSubs(4));
+
+    saStarts = padWidth;            saStarts(2) = 0;
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &frSubs(4));
+
+    /////// TOP FACE ////////
+    saStarts = padWidth;            saStarts(2) = coreSize(2);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &fsSubs(5));
+
+    saStarts = padWidth;            saStarts(2) = coreSize(2) + padWidth(2);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &frSubs(5));
+
+
+    /********************************************************************************************************/
+    /************************ MPI SUB-ARRAY DATATYPES FOR DATA TRANSFER ACROSS EDGES ************************/
+    /********************************************************************************************************/
+
+    /** ALONG Z-DIRECTION **/
+
     loclSize = padWidth;            loclSize(2) = coreSize(2);
 
-    // SEND SUB-ARRAY ON LEFT-FRONT SIDE
+    /////// LEFT-FRONT EDGE ///////
     saStarts = padWidth;
-    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &sendSubarrayX0Y0);
-    MPI_Type_commit(&sendSubarrayX0Y0);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &esSubs(0));
 
-    // RECEIVE SUB-ARRAY ON LEFT-FRONT SIDE
     saStarts = 0, 0, 0;             saStarts(2) = padWidth(2);
-    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &recvSubarrayX0Y0);
-    MPI_Type_commit(&recvSubarrayX0Y0);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &erSubs(0));
 
-    // SEND SUB-ARRAY ON LEFT-BACK SIDE
+    /////// LEFT-BACK EDGE ////////
     saStarts = padWidth;            saStarts(1) = coreSize(1);
-    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &sendSubarrayX0Y1);
-    MPI_Type_commit(&sendSubarrayX0Y1);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &esSubs(1));
 
-    // RECEIVE SUB-ARRAY ON LEFT-BACK SIDE
     saStarts = 0, 0, 0;             saStarts(1) = coreSize(1) + padWidth(1);            saStarts(2) = padWidth(2);
-    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &recvSubarrayX0Y1);
-    MPI_Type_commit(&recvSubarrayX0Y1);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &erSubs(1));
 
-
-    //****************************************************! ALONG RIGHT-FACE !***************************************************//
-    // SEND SUB-ARRAY ON RIGHT-FRONT SIDE
+    ////// RIGHT-FRONT EDGE ///////
     saStarts = padWidth;            saStarts(0) = coreSize(0);
-    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &sendSubarrayX1Y0);
-    MPI_Type_commit(&sendSubarrayX1Y0);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &esSubs(2));
 
-    // RECEIVE SUB-ARRAY ON RIGHT-FRONT SIDE
     saStarts = 0, 0, 0;             saStarts(0) = coreSize(0) + padWidth(0);            saStarts(2) = padWidth(2);
-    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &recvSubarrayX1Y0);
-    MPI_Type_commit(&recvSubarrayX1Y0);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &erSubs(2));
 
-    // SEND SUB-ARRAY ON RIGHT-BACK SIDE
+    /////// RIGHT-BACK EDGE ///////
     saStarts = coreSize;            saStarts(2) = padWidth(2);
-    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &sendSubarrayX1Y1);
-    MPI_Type_commit(&sendSubarrayX1Y1);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &esSubs(3));
 
-    // RECEIVE SUB-ARRAY ON RIGHT-BACK SIDE
     saStarts = coreSize + padWidth; saStarts(2) = padWidth(2);
-    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &recvSubarrayX1Y1);
-    MPI_Type_commit(&recvSubarrayX1Y1);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &erSubs(3));
+
+
+    /** ALONG X-DIRECTION **/
+
+    loclSize = padWidth;            loclSize(0) = coreSize(0);
+
+    ////// FRONT-BOTTOM EDGE //////
+    saStarts = padWidth;
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &esSubs(4));
+
+    saStarts = 0, 0, 0;             saStarts(0) = padWidth(0);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &erSubs(4));
+
+    /////// FRONT-TOP EDGE ////////
+    saStarts = padWidth;            saStarts(2) = coreSize(2);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &esSubs(5));
+
+    saStarts = 0, 0, 0;             saStarts(2) = coreSize(2) + padWidth(2);            saStarts(0) = padWidth(0);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &erSubs(5));
+
+    /////// BACK-BOTTOM EDGE //////
+    saStarts = padWidth;            saStarts(1) = coreSize(1);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &esSubs(6));
+
+    saStarts = 0, 0, 0;             saStarts(1) = coreSize(1) + padWidth(1);            saStarts(0) = padWidth(0);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &erSubs(6));
+
+    ///////// BACK-TOP EDGE ///////
+    saStarts = coreSize;            saStarts(0) = padWidth(0);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &esSubs(7));
+
+    saStarts = coreSize + padWidth; saStarts(0) = padWidth(0);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &erSubs(7));
+
+
+    /** ALONG Y-DIRECTION **/
+
+    loclSize = padWidth;            loclSize(1) = coreSize(1);
+
+    ////// BOTTOM-LEFT EDGE ///////
+    saStarts = padWidth;
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &esSubs(8));
+
+    saStarts = 0, 0, 0;             saStarts(1) = padWidth(1);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &erSubs(8));
+
+    ////// BOTTOM-RIGHT EDGE //////
+    saStarts = padWidth;            saStarts(0) = coreSize(0);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &esSubs(9));
+
+    saStarts = 0, 0, 0;             saStarts(0) = coreSize(0) + padWidth(0);            saStarts(1) = padWidth(1);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &erSubs(9));
+
+    //////// TOP-LEFT EDGE ////////
+    saStarts = padWidth;            saStarts(2) = coreSize(2);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &esSubs(10));
+
+    saStarts = 0, 0, 0;             saStarts(2) = coreSize(2) + padWidth(2);            saStarts(1) = padWidth(1);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &erSubs(10));
+
+    //////// TOP-RIGHT EDGE ///////
+    saStarts = coreSize;            saStarts(1) = padWidth(1);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &esSubs(11));
+
+    saStarts = coreSize + padWidth; saStarts(1) = padWidth(1);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &erSubs(11));
+
+
+    /********************************************************************************************************/
+    /*********************** MPI SUB-ARRAY DATATYPES FOR DATA TRANSFER ACROSS CORNERS ***********************/
+    /********************************************************************************************************/
+
+    loclSize = padWidth;
+
+    /// LEFT-FRONT-BOTTOM CORNER ///
+    saStarts = padWidth;
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &csSubs(0));
+
+    saStarts = 0, 0, 0;
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &crSubs(0));
+
+    /// LEFT-BACK-BOTTOM CORNER ////
+    saStarts = padWidth;            saStarts(1) = coreSize(1);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &csSubs(1));
+
+    saStarts = 0, 0, 0;             saStarts(1) = coreSize(1) + padWidth(1);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &crSubs(1));
+
+    /// RIGHT-FRONT-BOTTOM CORNER //
+    saStarts = padWidth;            saStarts(0) = coreSize(0);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &csSubs(2));
+
+    saStarts = 0, 0, 0;             saStarts(0) = coreSize(0) + padWidth(0);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &crSubs(2));
+
+    /// RIGHT-BACK-BOTTOM CORNER ///
+    saStarts = coreSize;            saStarts(2) = padWidth(2);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &csSubs(3));
+
+    saStarts = coreSize + padWidth; saStarts(2) = 0;
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &crSubs(3));
+
+
+    /// LEFT-FRONT-TOP CORNER ////
+    saStarts = padWidth;            saStarts(2) = coreSize(2);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &csSubs(4));
+
+    saStarts = 0, 0, 0;             saStarts(2) = coreSize(2) + padWidth(2);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &crSubs(4));
+
+    //// LEFT-BACK-TOP CORNER ////
+    saStarts = coreSize;            saStarts(0) = padWidth(0);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &csSubs(5));
+
+    saStarts = coreSize + padWidth; saStarts(0) = 0;
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &crSubs(5));
+
+    /// RIGHT-FRONT-TOP CORNER ////
+    saStarts = coreSize;            saStarts(1) = padWidth(1);
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &csSubs(6));
+
+    saStarts = coreSize + padWidth; saStarts(1) = 0;
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &crSubs(6));
+
+    //// RIGHT-BACK-TOP CORNER ////
+    saStarts = coreSize;
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &csSubs(7));
+
+    saStarts = coreSize + padWidth;
+    MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &crSubs(7));
+
+
+    /////////////////////////////////// ALL SUB-ARRAYS CREATED. COMMIT THEM ///////////////////////////////////
+    /** FACE SUB-ARRAYS **/
+    for (int i=0; i<6; i++) {
+        MPI_Type_commit(&fsSubs(i));
+        MPI_Type_commit(&frSubs(i));
+    }
+
+    /** EDGE SUB-ARRAYS **/
+    for (int i=0; i<12; i++) {
+        MPI_Type_commit(&esSubs(i));
+        MPI_Type_commit(&erSubs(i));
+    }
+
+    /** CORNER SUB-ARRAYS **/
+    for (int i=0; i<8; i++) {
+        MPI_Type_commit(&csSubs(i));
+        MPI_Type_commit(&crSubs(i));
+    }
 }
 
 /**
@@ -216,29 +370,32 @@ void mpidata::createSubarrays(const blitz::TinyVector<int, 3> globSize,
 void mpidata::syncData() {
     recvRequest = MPI_REQUEST_NULL;
 
-    // FIRST PERFORM DATA TRANSFER ACROSS THE FOUR FACES
-    MPI_Irecv(dataField.dataFirst(), 1, recvSubarrayX0, rankData.faceRanks(0), 1, MPI_COMM_WORLD, &recvRequest(0));
-    MPI_Irecv(dataField.dataFirst(), 1, recvSubarrayX1, rankData.faceRanks(1), 2, MPI_COMM_WORLD, &recvRequest(1));
-    MPI_Irecv(dataField.dataFirst(), 1, recvSubarrayY0, rankData.faceRanks(2), 3, MPI_COMM_WORLD, &recvRequest(2));
-    MPI_Irecv(dataField.dataFirst(), 1, recvSubarrayY1, rankData.faceRanks(3), 4, MPI_COMM_WORLD, &recvRequest(3));
+    // PERFORM DATA TRANSFER ACROSS THE SIX FACES
+    for (int i=0; i<6; i++)
+        MPI_Irecv(dataField.dataFirst(), 1, frSubs(i), rankData.faceRanks(i), fTags(i), MPI_COMM_WORLD, &recvRequest(i));
 
-    MPI_Send(dataField.dataFirst(), 1, sendSubarrayX0, rankData.faceRanks(0), 2, MPI_COMM_WORLD);
-    MPI_Send(dataField.dataFirst(), 1, sendSubarrayX1, rankData.faceRanks(1), 1, MPI_COMM_WORLD);
-    MPI_Send(dataField.dataFirst(), 1, sendSubarrayY0, rankData.faceRanks(2), 4, MPI_COMM_WORLD);
-    MPI_Send(dataField.dataFirst(), 1, sendSubarrayY1, rankData.faceRanks(3), 3, MPI_COMM_WORLD);
+    for (int i=0; i<6; i++)
+        MPI_Send(dataField.dataFirst(), 1, fsSubs(i), rankData.faceRanks(i), i+1, MPI_COMM_WORLD);
 
-    MPI_Waitall(4, recvRequest.dataFirst(), recvStatus.dataFirst());
+    MPI_Waitall(6, recvRequest.dataFirst(), recvStatus.dataFirst());
 
-    // NEXT PERFORM DATA TRANSFER ACROSS THE FOUR EDGES
-    MPI_Irecv(dataField.dataFirst(), 1, recvSubarrayX0Y0, rankData.edgeRanks(0), 1, MPI_COMM_WORLD, &recvRequest(0));
-    MPI_Irecv(dataField.dataFirst(), 1, recvSubarrayX0Y1, rankData.edgeRanks(1), 2, MPI_COMM_WORLD, &recvRequest(1));
-    MPI_Irecv(dataField.dataFirst(), 1, recvSubarrayX1Y0, rankData.edgeRanks(2), 3, MPI_COMM_WORLD, &recvRequest(2));
-    MPI_Irecv(dataField.dataFirst(), 1, recvSubarrayX1Y1, rankData.edgeRanks(3), 4, MPI_COMM_WORLD, &recvRequest(3));
 
-    MPI_Send(dataField.dataFirst(), 1, sendSubarrayX0Y0, rankData.edgeRanks(0), 4, MPI_COMM_WORLD);
-    MPI_Send(dataField.dataFirst(), 1, sendSubarrayX0Y1, rankData.edgeRanks(1), 3, MPI_COMM_WORLD);
-    MPI_Send(dataField.dataFirst(), 1, sendSubarrayX1Y0, rankData.edgeRanks(2), 2, MPI_COMM_WORLD);
-    MPI_Send(dataField.dataFirst(), 1, sendSubarrayX1Y1, rankData.edgeRanks(3), 1, MPI_COMM_WORLD);
+    // PERFORM DATA TRANSFER ACROSS THE TWELVE EDGES
+    for (int i=0; i<12; i++)
+        MPI_Irecv(dataField.dataFirst(), 1, erSubs(i), rankData.edgeRanks(i), eTags(i), MPI_COMM_WORLD, &recvRequest(i));
 
-    MPI_Waitall(4, recvRequest.dataFirst(), recvStatus.dataFirst());
+    for (int i=0; i<12; i++)
+        MPI_Send(dataField.dataFirst(), 1, esSubs(i), rankData.edgeRanks(i), i+1, MPI_COMM_WORLD);
+
+    MPI_Waitall(12, recvRequest.dataFirst(), recvStatus.dataFirst());
+
+
+    // PERFORM DATA TRANSFER ACROSS THE EIGHT CORNERS
+    for (int i=0; i<8; i++)
+        MPI_Irecv(dataField.dataFirst(), 1, crSubs(i), rankData.cornRanks(i), cTags(i), MPI_COMM_WORLD, &recvRequest(i));
+
+    for (int i=0; i<8; i++)
+        MPI_Send(dataField.dataFirst(), 1, csSubs(i), rankData.cornRanks(i), i+1, MPI_COMM_WORLD);
+
+    MPI_Waitall(8, recvRequest.dataFirst(), recvStatus.dataFirst());
 }

@@ -181,8 +181,10 @@ void sfield::imposeBCs() {
         tBak->imposeBC();
     }
 #endif
-    tTop->imposeBC();
-    tBot->imposeBC();
+    if (not gridData.inputParams.zPer) {
+        tTop->imposeBC();
+        tBot->imposeBC();
+    }
 };
 
 /**

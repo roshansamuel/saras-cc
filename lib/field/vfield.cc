@@ -286,8 +286,10 @@ void vfield::imposeVxBC() {
         uBak->imposeBC();
     }
 #endif
-    uTop->imposeBC();
-    uBot->imposeBC();
+    if (not gridData.inputParams.zPer) {
+        uTop->imposeBC();
+        uBot->imposeBC();
+    }
 }
 
 /**
@@ -315,8 +317,10 @@ void vfield::imposeVyBC() {
         vBak->imposeBC();
     }
 #endif
-    vTop->imposeBC();
-    vBot->imposeBC();
+    if (not gridData.inputParams.zPer) {
+        vTop->imposeBC();
+        vBot->imposeBC();
+    }
 }
 
 /**
@@ -344,8 +348,10 @@ void vfield::imposeVzBC() {
         wBak->imposeBC();
     }
 #endif
-    wTop->imposeBC();
-    wBot->imposeBC();
+    if (not gridData.inputParams.zPer) {
+        wTop->imposeBC();
+        wBot->imposeBC();
+    }
 }
 
 /**

@@ -79,7 +79,7 @@ parallel::parallel(const parser &iDat): npX(iDat.npX), npY(iDat.npY), npZ(iDat.n
  ********************************************************************************************************************************************
  * \brief   Function to assign the xRank and yRank for each sub-domain according to their global rank
  *
- *          It uses the number of sub-divisions prescribed in each direction, i.e. \ref npX and \ref npY to calculate the
+ *          It uses the number of sub-divisions prescribed in each direction, i.e. \ref npX, \ref npY and \ref npZ to calculate the
  *          xRank and yRank appropriately.
  ********************************************************************************************************************************************
  */

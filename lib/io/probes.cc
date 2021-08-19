@@ -101,19 +101,25 @@ void probes::placeProbes() {
         localIndices = mesh.inputParams.probesList[i];
         localIndices(0) -= mesh.subarrayStarts(0);
         localIndices(1) -= mesh.subarrayStarts(1);
+        localIndices(2) -= mesh.subarrayStarts(2);
 
-        if (mesh.inputParams.probesList[i](0) >= mesh.subarrayStarts(0) and mesh.inputParams.probesList[i](0) < mesh.subarrayEnds(0)) {
 #ifndef PLANAR
+        if (mesh.inputParams.probesList[i](0) >= mesh.subarrayStarts(0) and mesh.inputParams.probesList[i](0) < mesh.subarrayEnds(0)) {
             if (mesh.inputParams.probesList[i](1) >= mesh.subarrayStarts(1) and mesh.inputParams.probesList[i](1) < mesh.subarrayEnds(1)) {
-
+                if (mesh.inputParams.probesList[i](2) >= mesh.subarrayStarts(2) and mesh.inputParams.probesList[i](2) < mesh.subarrayEnds(2)) {
+                    globalProbes.push_back(mesh.inputParams.probesList[i]);
+                    localProbes.push_back(localIndices);
+                }
+            }
+        }
+#else
+        if (mesh.inputParams.probesList[i](0) >= mesh.subarrayStarts(0) and mesh.inputParams.probesList[i](0) < mesh.subarrayEnds(0)) {
+            if (mesh.inputParams.probesList[i](2) >= mesh.subarrayStarts(2) and mesh.inputParams.probesList[i](2) < mesh.subarrayEnds(2)) {
                 globalProbes.push_back(mesh.inputParams.probesList[i]);
                 localProbes.push_back(localIndices);
             }
-#else
-            globalProbes.push_back(mesh.inputParams.probesList[i]);
-            localProbes.push_back(localIndices);
-#endif
         }
+#endif
     }
 }
 

@@ -274,20 +274,14 @@ void hydro::initVBCs() {
     V.uBak = new dirichlet(mesh, V.Vx, 3, 0.0);
 #endif
 
-    if (inputParams.zPer) {
-        // PERIODIC BC
-        V.uBot = new periodic(mesh, V.Vx, 4);
-        V.uTop = new periodic(mesh, V.Vx, 5);
+    if (inputParams.probType == 1) {
+        // NO-SLIP BCS FOR LDC
+        V.uBot = new dirichlet(mesh, V.Vx, 4, 0.0);
+        V.uTop = new dirichlet(mesh, V.Vx, 5, 1.0);
     } else {
-        if (inputParams.probType == 1) {
-            // NO-SLIP BCS FOR LDC
-            V.uBot = new dirichlet(mesh, V.Vx, 4, 0.0);
-            V.uTop = new dirichlet(mesh, V.Vx, 5, 1.0);
-        } else {
-            // NO-SLIP BCS
-            V.uBot = new dirichlet(mesh, V.Vx, 4, 0.0);
-            V.uTop = new dirichlet(mesh, V.Vx, 5, 0.0);
-        }
+        // NO-SLIP BCS
+        V.uBot = new dirichlet(mesh, V.Vx, 4, 0.0);
+        V.uTop = new dirichlet(mesh, V.Vx, 5, 0.0);
     }
 
 #ifndef PLANAR
@@ -305,15 +299,9 @@ void hydro::initVBCs() {
     V.vFrn = new dirichlet(mesh, V.Vy, 2, 0.0);
     V.vBak = new dirichlet(mesh, V.Vy, 3, 0.0);
 
-    if (inputParams.zPer) {
-        // PERIODIC BC
-        V.vBot = new periodic(mesh, V.Vy, 4);
-        V.vTop = new periodic(mesh, V.Vy, 5);
-    } else {
-        // NO-SLIP BCS
-        V.vBot = new dirichlet(mesh, V.Vy, 4, 0.0);
-        V.vTop = new dirichlet(mesh, V.Vy, 5, 0.0);
-    }
+    // NO-SLIP BCS
+    V.vBot = new dirichlet(mesh, V.Vy, 4, 0.0);
+    V.vTop = new dirichlet(mesh, V.Vy, 5, 0.0);
 #endif
 
     if (inputParams.probType == 3) {
@@ -332,15 +320,9 @@ void hydro::initVBCs() {
     V.wBak = new dirichlet(mesh, V.Vz, 3, 0.0);
 #endif
 
-    if (inputParams.zPer) {
-        // PERIODIC BC
-        V.wBot = new periodic(mesh, V.Vz, 4);
-        V.wTop = new periodic(mesh, V.Vz, 5);
-    } else {
-        // NO-SLIP BCS
-        V.wBot = new dirichlet(mesh, V.Vz, 4, 0.0);
-        V.wTop = new dirichlet(mesh, V.Vz, 5, 0.0);
-    }
+    // NO-SLIP BCS
+    V.wBot = new dirichlet(mesh, V.Vz, 4, 0.0);
+    V.wTop = new dirichlet(mesh, V.Vz, 5, 0.0);
 };
 
 
@@ -388,14 +370,8 @@ void hydro::initPBCs() {
     P.tBak = new neumann(mesh, P.F, 3, 0.0);
 #endif
 
-    if (inputParams.zPer) {
-        // PERIODIC BC
-        P.tBot = new periodic(mesh, P.F, 4);
-        P.tTop = new periodic(mesh, P.F, 5);
-    } else {
-        // NEUMANN BC FOR NO-SLIP WALLS
-        P.tBot = new neumann(mesh, P.F, 4, 0.0);
-        P.tTop = new neumann(mesh, P.F, 5, 0.0);
-    }
+    // NEUMANN BC FOR NO-SLIP WALLS
+    P.tBot = new neumann(mesh, P.F, 4, 0.0);
+    P.tTop = new neumann(mesh, P.F, 5, 0.0);
 };
 
