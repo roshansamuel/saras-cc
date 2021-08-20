@@ -303,22 +303,20 @@ void multigrid_d2::createMGSubArrays() {
     recvStatus.resize(2);
     recvRequest.resize(2);
 
-    xMGArray.resize(inputParams.vcDepth + 1);
-    mgSendLft.resize(inputParams.vcDepth + 1);        mgSendRgt.resize(inputParams.vcDepth + 1);
-    mgRecvLft.resize(inputParams.vcDepth + 1);        mgRecvRgt.resize(inputParams.vcDepth + 1);
+    xFace.resize(inputParams.vcDepth + 1);
+
+    sendInd.resize(inputParams.vcDepth + 1, 2);         recvInd.resize(inputParams.vcDepth + 1, 2);
 
     for(int n=0; n<=inputParams.vcDepth; ++n) {
-        // CREATE X_MG_ARRAY DATATYPE
+        // MPI DATATYPE FOR TRANSFER ACROSS FACES OF SUB-DOMAINS
         count = stagFull(n).ubound(2) + 2;
 
-        MPI_Type_contiguous(count, MPI_FP_REAL, &xMGArray(n));
-        MPI_Type_commit(&xMGArray(n));
+        MPI_Type_contiguous(count, MPI_FP_REAL, &xFace(n));
+        MPI_Type_commit(&xFace(n));
 
         // SET STARTING INDICES OF MEMORY LOCATIONS FROM WHERE TO READ (SEND) AND WRITE (RECEIVE) DATA
-        mgSendLft(n) =  0, 0, -1;
-        mgRecvLft(n) = -1, 0, -1;
-        mgSendRgt(n) = stagCore(n).ubound(0), 0, -1;
-        mgRecvRgt(n) = stagCore(n).ubound(0) + 1, 0, -1;
+        sendInd(n, 0) = 0, 0, -1;           sendInd(n, 1) = stagCore(n).ubound(0), 0, -1;
+        recvInd(n, 0) = -1, 0, -1;          recvInd(n, 1) = stagCore(n).ubound(0) + 1, 0, -1;
     }
 }
 
@@ -453,11 +451,11 @@ void multigrid_d2::updatePads(blitz::Array<blitz::Array<real, 3>, 1> &data) {
     recvRequest = MPI_REQUEST_NULL;
 
     // TRANSFER DATA FROM NEIGHBOURING CELL TO IMPOSE SUB-DOMAIN BOUNDARY CONDITIONS
-    MPI_Irecv(&(data(vLevel)(mgRecvLft(vLevel))), 1, xMGArray(vLevel), mesh.rankData.faceRanks(0), 1, MPI_COMM_WORLD, &recvRequest(0));
-    MPI_Irecv(&(data(vLevel)(mgRecvRgt(vLevel))), 1, xMGArray(vLevel), mesh.rankData.faceRanks(1), 2, MPI_COMM_WORLD, &recvRequest(1));
+    MPI_Irecv(&(data(vLevel)(recvInd(vLevel, 0))), 1, xFace(vLevel), mesh.rankData.faceRanks(0), 1, MPI_COMM_WORLD, &recvRequest(0));
+    MPI_Irecv(&(data(vLevel)(recvInd(vLevel, 1))), 1, xFace(vLevel), mesh.rankData.faceRanks(1), 2, MPI_COMM_WORLD, &recvRequest(1));
 
-    MPI_Send(&(data(vLevel)(mgSendLft(vLevel))), 1, xMGArray(vLevel), mesh.rankData.faceRanks(0), 2, MPI_COMM_WORLD);
-    MPI_Send(&(data(vLevel)(mgSendRgt(vLevel))), 1, xMGArray(vLevel), mesh.rankData.faceRanks(1), 1, MPI_COMM_WORLD);
+    MPI_Send(&(data(vLevel)(sendInd(vLevel, 0))), 1, xFace(vLevel), mesh.rankData.faceRanks(0), 2, MPI_COMM_WORLD);
+    MPI_Send(&(data(vLevel)(sendInd(vLevel, 1))), 1, xFace(vLevel), mesh.rankData.faceRanks(1), 1, MPI_COMM_WORLD);
 
     MPI_Waitall(2, recvRequest.dataFirst(), recvStatus.dataFirst());
 }

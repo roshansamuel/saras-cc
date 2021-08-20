@@ -89,21 +89,10 @@ class poisson {
         blitz::Array<blitz::Array<real, 1>, 1> etyy, ety2;
         blitz::Array<blitz::Array<real, 1>, 1> ztzz, ztz2;
 
-        blitz::Array<MPI_Datatype, 1> xMGArray;
-        blitz::Array<MPI_Datatype, 1> yMGArray;
-        blitz::Array<MPI_Datatype, 1> zMGArray;
+        blitz::Array<MPI_Datatype, 1> xFace, yFace, zFace;
+        blitz::Array<MPI_Datatype, 1> xEdge, yEdge, zEdge;
 
-        blitz::Array<blitz::TinyVector<int, 3>, 1> mgSendLft, mgSendRgt;
-        blitz::Array<blitz::TinyVector<int, 3>, 1> mgRecvLft, mgRecvRgt;
-
-        blitz::Array<blitz::TinyVector<int, 3>, 1> mgSendFrn, mgSendBak;
-        blitz::Array<blitz::TinyVector<int, 3>, 1> mgRecvFrn, mgRecvBak;
-
-        blitz::Array<blitz::TinyVector<int, 3>, 1> mgSendLftFrn, mgSendRgtBak;
-        blitz::Array<blitz::TinyVector<int, 3>, 1> mgRecvLftFrn, mgRecvRgtBak;
-
-        blitz::Array<blitz::TinyVector<int, 3>, 1> mgSendRgtFrn, mgSendLftBak;
-        blitz::Array<blitz::TinyVector<int, 3>, 1> mgRecvRgtFrn, mgRecvLftBak;
+        blitz::Array<blitz::TinyVector<int, 3>, 2> sendInd, recvInd;
 
         static inline bool isOdd(int x) { return x % 2; };
 
