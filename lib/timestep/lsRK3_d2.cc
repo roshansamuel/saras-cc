@@ -129,7 +129,7 @@ void lsRK3_d2::timeAdvance(vfield &V, sfield &P) {
         nseRHS += V;
 
         // Synchronize the RHS term across all processors by updating its sub-domain pads
-        nseRHS.syncData();
+        nseRHS.syncFaces();
 
         // Using the RHS term computed, compute the guessed velocity of CN method iteratively (and store it in V)
         solveVx(V, nseRHS, betaRK3(rkLev));
@@ -143,7 +143,7 @@ void lsRK3_d2::timeAdvance(vfield &V, sfield &P) {
         mgSolver.mgSolve(Pp, mgRHS);
 
         // Synchronise the pressure correction term across processors
-        Pp.syncData();
+        Pp.syncFaces();
 
         // Add the pressure correction term to the pressure field of previous time-step, P
         P += Pp;
@@ -237,8 +237,8 @@ void lsRK3_d2::timeAdvance(vfield &V, sfield &P, sfield &T) {
         tmpRHS += T;
 
         // Synchronize both the RHS terms across all processors by updating their sub-domain pads
-        nseRHS.syncData();
-        tmpRHS.syncData();
+        nseRHS.syncFaces();
+        tmpRHS.syncFaces();
 
         // Using the RHS term computed, compute the guessed velocity of CN method iteratively (and store it in V)
         solveVx(V, nseRHS, betaRK3(rkLev));
@@ -255,7 +255,7 @@ void lsRK3_d2::timeAdvance(vfield &V, sfield &P, sfield &T) {
         mgSolver.mgSolve(Pp, mgRHS);
 
         // Synchronise the pressure correction term across processors
-        Pp.syncData();
+        Pp.syncFaces();
 
         // Add the pressure correction term to the pressure field of previous time-step, P
         P += Pp;

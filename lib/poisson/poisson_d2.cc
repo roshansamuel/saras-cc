@@ -84,7 +84,7 @@ void multigrid_d2::computeResidual() {
         }
     }
 
-    updatePads(tmp);
+    updateFull(tmp);
 }
 
 
@@ -366,7 +366,7 @@ void multigrid_d2::imposeBC() {
 #endif
 
     // FOR PARALLEL RUNS, FIRST UPDATE GHOST POINTS OF MPI SUB-DOMAINS
-    updatePads(lhs);
+    updateFull(lhs);
 
     if (not inputParams.xPer) {
 #ifdef TEST_POISSON
@@ -409,7 +409,7 @@ void multigrid_d2::imposeBC() {
         if (xfr) lhs(vLevel)(-1, 0, all) = lhs(vLevel)(0, 0, all);
         if (xlr) lhs(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = lhs(vLevel)(stagCore(vLevel).ubound(0), 0, all);
 #endif
-    } // PERIODIC BOUNDARY CONDITIONS ARE AUTOMATICALLY IMPOSED BY PERIODIC DATA TRANSFER ACROSS PROCESSORS THROUGH updatePads()
+    } // PERIODIC BOUNDARY CONDITIONS ARE AUTOMATICALLY IMPOSED BY PERIODIC DATA TRANSFER ACROSS PROCESSORS THROUGH updateFull()
 
     if (not inputParams.zPer) {
 #ifdef TEST_POISSON
@@ -443,11 +443,11 @@ void multigrid_d2::imposeBC() {
         if (zfr) lhs(vLevel)(all, 0, -1) = lhs(vLevel)(all, 0, 0);
         if (zlr) lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2));
 #endif
-    } // PERIODIC BOUNDARY CONDITIONS ARE AUTOMATICALLY IMPOSED BY PERIODIC DATA TRANSFER ACROSS PROCESSORS THROUGH updatePads()
+    } // PERIODIC BOUNDARY CONDITIONS ARE AUTOMATICALLY IMPOSED BY PERIODIC DATA TRANSFER ACROSS PROCESSORS THROUGH updateFull()
 }
 
 
-void multigrid_d2::updatePads(blitz::Array<blitz::Array<real, 3>, 1> &data) {
+void multigrid_d2::updateFull(blitz::Array<blitz::Array<real, 3>, 1> &data) {
     recvRequest = MPI_REQUEST_NULL;
 
     // TRANSFER DATA FROM NEIGHBOURING CELL TO IMPOSE SUB-DOMAIN BOUNDARY CONDITIONS

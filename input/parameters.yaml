@@ -95,9 +95,9 @@
 
     # Stretching factor to be used for tangent-hyperbolic grids.
     # This option is considered only when tangent-hyperbolic stretching is specified in the Mesh Type
-    "X Beta": 1.2
-    "Y Beta": 1.2
-    "Z Beta": 1.2
+    "X Beta": 1.3
+    "Y Beta": 1.3
+    "Z Beta": 1.3
 
     # Choose the grid sizes (number of cells) as indices from the list below
     # These sizes are set to allow multigrid operations on cell-centers
@@ -114,7 +114,7 @@
     "Number of OMP threads": 1
     "X Number of Procs": 2
     "Y Number of Procs": 2
-    "Z Number of Procs": 1
+    "Z Number of Procs": 2
 
 
 # Solver parameters

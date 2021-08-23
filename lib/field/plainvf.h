@@ -72,16 +72,30 @@ class plainvf {
 
 /**
  ********************************************************************************************************************************************
- * \brief   Function to synchronise data across all processors when performing parallel computations
+ * \brief   Function to synchronise data across subdomain faces when performing parallel computations
  *
  *          Each of the individual field components have to send and receive data across its MPI decomposed sub-domains.
- *          This function calls the \ref mpidata#syncData "syncData" function for each component to update the sub-domain boundary pads.
+ *          This function calls the \ref mpidata#syncFaces "syncFaces" function for each component to update the sub-domain boundary pads.
  ********************************************************************************************************************************************
  */
-        inline void syncData() {
-            mpiVxData->syncData();
-            mpiVyData->syncData();
-            mpiVzData->syncData();
+        inline void syncFaces() {
+            mpiVxData->syncFaces();
+            mpiVyData->syncFaces();
+            mpiVzData->syncFaces();
+        }
+
+/**
+ ********************************************************************************************************************************************
+ * \brief   Function to synchronise data across subdomain faces, edges and corners when performing parallel computations
+ *
+ *          Each of the individual field components have to send and receive data across its MPI decomposed sub-domains.
+ *          This function calls the \ref mpidata#syncAll "syncAll" function for each component to update the sub-domain boundary pads.
+ ********************************************************************************************************************************************
+ */
+        inline void syncAll() {
+            mpiVxData->syncAll();
+            mpiVyData->syncAll();
+            mpiVzData->syncAll();
         }
 
 /**

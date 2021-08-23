@@ -151,14 +151,30 @@ void field::setWallSlices() {
 
 /**
  ********************************************************************************************************************************************
- * \brief   Function to synchronise data across all processors when performing parallel computations
+ * \brief   Function to synchronise data across subdomain faces when performing parallel computations
  *
- *          This function calls the \ref mpidata#syncData "syncData" function of mpidata class to
- *          perform data-transfer and thus update the sub-domain boundary pads.
+ *          In many cases, it is sufficient to update only the subdomain faces when transferring data across processors.
+ *          This function calls the \ref mpidata#syncFaces "syncFaces" function of mpidata class to
+ *          perform this data-transfer and thus update the sub-domain boundary pads with least communication overhead.
  ********************************************************************************************************************************************
  */
-void field::syncData() {
-    mpiHandle->syncData();
+void field::syncFaces() {
+    mpiHandle->syncFaces();
+}
+
+
+/**
+ ********************************************************************************************************************************************
+ * \brief   Function to synchronise data across subdomain faces, edges and corners when performing parallel computations
+ *
+ *          In some cases, it is necessary to update subdomain edges and corners as well during data transfer.
+ *          This can be required for some functions like computing local structure functions.
+ *          This function calls the \ref mpidata#syncAll "syncAll" function of mpidata class to
+ *          perform data-transfer and thus update the sub-domain boundary pads fully.
+ ********************************************************************************************************************************************
+ */
+void field::syncAll() {
+    mpiHandle->syncAll();
 }
 
 

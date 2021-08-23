@@ -110,7 +110,8 @@ class poisson {
         virtual void solve() {};
         virtual void imposeBC();
         virtual void createMGSubArrays();
-        virtual void updatePads(blitz::Array<blitz::Array<real, 3>, 1> &data);
+        virtual void updateFace(blitz::Array<blitz::Array<real, 3>, 1> &data);
+        virtual void updateFull(blitz::Array<blitz::Array<real, 3>, 1> &data);
 
         void vCycle();
 
@@ -151,7 +152,7 @@ class multigrid_d2: public poisson {
         void initDirichlet();
 
         void createMGSubArrays();
-        void updatePads(blitz::Array<blitz::Array<real, 3>, 1> &data);
+        void updateFull(blitz::Array<blitz::Array<real, 3>, 1> &data);
 
         blitz::Array<real, 1> xWall, zWall;
 
@@ -184,7 +185,8 @@ class multigrid_d3: public poisson {
         void initDirichlet();
 
         void createMGSubArrays();
-        void updatePads(blitz::Array<blitz::Array<real, 3>, 1> &data);
+        void updateFace(blitz::Array<blitz::Array<real, 3>, 1> &data);
+        void updateFull(blitz::Array<blitz::Array<real, 3>, 1> &data);
 
         blitz::Array<real, 2> xWall, yWall, zWall;
 

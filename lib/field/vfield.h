@@ -91,8 +91,6 @@ class vfield {
 
         void divergence(plainsf &divV);
 
-        void syncData();
-
         void imposeVxBC();
         void imposeVyBC();
         void imposeVzBC();
@@ -110,6 +108,36 @@ class vfield {
         void operator = (plainvf &a);
         void operator = (vfield &a);
         void operator = (real a);
+
+/**
+ ********************************************************************************************************************************************
+ * \brief   Function to synchronise data across subdomain faces when performing parallel computations
+ *
+ *          Each of the individual field components have their own subroutine, \ref field#syncFaces "syncFaces" to send and
+ *          receive data across its MPI decomposed sub-domains.
+ *          This function calls the \ref field#syncFaces "syncFaces" function of its components to update the sub-domain boundary pads.
+ ********************************************************************************************************************************************
+ */
+        inline void syncFaces() {
+            Vx.syncFaces();
+            Vy.syncFaces();
+            Vz.syncFaces();
+        }
+
+/**
+ ********************************************************************************************************************************************
+ * \brief   Function to synchronise data across subdomain faces, edges and corners when performing parallel computations
+ *
+ *          Each of the individual field components have their own subroutine, \ref field#syncAll "syncAll" to send and
+ *          receive data across its MPI decomposed sub-domains.
+ *          This function calls the \ref field#syncAll "syncAll" function of its components to update the sub-domain boundary pads.
+ ********************************************************************************************************************************************
+ */
+        inline void syncAll() {
+            Vx.syncAll();
+            Vy.syncAll();
+            Vz.syncAll();
+        }
 
         ~vfield() { };
 };

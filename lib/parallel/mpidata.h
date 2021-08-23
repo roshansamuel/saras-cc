@@ -59,10 +59,10 @@ class mpidata {
         /** Array of tags for receiving data. */
         blitz::Array<int, 1> fTags, eTags, cTags;
 
-        /** An array of MPI_Request data-types necessary for obtaining output from the non-blocking receive MPI_Irecv in the syncData function. */
+        /** An array of MPI_Request data-types necessary for obtaining output from the non-blocking receive MPI_Irecv in the synchronizing functions. */
         blitz::Array<MPI_Request, 1> recvRequest;
 
-        /** An array of MPI_Status data-types necessary for obtaining output from the non-blocking receive MPI_Irecv in the syncData function. */
+        /** An array of MPI_Status data-types necessary for obtaining output from the non-blocking receive MPI_Irecv in the synchronizing functions. */
         blitz::Array<MPI_Status, 1> recvStatus;
 
         /** Blitz array of the data field which needs to be synchronised across processors. */
@@ -78,7 +78,8 @@ class mpidata {
                              const blitz::TinyVector<int, 3> coreSize,
                              const blitz::TinyVector<int, 3> padWidth);
 
-        void syncData();
+        void syncFaces();
+        void syncAll();
 };
 
 /**

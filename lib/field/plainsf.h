@@ -82,14 +82,26 @@ class plainsf {
 
 /**
  ********************************************************************************************************************************************
- * \brief   Function to synchronise data across all processors when performing parallel computations
+ * \brief   Function to synchronise data across subdomain faces when performing parallel computations
  *
- *          This function calls the \ref mpidata#syncData "syncData" function of mpidata class to perform perform data-transfer and thus update
+ *          This function calls the \ref mpidata#syncFaces "syncFaces" function of mpidata class to perform perform data-transfer and thus update
  *          the sub-domain boundary pads.
  ********************************************************************************************************************************************
  */
-        inline void syncData() {
-            mpiHandle->syncData();
+        inline void syncFaces() {
+            mpiHandle->syncFaces();
+        }
+
+/**
+ ********************************************************************************************************************************************
+ * \brief   Function to synchronise data across subdomain faces, edges and corners when performing parallel computations
+ *
+ *          This function calls the \ref mpidata#syncAll "syncAll" function of mpidata class to perform perform data-transfer and thus update
+ *          the sub-domain boundary pads.
+ ********************************************************************************************************************************************
+ */
+        inline void syncAll() {
+            mpiHandle->syncAll();
         }
 
 /**

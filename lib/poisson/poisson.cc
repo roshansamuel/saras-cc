@@ -130,8 +130,8 @@ void poisson::mgSolve(plainsf &outLHS, const plainsf &inpRHS) {
     rhs(0)(stagCore(0)) = inpRHS.F(stagCore(0));
     lhs(0)(stagCore(0)) = outLHS.F(stagCore(0));
 
-    updatePads(rhs);
-    updatePads(lhs);
+    updateFull(rhs);
+    updateFull(lhs);
 
     // PERFORM V-CYCLES AS MANY TIMES AS REQUIRED
     for (int i=0; i<inputParams.vcCount; i++) {
@@ -600,7 +600,7 @@ real poisson::computeError(const int normOrder) {  return 0.0; };
  *          Poisson equation.
  *          The sub-domains close to the wall will have the Neumann boundary condition on pressure imposeed at the walls.
  *          Meanwhile at the interior boundaries at the inter-processor sub-domains, data is transferred from the neighbouring cells
- *          by calling the \ref updatePads function.
+ *          by calling the \ref updateFace function.
  *
  ********************************************************************************************************************************************
  */
@@ -611,13 +611,29 @@ void poisson::imposeBC() { };
  ********************************************************************************************************************************************
  * \brief   Function to update the pad points of the local sub-domains at different levels of the V-cycle
  *
+ *          This function is called mainly for restriction/coarsening operation.
+ *          Restriction needs data at all 8 corners of a cell, for which
+ *          edge and corner transfers have to be done along with face transfer.
+ *          The data transfer is performed using a combination of MPI_Irecv and MPI_Send functions.
+ *
+ ********************************************************************************************************************************************
+ */
+void poisson::updateFull(blitz::Array<blitz::Array<real, 3>, 1> &data) { };
+
+
+/**
+ ********************************************************************************************************************************************
+ * \brief   Function to update the pad points of the local sub-domains at different levels of the V-cycle
+ *
  *          This function is called mainly during smoothing operations by the \ref imposeBC function.
+ *          Only the subdomain faces are updated, and the 40 additional calls to update edges and corners are avoided.
+ *          This will lessen the communication overhead in the smoothing iterations.
  *          At the interior boundaries at the inter-processor sub-domains, data is transferred from the neighbouring cells
  *          using a combination of MPI_Irecv and MPI_Send functions.
  *
  ********************************************************************************************************************************************
  */
-void poisson::updatePads(blitz::Array<blitz::Array<real, 3>, 1> &data) { };
+void poisson::updateFace(blitz::Array<blitz::Array<real, 3>, 1> &data) { };
 
 
 /**

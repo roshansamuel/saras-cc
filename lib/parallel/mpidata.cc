@@ -356,18 +356,18 @@ void mpidata::createSubarrays(const blitz::TinyVector<int, 3> globSize,
  ********************************************************************************************************************************************
  * \brief   Function to send data across all sub-domain faces
  *
- *          This is the core function of the mpidata class.
+ *          This is one of the two core functions of the mpidata class.
  *          The end slices of each sub-domain recieves data from their corresponding neighbouring sub-domains,
  *          while the interior slices of each sub-domain sends data to their corresponding neighbouring sub-domains.
  *
  *          All the data slices are send as subarray MPI derived data-types created in the \ref createSubarrays function.
- *          As a result, \ref syncData must be called only after the subarrays have been created.
+ *          As a result, \ref syncFaces must be called only after the subarrays have been created.
  *
  *          The data transfer is implemented here with a mixture of blocking and non-blocking communication calls.
  *          The receives are non-blocking, while the sends are blocking. This combination prevents inter-processor deadlock.
  ********************************************************************************************************************************************
  */
-void mpidata::syncData() {
+void mpidata::syncFaces() {
     recvRequest = MPI_REQUEST_NULL;
 
     // PERFORM DATA TRANSFER ACROSS THE SIX FACES
@@ -378,7 +378,28 @@ void mpidata::syncData() {
         MPI_Send(dataField.dataFirst(), 1, fsSubs(i), rankData.faceRanks(i), i+1, MPI_COMM_WORLD);
 
     MPI_Waitall(6, recvRequest.dataFirst(), recvStatus.dataFirst());
+}
 
+/**
+ ********************************************************************************************************************************************
+ * \brief   Function to send data across all sub-domain faces
+ *
+ *          This is one of the two core functions of the mpidata class.
+ *          The end slices of each sub-domain recieves data from their corresponding neighbouring sub-domains,
+ *          while the interior slices of each sub-domain sends data to their corresponding neighbouring sub-domains.
+ *
+ *          All the data slices are send as subarray MPI derived data-types created in the \ref createSubarrays function.
+ *          As a result, \ref syncAll must be called only after the subarrays have been created.
+ *
+ *          The data transfer is implemented here with a mixture of blocking and non-blocking communication calls.
+ *          The receives are non-blocking, while the sends are blocking. This combination prevents inter-processor deadlock.
+ ********************************************************************************************************************************************
+ */
+void mpidata::syncAll() {
+    recvRequest = MPI_REQUEST_NULL;
+
+    // PERFORM DATA TRANSFER ACROSS THE SIX FACES
+    syncFaces();
 
     // PERFORM DATA TRANSFER ACROSS THE TWELVE EDGES
     for (int i=0; i<12; i++)

@@ -129,7 +129,7 @@ spiral::spiral(const grid &mesh, const real &kDiff): les(mesh), nu(kDiff) {
 real spiral::computeSG(plainvf &nseRHS, vfield &V) {
     real localSGKE, totalSGKE;
 
-    V.syncData();
+    V.syncAll();
 
     // Compute the x, y and z derivatives of the interpolated velocity field and store them into
     // the arrays A11, A12, A13, ... A33. These arrays will be later accessed when constructing
@@ -202,12 +202,12 @@ real spiral::computeSG(plainvf &nseRHS, vfield &V) {
     MPI_Allreduce(&localSGKE, &totalSGKE, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
 
     // Synchronize the sub-grid stress tensor field data across MPI processors
-    Txx->syncData();
-    Tyy->syncData();
-    Tzz->syncData();
-    Txy->syncData();
-    Tyz->syncData();
-    Tzx->syncData();
+    Txx->syncFaces();
+    Tyy->syncFaces();
+    Tzz->syncFaces();
+    Txy->syncFaces();
+    Tyz->syncFaces();
+    Tzx->syncFaces();
 
     A11 = 0.0;  A12 = 0.0;  A13 = 0.0;
     A21 = 0.0;  A22 = 0.0;  A23 = 0.0;
@@ -253,7 +253,7 @@ real spiral::computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T) {
     real localSGKE, totalSGKE;
     real sQx, sQy, sQz;
 
-    V.syncData();
+    V.syncAll();
 
     // Compute the x, y and z derivatives of the interpolated velocity field and store them into
     // the arrays A11, A12, A13, ... A33. These arrays will be later accessed when constructing
@@ -350,12 +350,12 @@ real spiral::computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T) {
     MPI_Allreduce(&localSGKE, &totalSGKE, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
 
     // Synchronize the sub-grid stress tensor field data across MPI processors
-    Txx->syncData();
-    Tyy->syncData();
-    Tzz->syncData();
-    Txy->syncData();
-    Tyz->syncData();
-    Tzx->syncData();
+    Txx->syncFaces();
+    Tyy->syncFaces();
+    Tzz->syncFaces();
+    Txy->syncFaces();
+    Tyz->syncFaces();
+    Tzx->syncFaces();
 
     // Compute the components of the divergence of sub-grid stress tensor field
     Txx->derS.calcDerivative1_x(A11);
@@ -380,9 +380,9 @@ real spiral::computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T) {
 
     if (sgfFlag) {
         // Synchronize the sub-grid scalar flux vector field data across MPI processors
-        qX->syncData();
-        qY->syncData();
-        qZ->syncData();
+        qX->syncFaces();
+        qY->syncFaces();
+        qZ->syncFaces();
 
         // Compute the components of the divergence of sub-grid scalar flux vector field
         qX->derS.calcDerivative1_x(B1);

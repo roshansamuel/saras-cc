@@ -85,8 +85,6 @@ class sfield {
 
         void gradient(plainvf &gradF);
 
-        void syncData();
-
         void imposeBCs();
 
         sfield& operator += (plainsf &a);
@@ -100,6 +98,30 @@ class sfield {
         void operator = (plainsf &a);
         void operator = (sfield &a);
         void operator = (real a);
+
+/**
+ ********************************************************************************************************************************************
+ * \brief   Function to synchronise data across subdomain faces when performing parallel computations
+ *
+ *          This function calls the \ref mpidata#syncFaces "syncFaces" function of mpidata class to
+ *          perform data-transfer and thus update the sub-domain boundary pads.
+ ********************************************************************************************************************************************
+ */
+        inline void syncFaces() {
+            F.syncFaces();
+        }
+
+/**
+ ********************************************************************************************************************************************
+ * \brief   Function to synchronise data across subdomain faces, edges and corners when performing parallel computations
+ *
+ *          This function calls the \ref mpidata#syncAll "syncAll" function of mpidata class to
+ *          perform data-transfer and thus update the sub-domain boundary pads.
+ ********************************************************************************************************************************************
+ */
+        inline void syncAll() {
+            F.syncAll();
+        }
 
         ~sfield() { };
 };

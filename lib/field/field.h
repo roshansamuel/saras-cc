@@ -70,7 +70,8 @@ class field {
 
         field(const grid &gridData, std::string fieldName);
 
-        void syncData();
+        void syncFaces();
+        void syncAll();
 
         real fieldMax();
 

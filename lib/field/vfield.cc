@@ -248,24 +248,9 @@ void vfield::divergence(plainsf &divV) {
 
 /**
  ********************************************************************************************************************************************
- * \brief   Function to synchronise data across all processors when performing parallel computations
- *
- *          Each of the individual field components have their own subroutine, \ref field#syncData "syncData" to send and
- *          receive data across its MPI decomposed sub-domains.
- *          This function calls the \ref field#syncData "syncData" function of its components to update the sub-domain boundary pads.
- ********************************************************************************************************************************************
- */
-void vfield::syncData() {
-    Vx.syncData();
-    Vy.syncData();
-    Vz.syncData();
-}
-
-/**
- ********************************************************************************************************************************************
  * \brief   Function to impose the boundary conditions for the X-component of the vector field
  *
- *          The function first calls the \ref field#syncData "syncData" function of the Vx field to update the sub-domain pads.
+ *          The function first calls the \ref field#syncFaces "syncFaces" function of the Vx field to update the sub-domain pads.
  *          Then the boundary conditions are applied at the full domain boundaries by calling the imposeBC()
  *          of each boundary class object assigned to each wall.
  *          The order of imposing boundary conditions is - left, right, front, back, bottom and top boundaries.
@@ -274,7 +259,7 @@ void vfield::syncData() {
  ********************************************************************************************************************************************
  */
 void vfield::imposeVxBC() {
-    Vx.syncData();
+    Vx.syncFaces();
 
     if (not gridData.inputParams.xPer) {
         uLft->imposeBC();
@@ -296,7 +281,7 @@ void vfield::imposeVxBC() {
  ********************************************************************************************************************************************
  * \brief   Function to impose the boundary conditions for the Y-component of the vector field
  *
- *          The function first calls the \ref field#syncData "syncData" function of the Vy field to update the sub-domain pads.
+ *          The function first calls the \ref field#syncFaces "syncFaces" function of the Vy field to update the sub-domain pads.
  *          Then the boundary conditions are applied at the full domain boundaries by calling the imposeBC()
  *          of each boundary class object assigned to each wall.
  *          The order of imposing boundary conditions is - left, right, front, back, bottom and top boundaries.
@@ -305,7 +290,7 @@ void vfield::imposeVxBC() {
  ********************************************************************************************************************************************
  */
 void vfield::imposeVyBC() {
-    Vy.syncData();
+    Vy.syncFaces();
 
     if (not gridData.inputParams.xPer) {
         vLft->imposeBC();
@@ -327,7 +312,7 @@ void vfield::imposeVyBC() {
  ********************************************************************************************************************************************
  * \brief   Function to impose the boundary conditions for the Z-component of the vector field
  *
- *          The function first calls the \ref field#syncData "syncData" function of the Vz field to update the sub-domain pads.
+ *          The function first calls the \ref field#syncFaces "syncFaces" function of the Vz field to update the sub-domain pads.
  *          Then the boundary conditions are applied at the full domain boundaries by calling the imposeBC()
  *          of each boundary class object assigned to each wall.
  *          The order of imposing boundary conditions is - left, right, front, back, bottom and top boundaries.
@@ -336,7 +321,7 @@ void vfield::imposeVyBC() {
  ********************************************************************************************************************************************
  */
 void vfield::imposeVzBC() {
-    Vz.syncData();
+    Vz.syncFaces();
 
     if (not gridData.inputParams.xPer) {
         wLft->imposeBC();

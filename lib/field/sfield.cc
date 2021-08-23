@@ -148,28 +148,16 @@ void sfield::gradient(plainvf &gradF) {
 
 /**
  ********************************************************************************************************************************************
- * \brief   Function to synchronise data across all processors when performing parallel computations
- *
- *          This function calls the \ref mpidata#syncData "syncData" function of mpidata class to
- *          perform data-transfer and thus update the sub-domain boundary pads.
- ********************************************************************************************************************************************
- */
-void sfield::syncData() {
-    F.syncData();
-}
-
-/**
- ********************************************************************************************************************************************
  * \brief   Function to impose the boundary conditions for the scalar field
  *
- *          The function first calls the syncData() function of the field to update the sub-domain pads.
+ *          The function first calls the \ref field#syncFaces "syncFaces" function of the field to update the sub-domain pads.
  *          Then the boundary conditions are applied at the full domain boundaries by calling the imposeBC()
  *          of each boundary class object assigned to each wall.
  *
  ********************************************************************************************************************************************
  */
 void sfield::imposeBCs() {
-    F.syncData();
+    F.syncFaces();
 
     if (not gridData.inputParams.xPer) {
         tLft->imposeBC();

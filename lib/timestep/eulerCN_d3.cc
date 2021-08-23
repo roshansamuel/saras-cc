@@ -121,7 +121,7 @@ void eulerCN_d3::timeAdvance(vfield &V, sfield &P) {
     nseRHS += V;
 
     // Synchronize the RHS term across all processors by updating its sub-domain pads
-    nseRHS.syncData();
+    nseRHS.syncFaces();
 
     // Using the RHS term computed, compute the guessed velocity of CN method iteratively (and store it in V)
     solveVx(V, nseRHS);
@@ -142,7 +142,7 @@ void eulerCN_d3::timeAdvance(vfield &V, sfield &P) {
     mgSolver.mgSolve(Pp, mgRHS);
 
     // Synchronise the pressure correction term across processors
-    Pp.syncData();
+    Pp.syncFaces();
 
     // IF THE POISSON SOLVER IS BEING TESTED, THE PRESSURE IS SET TO ZERO.
     // THIS WAY, AFTER THE SOLUTION OF MG SOLVER, Pp, IS DIRECTLY WRITTEN INTO P AND AVAILABLE FOR PLOTTING
@@ -233,8 +233,8 @@ void eulerCN_d3::timeAdvance(vfield &V, sfield &P, sfield &T) {
     tmpRHS += T;
 
     // Synchronize both the RHS terms across all processors by updating their sub-domain pads
-    nseRHS.syncData();
-    tmpRHS.syncData();
+    nseRHS.syncFaces();
+    tmpRHS.syncFaces();
 
     // Using the RHS term computed, compute the guessed velocity of CN method iteratively (and store it in V)
     solveVx(V, nseRHS);
@@ -252,7 +252,7 @@ void eulerCN_d3::timeAdvance(vfield &V, sfield &P, sfield &T) {
     mgSolver.mgSolve(Pp, mgRHS);
 
     // Synchronise the pressure correction term across processors
-    Pp.syncData();
+    Pp.syncFaces();
 
     // Add the pressure correction term to the pressure field of previous time-step, P
     P += Pp;

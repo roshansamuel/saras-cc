@@ -89,7 +89,7 @@ void multigrid_d3::computeResidual() {
         }
     }
 
-    updatePads(tmp);
+    updateFull(tmp);
 }
 
 
@@ -494,7 +494,7 @@ void multigrid_d3::initDirichlet() {
 
 void multigrid_d3::imposeBC() {
     // FOR PARALLEL RUNS, FIRST UPDATE GHOST POINTS OF MPI SUB-DOMAINS
-    updatePads(lhs);
+    updateFace(lhs);
 
     if (not inputParams.xPer) {
 #ifdef TEST_POISSON
@@ -512,7 +512,7 @@ void multigrid_d3::imposeBC() {
         if (xfr) lhs(vLevel)(-1, all, all) = lhs(vLevel)(0, all, all);
         if (xlr) lhs(vLevel)(stagCore(vLevel).ubound(0) + 1, all, all) = lhs(vLevel)(stagCore(vLevel).ubound(0), all, all);
 #endif
-    } // PERIODIC BOUNDARY CONDITIONS ARE AUTOMATICALLY IMPOSED BY PERIODIC DATA TRANSFER ACROSS PROCESSORS THROUGH updatePads()
+    } // PERIODIC BOUNDARY CONDITIONS ARE AUTOMATICALLY IMPOSED BY PERIODIC DATA TRANSFER ACROSS PROCESSORS THROUGH updateFace()
 
 
     if (not inputParams.yPer) {
@@ -531,7 +531,7 @@ void multigrid_d3::imposeBC() {
         if (yfr) lhs(vLevel)(all, -1, all) = lhs(vLevel)(all, 0, all);
         if (ylr) lhs(vLevel)(all, stagCore(vLevel).ubound(1) + 1, all) = lhs(vLevel)(all, stagCore(vLevel).ubound(1), all);
 #endif
-    } // PERIODIC BOUNDARY CONDITIONS ARE AUTOMATICALLY IMPOSED BY PERIODIC DATA TRANSFER ACROSS PROCESSORS THROUGH updatePads()
+    } // PERIODIC BOUNDARY CONDITIONS ARE AUTOMATICALLY IMPOSED BY PERIODIC DATA TRANSFER ACROSS PROCESSORS THROUGH updateFace()
 
 
     if (not inputParams.zPer) {
@@ -549,11 +549,11 @@ void multigrid_d3::imposeBC() {
         if (zfr) lhs(vLevel)(all, all, -1) = lhs(vLevel)(all, all, 0);
         if (zlr) lhs(vLevel)(all, all, stagCore(vLevel).ubound(2) + 1) = lhs(vLevel)(all, all, stagCore(vLevel).ubound(2));
 #endif
-    } // PERIODIC BOUNDARY CONDITIONS ARE AUTOMATICALLY IMPOSED BY PERIODIC DATA TRANSFER ACROSS PROCESSORS THROUGH updatePads()
+    } // PERIODIC BOUNDARY CONDITIONS ARE AUTOMATICALLY IMPOSED BY PERIODIC DATA TRANSFER ACROSS PROCESSORS THROUGH updateFace()
 }
 
 
-void multigrid_d3::updatePads(blitz::Array<blitz::Array<real, 3>, 1> &data) {
+void multigrid_d3::updateFace(blitz::Array<blitz::Array<real, 3>, 1> &data) {
     recvRequest = MPI_REQUEST_NULL;
 
     // TRANSFER DATA ACROSS FACES FROM NEIGHBOURING CELLS TO IMPOSE SUB-DOMAIN BOUNDARY CONDITIONS
@@ -572,6 +572,14 @@ void multigrid_d3::updatePads(blitz::Array<blitz::Array<real, 3>, 1> &data) {
     MPI_Send(&(data(vLevel)(sendInd(vLevel, 5))), 1, zFace(vLevel), mesh.rankData.faceRanks(5), 5, MPI_COMM_WORLD);
 
     MPI_Waitall(6, recvRequest.dataFirst(), recvStatus.dataFirst());
+}
+
+
+void multigrid_d3::updateFull(blitz::Array<blitz::Array<real, 3>, 1> &data) {
+    recvRequest = MPI_REQUEST_NULL;
+
+    // TRANSFER DATA ACROSS FACES FROM NEIGHBOURING CELLS TO IMPOSE SUB-DOMAIN BOUNDARY CONDITIONS
+    updateFace(data);
 
     // TRANSFER DATA ACROSS EDGES FROM NEIGHBOURING CELLS TO IMPOSE SUB-DOMAIN BOUNDARY CONDITIONS
     MPI_Irecv(&(data(vLevel)(recvInd(vLevel, 6))), 1, zEdge(vLevel), mesh.rankData.edgeRanks(0), 1, MPI_COMM_WORLD, &recvRequest(0));
