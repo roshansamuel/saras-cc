@@ -1,21 +1,14 @@
-# Saras - Finite difference solver
+# Saras-CC - Finite difference solver
 
-Saras is an OpenMP-MPI hybrid parallelized Navier-Stokes equation solver written in C++.
-It uses the finite-difference method for calculating spatial derivatives and parallelized geometric multigrid method for solving
-the pressure Poisson equation.
+Cell-centered version of the [SARAS](https://github.com/roshansamuel/saras) solver.
+This repository is under active development.
+Please visit the GitHub [page](https://github.com/roshansamuel/saras) of the original SARAS solver for installation instructions.
 
-All the source and library files for the Saras solver are contained in the following directories:
+## Installing SARAS-CC
 
-* ``./src/`` - contains all the different solvers available in Saras
-* ``./lib/`` - contains all the libraries used by the solvers in ``./src/`` folder
-* ``./compile/`` - contains the installation script to build and compile the solver
-* ``./output/`` - the solution files written by the solver are contained in this folder, it also contains Python post-processing scripts
+To install ``SARAS-CC``, you need to first clone the git repository into your local machine
 
-## Installing SARAS
-
-To install ``SARAS``, you need to first clone the git repository into your local machine
-
-`git clone https://github.com/roshansamuel/saras.git`
+`git clone https://github.com/roshansamuel/saras-cc.git`
 
 On LINUX systems which use the Bash shell, ``SARAS`` can be compiled by simply running the ``compileSaras.sh`` shell script in the `compile/` folder, as below
 
@@ -37,39 +30,7 @@ Before compilation, a few dependencies have to installed first.
 * ``yaml`` - The input parameters are stored in the parameters.yaml file which needs the yaml-cpp library to parse.
 * ``hdf5`` - The output files are written in HDF5 format
 
-### Blitz++
-
-To install the Blitz++ library, please download the library from [here](http://turbulencehub.org/wp-content/uploads/Download_Files/blitz-1.0.1.tar.gz), and extract the archive.
-Follow the installation instructions in the archive.
-
-### CMake
-
-On LINUX systems which use Debian package manager, please use the package manager itself to install CMake.
-For example, on Ubuntu systems, CMake can be installed by running
-
-`sudo apt-get install cmake`
-
-### MPICH
-
-Similar to CMake installation above, it is best to install MPICH using the native package manager.
-
-### YAML
-
-Currently, ``SARAS`` is compatible only with yaml-cpp 0.3 and below, since it uses ``YAML::Parser::GetNextDocument``,
-which was removed in subsequent versions.
-On Debian based systems, the YAML library can be installed by running
-
-`sudo apt-get install libyaml-cpp-dev`
-
-### HDF5
-
-The HDF5 library has to be installed with parallel writing enabled for the file writing functions of ``SARAS`` to work.
-The library can either be downloaded and manually installed from [here](http://turbulencehub.org/wp-content/uploads/Download_Files/hdf5-1.8.20.tar.bz2),
-or the native package manager of the OS can be used to locate and install the library.
-
-More instructions on installing the libraries listed above can be found [here](http://turbulencehub.org/index.php/codes/tarang/installing-tarang/).
-If any of the above libraries is being installed to the home directory,
-please make sure to update the relevant paths in the shell configuration file (``~/.bashrc``)
+Please visit the GitHub [page](https://github.com/roshansamuel/saras) of the original SARAS solver for instructions on installing these dependencies.
 
 ## Running SARAS
 
@@ -78,7 +39,7 @@ please make sure to update the relevant paths in the shell configuration file (`
 ``mpirun -np <number_of_processors> ./saras``
 
 It is essential to set the parameters appropriately with the ``parameters.yaml`` file in the ``input/`` folder of the solver.
-The number of processors specified to the ``mpirun`` command should be equal to the product of ``X Number of Procs`` and ``Y Number of Procs`` options
+The number of processors specified to the ``mpirun`` command should be equal to the product of ``X Number of Procs``, ``Y Number of Procs``, and ``Z Number of Procs`` options
 within the ``Parallel`` sub-section of ``parameters.yaml``.
 Please check the ``parameters.yaml`` file for the full list of options specifiable to the solver, and their explanations (in comments).
 
@@ -88,17 +49,23 @@ For more information please refer to the ``SARAS`` [documentation](https://rosha
 
 ``SARAS`` offers a few automated tests to validate the solver after installation.
 The relevant test scripts can be found in the ``tests/`` folder of the solver.
-Executing the Bash shell script ``testLDC.sh``, will compile ``SARAS``, and run it with a pre-defined set of parameters.
+For instance, executing the Bash shell script ``testLDC.sh``, will compile ``SARAS``, and run it with a pre-defined set of parameters.
 We use the benchmark results on 2D lid-driven cavity (LDC) performed by Ghia et al (1982) for this test.
 The test can be executed by running the following command within the ``tests/`` folder.
 
 ``bash testLDC.sh``
 
 The test uses 4 cores and takes about 12 minutes to complete on an Intel workstation.
-At the end of the test, the Python script ``validate_ldc.py``, found in ``tests/ldcTest/`` reads the output from ``SARAS``,
+At the end of the test, the Python script ``checkLDC.py``, found in ``tests/ldcTest/`` reads the output from ``SARAS``,
 and plots the velocity profiles along with the data from Ghia et al's result.
+At the end of the test, a plot of the x and y velocity profiles is shown to the user and saved as ``ldc_validation.png`` in the folder ``tests/ldcTest/``.
 
-The following Python modules are necessary for the Python test script to execute successfully
+Other tests currently available in ``SARAS`` are:
+
+* ``testPoisson`` - Test the convergence of multigrid solver of ``SARAS`` and compare with analytical result.
+* ``testChannel`` - Test ``SARAS`` to obtain laminar profile for channel flow and compare with analytical result.
+
+The following Python modules are necessary for the test scripts to execute successfully
 
 * numpy
 * scipy
@@ -106,7 +73,6 @@ The following Python modules are necessary for the Python test script to execute
 * h5py
 * yaml
 
-At the end of the test, a plot of the x and y velocity profiles is shown to the user and saved as ``ldc_validation.png`` in the folder ``tests/ldcTest/``.
 
 ## Setting up a new case in SARAS
 
