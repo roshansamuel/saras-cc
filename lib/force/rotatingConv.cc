@@ -43,6 +43,8 @@
 #include "force.h"
 
 rotatingConv::rotatingConv(const grid &mesh, const vfield &U, const sfield &T): force(mesh, U), T(T) {
+    real vNorm;
+
     switch (mesh.inputParams.rbcType) {
         case 1:
             Fb = mesh.inputParams.Ra*mesh.inputParams.Pr;
@@ -61,16 +63,25 @@ rotatingConv::rotatingConv(const grid &mesh, const vfield &U, const sfield &T): 
             Fr = sqrt(mesh.inputParams.Ta*mesh.inputParams.Pr/mesh.inputParams.Ra); 
             break;
     }
+
+    vNorm = std::sqrt(blitz::sum(blitz::sqr(mesh.inputParams.gAxis)));
+    gTerms = Fb*mesh.inputParams.gAxis/vNorm;
+
+    vNorm = std::sqrt(blitz::sum(blitz::sqr(mesh.inputParams.rAxis)));
+    rTerms = Fr*mesh.inputParams.rAxis/vNorm;
 }
 
 
 void rotatingConv::addForcing(plainvf &Hv) {
-    //ADD THE BUOYANCY TERM TO THE Vz COMPONENT OF Hv
-    Hv.Vz += Fb*T.F.F;
+    // ADD THE BUOYANCY TERMS TO THE CORRESPONDING COMPONENTS OF Hv
+    Hv.Vx -= gTerms[0]*T.F.F;
+    Hv.Vy -= gTerms[1]*T.F.F;
+    Hv.Vz -= gTerms[2]*T.F.F;
 
-    //ADD THE ROTATING TERM TO THE Vx COMPONENT OF Hv
-    Hv.Vx += Fr*V.Vy.F;
-
-    //SUBTRACT THE ROTATING TERM FROM THE Vy COMPONENT of Hv
-    Hv.Vy -= Fr*V.Vx.F;
+    // ADD THE ROTATING TERM TO THE CORRESPONDING COMPONENTS OF Hv
+    // THE TERMS ARE CALCULATED AS n x v,
+    // WHERE n IS THE UNIT VECTOR ALONG ROTATION AXIS, AND v IS VELOCITY VECTOR.
+    Hv.Vx -= rTerms[1]*V.Vz.F - rTerms[2]*V.Vy.F;
+    Hv.Vy -= rTerms[2]*V.Vx.F - rTerms[0]*V.Vz.F;
+    Hv.Vz -= rTerms[0]*V.Vy.F - rTerms[1]*V.Vx.F;
 }

@@ -79,6 +79,16 @@
     # 5 = Constant pressure gradient (along X-direction: used mainly for periodic channel flows)
     "Force": 0
 
+    # If Option 3 or 4 is selected for "Force", specify direction of gravity.
+    # Default direction is negative Z-direction
+    # The solver will automatically normalize the input vector.
+    "Gravity Direction": [0, 0, -1]
+
+    # If Option 2 or 4 is selected for "Force", specify axis of rotation.
+    # Default axis is positive Z-direction
+    # The solver will automatically normalize the input vector.
+    "Rotation Axis": [0, 0, 1]
+
     # If constant pressure gradient is chosen as forcing, set the value of mean pressure gradient
     "Mean Pressure Gradient": 1.0
 

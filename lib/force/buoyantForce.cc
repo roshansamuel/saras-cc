@@ -43,6 +43,8 @@
 #include "force.h"
 
 buoyantForce::buoyantForce(const grid &mesh, const vfield &U, const sfield &T): force(mesh, U), T(T) {
+    real vNorm;
+
     switch (mesh.inputParams.rbcType) {
         case 1: Fb = mesh.inputParams.Ra*mesh.inputParams.Pr;
             break;
@@ -53,10 +55,15 @@ buoyantForce::buoyantForce(const grid &mesh, const vfield &U, const sfield &T): 
         case 4: Fb = mesh.inputParams.Pr;
             break;
     }
+
+    vNorm = std::sqrt(blitz::sum(blitz::sqr(mesh.inputParams.gAxis)));
+    gTerms = Fb*mesh.inputParams.gAxis/vNorm;
 }
 
 
 void buoyantForce::addForcing(plainvf &Hv) {
-    //ADD THE BUOYANCY TERM TO THE Vz COMPONENT OF Hv
-    Hv.Vz += Fb*T.F.F;
+    // ADD THE BUOYANCY TERMS TO THE CORRESPONDING COMPONENTS OF Hv
+    Hv.Vx -= gTerms[0]*T.F.F;
+    Hv.Vy -= gTerms[1]*T.F.F;
+    Hv.Vz -= gTerms[2]*T.F.F;
 }

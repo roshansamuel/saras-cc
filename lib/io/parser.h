@@ -106,6 +106,7 @@ class parser {
         real betaX, betaY, betaZ;
         real cnTolerance, mgTolerance;
 
+        blitz::TinyVector<real, 3> gAxis, rAxis;
         std::vector<blitz::TinyVector<int, 3> > probesList;
 
         parser();

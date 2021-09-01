@@ -72,6 +72,9 @@ void parser::parseYAML() {
     inFile.open("input/parameters.yaml", std::ifstream::in);
 
 #ifdef YAML_LEGACY
+    real gx, gy, gz;
+    real rx, ry, rz;
+
     YAML::Node yamlNode;
     YAML::Parser parser(inFile);
 
@@ -102,6 +105,19 @@ void parser::parseYAML() {
     yamlNode["Program"]["Plate Radius"] >> patchRadius;
 
     yamlNode["Program"]["Force"] >> forceType;
+
+    yamlNode["Program"]["Gravity Direction"][0] >> gx;
+    yamlNode["Program"]["Gravity Direction"][1] >> gy;
+    yamlNode["Program"]["Gravity Direction"][2] >> gz;
+
+    gAxis = gx, gy, gz;
+
+    yamlNode["Program"]["Rotation Axis"][0] >> rx;
+    yamlNode["Program"]["Rotation Axis"][1] >> ry;
+    yamlNode["Program"]["Rotation Axis"][2] >> rz;
+
+    rAxis = rx, ry, rz;
+
     yamlNode["Program"]["Mean Pressure Gradient"] >> meanPGrad;
 
     /********** Mesh parameters **********/
@@ -189,6 +205,15 @@ void parser::parseYAML() {
     patchRadius = yamlNode["Program"]["Plate Radius"].as<real>();
 
     forceType = yamlNode["Program"]["Force"].as<int>();
+
+    gAxis = yamlNode["Program"]["Gravity Direction"][0].as<real>(),
+            yamlNode["Program"]["Gravity Direction"][1].as<real>(),
+            yamlNode["Program"]["Gravity Direction"][2].as<real>();
+
+    rAxis = yamlNode["Program"]["Rotation Axis"][0].as<real>(),
+            yamlNode["Program"]["Rotation Axis"][1].as<real>(),
+            yamlNode["Program"]["Rotation Axis"][2].as<real>();
+
     meanPGrad = yamlNode["Program"]["Mean Pressure Gradient"].as<real>();
 
     /********** Mesh parameters **********/

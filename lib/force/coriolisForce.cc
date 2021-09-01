@@ -43,14 +43,20 @@
 #include "force.h"
 
 coriolisForce::coriolisForce(const grid &mesh, const vfield &U): force(mesh, U) {
+    real vNorm;
+
     Fr = 1.0/mesh.inputParams.Ro;
+
+    vNorm = std::sqrt(blitz::sum(blitz::sqr(mesh.inputParams.rAxis)));
+    rTerms = Fr*mesh.inputParams.rAxis/vNorm;
 }
 
 
 void coriolisForce::addForcing(plainvf &Hv) {
-    //ADD THE ROTATING TERM TO THE Vx COMPONENT OF Hv
-    Hv.Vx += Fr*V.Vy.F;
-
-    //SUBTRACT THE ROTATING TERM FROM THE Vy COMPONENT of Hv
-    Hv.Vy -= Fr*V.Vx.F;
+    // ADD THE ROTATING TERM TO THE CORRESPONDING COMPONENTS OF Hv
+    // THE TERMS ARE CALCULATED AS n x v,
+    // WHERE n IS THE UNIT VECTOR ALONG ROTATION AXIS, AND v IS VELOCITY VECTOR.
+    Hv.Vx -= rTerms[1]*V.Vz.F - rTerms[2]*V.Vy.F;
+    Hv.Vy -= rTerms[2]*V.Vx.F - rTerms[0]*V.Vz.F;
+    Hv.Vz -= rTerms[0]*V.Vy.F - rTerms[1]*V.Vx.F;
 }
