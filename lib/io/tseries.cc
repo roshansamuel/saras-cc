@@ -103,6 +103,12 @@ tseries::tseries(const grid &mesh, vfield &solverV, const real &solverTime, cons
     // must be turned on.
     maxSwitch = true;
 
+    // Nusselt number calculation requires temperature to be multiplied with velocity.
+    // By default T is multiplied with Vz (when gravity is along negative Z direction)
+    zGravity = true;
+    // For certain cases however, T may have to be multiplied with Vx
+    if (mesh.inputParams.gAxis(2) == 0) zGravity = false;
+
     if (mesh.inputParams.lesModel) subgridEnergy = 0.0;
 }
 
@@ -231,6 +237,7 @@ void tseries::writeTSData() {
  */
 void tseries::writeTSData(const sfield &T) {
     real theta = 0.0;
+    real dVol = 0.0;
 
     // COMPUTE ENERGY AND DIVERGENCE FOR THE INITIAL CONDITION
     V.divergence(divV);
@@ -254,30 +261,32 @@ void tseries::writeTSData(const sfield &T) {
     int iY = 0;
     for (int iX = xLow; iX <= xTop; iX++) {
         for (int iZ = zLow; iZ <= zTop; iZ++) {
-            // Check if the following value of theta is valid for all scalar runs
-            theta = T.F.F(iX, iY, iZ) + mesh.z(iZ) - 1.0;
+            dVol = (mesh.dXi/mesh.xi_x(iX))*(mesh.dZt/mesh.zt_z(iZ));
 
-            localKineticEnergy += (pow(V.Vx.F(iX, iY, iZ), 2.0) + pow(V.Vz.F(iX, iY, iZ), 2.0))*0.5*
-                                    (mesh.dXi/mesh.xi_x(iX))*(mesh.dZt/mesh.zt_z(iZ));
+            if (zGravity)
+                theta = T.F.F(iX, iY, iZ) + mesh.z(iZ) - 1.0;
+            else
+                theta = T.F.F(iX, iY, iZ) + mesh.x(iX) - 1.0;
 
-            localThermalEnergy += (pow(theta, 2.0))*0.5*(mesh.dXi/mesh.xi_x(iX))*(mesh.dZt/mesh.zt_z(iZ));
-
-            localUzT += V.Vz.F(iX, iY, iZ)*T.F.F(iX, iY, iZ)*(mesh.dXi/mesh.xi_x(iX))*(mesh.dZt/mesh.zt_z(iZ));
+            localKineticEnergy += (pow(V.Vx.F(iX, iY, iZ), 2.0) + pow(V.Vz.F(iX, iY, iZ), 2.0))*0.5*dVol;
+            localThermalEnergy += (pow(theta, 2.0))*0.5*dVol;
+            localUzT += V.Vz.F(iX, iY, iZ)*T.F.F(iX, iY, iZ)*dVol;
         }
     }
 #else
     for (int iX = xLow; iX <= xTop; iX++) {
         for (int iY = yLow; iY <= yTop; iY++) {
             for (int iZ = zLow; iZ <= zTop; iZ++) {
-                // Check if the following value of theta is valid for all scalar runs
-                theta = T.F.F(iX, iY, iZ) + mesh.z(iZ) - 1.0;
+                dVol = (mesh.dXi/mesh.xi_x(iX))*(mesh.dEt/mesh.et_y(iY))*(mesh.dZt/mesh.zt_z(iZ));
 
-                localKineticEnergy += (pow(V.Vx.F(iX, iY, iZ), 2.0) + pow(V.Vy.F(iX, iY, iZ), 2.0) + pow(V.Vz.F(iX, iY, iZ), 2.0))*0.5*
-                                    (mesh.dXi/mesh.xi_x(iX))*(mesh.dEt/mesh.et_y(iY))*(mesh.dZt/mesh.zt_z(iZ));
+                if (zGravity)
+                    theta = T.F.F(iX, iY, iZ) + mesh.z(iZ) - 1.0;
+                else
+                    theta = T.F.F(iX, iY, iZ) + mesh.x(iX) - 1.0;
 
-                localThermalEnergy += (pow(theta, 2.0))*0.5*(mesh.dXi/mesh.xi_x(iX))*(mesh.dEt/mesh.et_y(iY))*(mesh.dZt/mesh.zt_z(iZ));
-
-                localUzT += V.Vz.F(iX, iY, iZ)*T.F.F(iX, iY, iZ)*(mesh.dXi/mesh.xi_x(iX))*(mesh.dEt/mesh.et_y(iY))*(mesh.dZt/mesh.zt_z(iZ));
+                localKineticEnergy += (pow(V.Vx.F(iX, iY, iZ), 2.0) + pow(V.Vy.F(iX, iY, iZ), 2.0) + pow(V.Vz.F(iX, iY, iZ), 2.0))*0.5*dVol;
+                localThermalEnergy += (pow(theta, 2.0))*0.5*dVol;
+                localUzT += V.Vz.F(iX, iY, iZ)*T.F.F(iX, iY, iZ)*dVol;
             }
         }
     }

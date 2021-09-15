@@ -309,7 +309,7 @@ void derivative::setWallRectDomains() {
     x0Rgt = x0Mid;      x0Rgt.lbound()(0) += 1;      x0Rgt.ubound()(0) += 1;
 
     lb = F.lbound();        lb(0) = core.ubound(0);
-    ub = F.ubound();                ub(0) = core.ubound(0);
+    ub = F.ubound();        ub(0) = core.ubound(0);
     x1Mid = blitz::RectDomain<3>(lb, ub);
     x1Lft = x1Mid;      x1Lft.lbound()(0) -= 1;      x1Lft.ubound()(0) -= 1;
     x1Rgt = x1Mid;      x1Rgt.lbound()(0) += 1;      x1Rgt.ubound()(0) += 1;

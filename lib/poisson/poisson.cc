@@ -273,8 +273,16 @@ void poisson::vCycle() {
                 solve():
                 smooth(inputParams.preSmooth):
             smooth(inputParams.preSmooth);
+
+        //int serNum = int(pow(2, (5-i))) - 1;
+        //int parNum = int(pow(2, (4-i))) - 1;
+        //if (mesh.rankData.rank == 0) std::cout << std::fixed << std::setprecision(12) << lhs(i+1)(serNum, serNum, serNum) << std::endl;
+        //if (mesh.rankData.rank == 7) std::cout << std::fixed << std::setprecision(12) << lhs(i+1)(parNum, parNum, parNum) << std::endl;
     }
     // Step 4) Repeat steps 2-3 until you reach the coarsest grid level,
+
+    //MPI_Finalize();
+    //exit(0);
 
     // PROLONGATION OPERATIONS UP TO FINEST MESH
     for (int i=0; i<inputParams.vcDepth; i++) {
@@ -396,8 +404,8 @@ void poisson::setStagBounds() {
     }
 
     // SET MAXIMUM NUMBER OF ITERATIONS FOR THE GAUSS-SEIDEL SOLVER AT COARSEST LEVEL OF MULTIGRID SOLVER
-    blitz::TinyVector<int, 3> cgSize = stagFull(inputParams.vcDepth).ubound() - stagFull(inputParams.vcDepth).lbound();
-    maxCount = cgSize(0)*cgSize(1)*cgSize(2);
+    blitz::TinyVector<int, 3> cgSize = stagCore(inputParams.vcDepth).ubound() + 1;
+    maxCount = 10*cgSize(0)*cgSize(1)*cgSize(2)*mesh.rankData.npX*mesh.rankData.npY*mesh.rankData.npZ;
 };
 
 

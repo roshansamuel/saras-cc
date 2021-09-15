@@ -64,6 +64,7 @@ class tseries {
         ~tseries();
 
     private:
+        bool zGravity;
         bool maxSwitch;
 
         int xLow, xTop;
