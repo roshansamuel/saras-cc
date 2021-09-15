@@ -270,7 +270,11 @@ void tseries::writeTSData(const sfield &T) {
 
             localKineticEnergy += (pow(V.Vx.F(iX, iY, iZ), 2.0) + pow(V.Vz.F(iX, iY, iZ), 2.0))*0.5*dVol;
             localThermalEnergy += (pow(theta, 2.0))*0.5*dVol;
-            localUzT += V.Vz.F(iX, iY, iZ)*T.F.F(iX, iY, iZ)*dVol;
+
+            if (zGravity)
+                localUzT += V.Vz.F(iX, iY, iZ)*T.F.F(iX, iY, iZ)*dVol;
+            else
+                localUzT += V.Vx.F(iX, iY, iZ)*T.F.F(iX, iY, iZ)*dVol;
         }
     }
 #else
@@ -286,7 +290,11 @@ void tseries::writeTSData(const sfield &T) {
 
                 localKineticEnergy += (pow(V.Vx.F(iX, iY, iZ), 2.0) + pow(V.Vy.F(iX, iY, iZ), 2.0) + pow(V.Vz.F(iX, iY, iZ), 2.0))*0.5*dVol;
                 localThermalEnergy += (pow(theta, 2.0))*0.5*dVol;
-                localUzT += V.Vz.F(iX, iY, iZ)*T.F.F(iX, iY, iZ)*dVol;
+
+                if (zGravity)
+                    localUzT += V.Vz.F(iX, iY, iZ)*T.F.F(iX, iY, iZ)*dVol;
+                else
+                    localUzT += V.Vx.F(iX, iY, iZ)*T.F.F(iX, iY, iZ)*dVol;
             }
         }
     }
