@@ -99,23 +99,6 @@ void multigrid_d3::smooth(const int smoothCount) {
     for(int n=0; n<smoothCount; ++n) {
         imposeBC();
 
-        /*
-        // SIMPLE GAUSS-SEIDEL
-        for (int i = 0; i <= xEnd(vLevel); ++i) {
-            for (int j = 0; j <= yEnd(vLevel); ++j) {
-                for (int k = 0; k <= zEnd(vLevel); ++k) {
-                    lhs(vLevel)(i, j, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
-                                            xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, j, k) - lhs(vLevel)(i - 1, j, k)) +
-                                            ety2(vLevel)(j) * ihy2(vLevel) * (lhs(vLevel)(i, j + 1, k) + lhs(vLevel)(i, j - 1, k)) +
-                                            etyy(vLevel)(j) * i2hy(vLevel) * (lhs(vLevel)(i, j + 1, k) - lhs(vLevel)(i, j - 1, k)) +
-                                            ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, j, k + 1) + lhs(vLevel)(i, j, k - 1)) +
-                                            ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, j, k + 1) - lhs(vLevel)(i, j, k - 1)) -
-                                                rhs(vLevel)(i, j, k)) / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
-                }
-            }
-        }
-        */
-
         // RED-BLACK GAUSS-SEIDEL
         // UPDATE RED CELLS
         // 0, 0, 0 CONFIGURATION
@@ -261,23 +244,6 @@ void multigrid_d3::solve() {
 
     while (true) {
         imposeBC();
-
-        /*
-        // GAUSS-SEIDEL ITERATIVE SOLVER
-        for (int i = 0; i <= xEnd(vLevel); ++i) {
-            for (int j = 0; j <= yEnd(vLevel); ++j) {
-                for (int k = 0; k <= zEnd(vLevel); ++k) {
-                    lhs(vLevel)(i, j, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
-                                            xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, j, k) - lhs(vLevel)(i - 1, j, k)) +
-                                            ety2(vLevel)(j) * ihy2(vLevel) * (lhs(vLevel)(i, j + 1, k) + lhs(vLevel)(i, j - 1, k)) +
-                                            etyy(vLevel)(j) * i2hy(vLevel) * (lhs(vLevel)(i, j + 1, k) - lhs(vLevel)(i, j - 1, k)) +
-                                            ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, j, k + 1) + lhs(vLevel)(i, j, k - 1)) +
-                                            ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, j, k + 1) - lhs(vLevel)(i, j, k - 1)) -
-                                             rhs(vLevel)(i, j, k)) / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
-                }
-            }
-        }
-        */
 
         // RED-BLACK GAUSS-SEIDEL
         // UPDATE RED CELLS

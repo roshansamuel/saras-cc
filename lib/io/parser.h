@@ -69,8 +69,8 @@ class parser {
         int solnFormat;
         int npX, npY, npZ;
         int xInd, yInd, zInd;
+        int preSmooth, postSmooth;
         int resType, vcDepth, vcCount;
-        int gsSmooth, preSmooth, postSmooth;
 
         int icType;
         int dScheme;

@@ -94,33 +94,58 @@ void multigrid_d2::smooth(const int smoothCount) {
     for(int n=0; n<smoothCount; ++n) {
         imposeBC();
 
-        // WARNING: When using the gauss-seidel smoothing as written below, the edges of interior sub-domains after MPI decomposition will not have the updated values
-        // As a result, the serial and parallel results will not match when using gauss-seidel smoothing
-        if (inputParams.gsSmooth) {
-            // GAUSS-SEIDEL ITERATIVE SMOOTHING
-            for (int i = 0; i <= xEnd(vLevel); ++i) {
-                for (int k = 0; k <= zEnd(vLevel); ++k) {
-                    lhs(vLevel)(i, 0, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, 0, k) + lhs(vLevel)(i - 1, 0, k)) +
-                                            xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, 0, k) - lhs(vLevel)(i - 1, 0, k)) +
-                                            ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, 0, k + 1) + lhs(vLevel)(i, 0, k - 1)) +
-                                            ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, 0, k + 1) - lhs(vLevel)(i, 0, k - 1)) -
-                                             rhs(vLevel)(i, 0, k)) / (2.0 * (ihx2(vLevel) * xix2(vLevel)(i) + ihz2(vLevel)*ztz2(vLevel)(k)));
-                }
-            }
-        } else {
-            // JACOBI ITERATIVE SMOOTHING
+        // RED-BLACK GAUSS-SEIDEL
+        // UPDATE RED CELLS
+        // 0, 0 CONFIGURATION
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none)
-            for (int i = 0; i <= xEnd(vLevel); ++i) {
-                for (int k = 0; k <= zEnd(vLevel); ++k) {
-                    tmp(vLevel)(i, 0, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, 0, k) + lhs(vLevel)(i - 1, 0, k)) +
-                                            xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, 0, k) - lhs(vLevel)(i - 1, 0, k)) +
-                                            ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, 0, k + 1) + lhs(vLevel)(i, 0, k - 1)) +
-                                            ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, 0, k + 1) - lhs(vLevel)(i, 0, k - 1)) -
-                                             rhs(vLevel)(i, 0, k)) / (2.0 * (ihx2(vLevel) * xix2(vLevel)(i) + ihz2(vLevel)*ztz2(vLevel)(k)));
-                }
+        for (int i = 0; i < xEnd(vLevel); i+=2) {
+            for (int k = 0; k < zEnd(vLevel); k+=2) {
+                lhs(vLevel)(i, 0, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, 0, k) + lhs(vLevel)(i - 1, 0, k)) +
+                                        xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, 0, k) - lhs(vLevel)(i - 1, 0, k)) +
+                                        ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, 0, k + 1) + lhs(vLevel)(i, 0, k - 1)) +
+                                        ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, 0, k + 1) - lhs(vLevel)(i, 0, k - 1)) -
+                                            rhs(vLevel)(i, 0, k)) / (2.0 * (ihx2(vLevel) * xix2(vLevel)(i) + ihz2(vLevel)*ztz2(vLevel)(k)));
             }
+        }
 
-            swap(tmp, lhs);
+        // 1, 1 CONFIGURATION
+#pragma omp parallel for num_threads(inputParams.nThreads) default(none)
+        for (int i = 1; i <= xEnd(vLevel); i+=2) {
+            for (int k = 1; k <= zEnd(vLevel); k+=2) {
+                lhs(vLevel)(i, 0, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, 0, k) + lhs(vLevel)(i - 1, 0, k)) +
+                                        xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, 0, k) - lhs(vLevel)(i - 1, 0, k)) +
+                                        ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, 0, k + 1) + lhs(vLevel)(i, 0, k - 1)) +
+                                        ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, 0, k + 1) - lhs(vLevel)(i, 0, k - 1)) -
+                                            rhs(vLevel)(i, 0, k)) / (2.0 * (ihx2(vLevel) * xix2(vLevel)(i) + ihz2(vLevel)*ztz2(vLevel)(k)));
+            }
+        }
+
+        // UPDATE OF RED CELLS COMPLETE. UPDATE SUB-DOMAIN FACES NOW
+        updateFull(lhs);
+
+        // UPDATE BLACK CELLS
+        // 1, 0 CONFIGURATION
+#pragma omp parallel for num_threads(inputParams.nThreads) default(none)
+        for (int i = 1; i <= xEnd(vLevel); i+=2) {
+            for (int k = 0; k < zEnd(vLevel); k+=2) {
+                lhs(vLevel)(i, 0, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, 0, k) + lhs(vLevel)(i - 1, 0, k)) +
+                                        xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, 0, k) - lhs(vLevel)(i - 1, 0, k)) +
+                                        ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, 0, k + 1) + lhs(vLevel)(i, 0, k - 1)) +
+                                        ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, 0, k + 1) - lhs(vLevel)(i, 0, k - 1)) -
+                                            rhs(vLevel)(i, 0, k)) / (2.0 * (ihx2(vLevel) * xix2(vLevel)(i) + ihz2(vLevel)*ztz2(vLevel)(k)));
+            }
+        }
+
+        // 0, 1 CONFIGURATION
+#pragma omp parallel for num_threads(inputParams.nThreads) default(none)
+        for (int i = 0; i < xEnd(vLevel); i+=2) {
+            for (int k = 1; k <= zEnd(vLevel); k+=2) {
+                lhs(vLevel)(i, 0, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, 0, k) + lhs(vLevel)(i - 1, 0, k)) +
+                                        xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, 0, k) - lhs(vLevel)(i - 1, 0, k)) +
+                                        ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, 0, k + 1) + lhs(vLevel)(i, 0, k - 1)) +
+                                        ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, 0, k + 1) - lhs(vLevel)(i, 0, k - 1)) -
+                                            rhs(vLevel)(i, 0, k)) / (2.0 * (ihx2(vLevel) * xix2(vLevel)(i) + ihz2(vLevel)*ztz2(vLevel)(k)));
+            }
         }
     }
 
@@ -135,14 +160,57 @@ void multigrid_d2::solve() {
     while (true) {
         imposeBC();
 
-        // GAUSS-SEIDEL ITERATIVE SOLVER
-        for (int i = 0; i <= xEnd(vLevel); ++i) {
-            for (int k = 0; k <= zEnd(vLevel); ++k) {
+        // RED-BLACK GAUSS-SEIDEL
+        // UPDATE RED CELLS
+        // 0, 0 CONFIGURATION
+#pragma omp parallel for num_threads(inputParams.nThreads) default(none)
+        for (int i = 0; i < xEnd(vLevel); i+=2) {
+            for (int k = 0; k < zEnd(vLevel); k+=2) {
                 lhs(vLevel)(i, 0, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, 0, k) + lhs(vLevel)(i - 1, 0, k)) +
                                         xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, 0, k) - lhs(vLevel)(i - 1, 0, k)) +
                                         ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, 0, k + 1) + lhs(vLevel)(i, 0, k - 1)) +
                                         ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, 0, k + 1) - lhs(vLevel)(i, 0, k - 1)) -
-                                         rhs(vLevel)(i, 0, k)) / (2.0 * (ihx2(vLevel) * xix2(vLevel)(i) + ihz2(vLevel)*ztz2(vLevel)(k)));
+                                            rhs(vLevel)(i, 0, k)) / (2.0 * (ihx2(vLevel) * xix2(vLevel)(i) + ihz2(vLevel)*ztz2(vLevel)(k)));
+            }
+        }
+
+        // 1, 1 CONFIGURATION
+#pragma omp parallel for num_threads(inputParams.nThreads) default(none)
+        for (int i = 1; i <= xEnd(vLevel); i+=2) {
+            for (int k = 1; k <= zEnd(vLevel); k+=2) {
+                lhs(vLevel)(i, 0, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, 0, k) + lhs(vLevel)(i - 1, 0, k)) +
+                                        xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, 0, k) - lhs(vLevel)(i - 1, 0, k)) +
+                                        ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, 0, k + 1) + lhs(vLevel)(i, 0, k - 1)) +
+                                        ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, 0, k + 1) - lhs(vLevel)(i, 0, k - 1)) -
+                                            rhs(vLevel)(i, 0, k)) / (2.0 * (ihx2(vLevel) * xix2(vLevel)(i) + ihz2(vLevel)*ztz2(vLevel)(k)));
+            }
+        }
+
+        // UPDATE OF RED CELLS COMPLETE. UPDATE SUB-DOMAIN FACES NOW
+        updateFull(lhs);
+
+        // UPDATE BLACK CELLS
+        // 1, 0 CONFIGURATION
+#pragma omp parallel for num_threads(inputParams.nThreads) default(none)
+        for (int i = 1; i <= xEnd(vLevel); i+=2) {
+            for (int k = 0; k < zEnd(vLevel); k+=2) {
+                lhs(vLevel)(i, 0, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, 0, k) + lhs(vLevel)(i - 1, 0, k)) +
+                                        xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, 0, k) - lhs(vLevel)(i - 1, 0, k)) +
+                                        ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, 0, k + 1) + lhs(vLevel)(i, 0, k - 1)) +
+                                        ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, 0, k + 1) - lhs(vLevel)(i, 0, k - 1)) -
+                                            rhs(vLevel)(i, 0, k)) / (2.0 * (ihx2(vLevel) * xix2(vLevel)(i) + ihz2(vLevel)*ztz2(vLevel)(k)));
+            }
+        }
+
+        // 0, 1 CONFIGURATION
+#pragma omp parallel for num_threads(inputParams.nThreads) default(none)
+        for (int i = 0; i < xEnd(vLevel); i+=2) {
+            for (int k = 1; k <= zEnd(vLevel); k+=2) {
+                lhs(vLevel)(i, 0, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, 0, k) + lhs(vLevel)(i - 1, 0, k)) +
+                                        xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, 0, k) - lhs(vLevel)(i - 1, 0, k)) +
+                                        ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, 0, k + 1) + lhs(vLevel)(i, 0, k - 1)) +
+                                        ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, 0, k + 1) - lhs(vLevel)(i, 0, k - 1)) -
+                                            rhs(vLevel)(i, 0, k)) / (2.0 * (ihx2(vLevel) * xix2(vLevel)(i) + ihz2(vLevel)*ztz2(vLevel)(k)));
             }
         }
 

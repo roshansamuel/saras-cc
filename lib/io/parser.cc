@@ -170,7 +170,6 @@ void parser::parseYAML() {
     yamlNode["Multigrid"]["Solve Coarsest"] >> solveFlag;
     yamlNode["Multigrid"]["Solve Tolerance"] >> mgTolerance;
 
-    yamlNode["Multigrid"]["Smoothing Method"] >> gsSmooth;
     yamlNode["Multigrid"]["Pre-Smoothing Count"] >> preSmooth;
     yamlNode["Multigrid"]["Post-Smoothing Count"] >> postSmooth;
 
@@ -266,7 +265,6 @@ void parser::parseYAML() {
     solveFlag = yamlNode["Multigrid"]["Solve Coarsest"].as<bool>();
     mgTolerance = yamlNode["Multigrid"]["Solve Tolerance"].as<real>();
 
-    gsSmooth = yamlNode["Multigrid"]["Smoothing Method"].as<int>();
     preSmooth = yamlNode["Multigrid"]["Pre-Smoothing Count"].as<int>();
     postSmooth = yamlNode["Multigrid"]["Post-Smoothing Count"].as<int>();
 

@@ -193,11 +193,6 @@
     # If the above flag is true, set the tolerance used in iterative method when solving
     "Solve Tolerance": 1.0e-6
 
-    # Iterative method to be used for smoothing
-    # 0 = Jacobi iteration
-    # 1 = Gauss-Seidel iteration
-    "Smoothing Method": 1
-
     # Number of smoothing iterations to be performed after restriction operations
     "Pre-Smoothing Count": 3
     # Number of smoothing iterations to be performed after prolongation operations
