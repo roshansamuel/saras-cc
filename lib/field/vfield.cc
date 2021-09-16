@@ -202,12 +202,12 @@ void vfield::computeTStp(real &dt) {
     real locMax, gloMax;
 
 #ifdef PLANAR
-    locMax = blitz::max((blitz::abs(Vx.F)/gridData.dXi) +
-                        (blitz::abs(Vz.F)/gridData.dZt));
+    locMax = blitz::max((blitz::abs(Vx.F(core))/gridData.dXi) +
+                        (blitz::abs(Vz.F(core))/gridData.dZt));
 #else
-    locMax = blitz::max((blitz::abs(Vx.F)/gridData.dXi) +
-                        (blitz::abs(Vy.F)/gridData.dEt) +
-                        (blitz::abs(Vz.F)/gridData.dZt));
+    locMax = blitz::max((blitz::abs(Vx.F(core))/gridData.dXi) +
+                        (blitz::abs(Vy.F(core))/gridData.dEt) +
+                        (blitz::abs(Vz.F(core))/gridData.dZt));
 #endif
 
     MPI_Allreduce(&locMax, &gloMax, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);

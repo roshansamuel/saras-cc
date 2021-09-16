@@ -193,7 +193,7 @@ void field::syncAll() {
 real field::fieldMax() {
     real localMax, globalMax;
 
-    localMax = blitz::max(blitz::abs(F));
+    localMax = blitz::max(blitz::abs(F(core)));
 
     /***************************************************************************************************************
      * DID YOU KNOW?                                                                                               *
