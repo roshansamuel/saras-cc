@@ -397,7 +397,11 @@ void poisson::setStagBounds() {
 
     // SET MAXIMUM NUMBER OF ITERATIONS FOR THE GAUSS-SEIDEL SOLVER AT COARSEST LEVEL OF MULTIGRID SOLVER
     blitz::TinyVector<int, 3> cgSize = stagCore(inputParams.vcDepth).ubound() + 1;
-    maxCount = 10*cgSize(0)*cgSize(1)*cgSize(2)*mesh.rankData.npX*mesh.rankData.npY*mesh.rankData.npZ;
+    maxCount = cgSize(0)*cgSize(1)*cgSize(2)*mesh.rankData.npX*mesh.rankData.npY*mesh.rankData.npZ;
+
+    if (inputParams.solveFlag)
+        if (mesh.rankData.rank == 0)
+            std::cout << "Iteration limit for Red-Black Gauss-Seidel solver in multi-grid is " << maxCount << "\n" << std::endl;
 };
 
 
