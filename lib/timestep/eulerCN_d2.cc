@@ -66,6 +66,11 @@ eulerCN_d2::eulerCN_d2(const grid &mesh, const real &sTime, const real &dt, tser
     // This can eat away a lot of core hours unnecessarily.
     // It remains to be seen if this upper limit is safe.
     maxIterations = int(std::pow(std::log(mesh.coreSize(0)*mesh.coreSize(1)*mesh.coreSize(2)), 3));
+
+    // These coefficients are default values for Crank-Nicholson
+    // Sum of alpha and beta should be 1.0
+    alphCN2 = 1.0/2.0;
+    betaCN2 = 1.0/2.0;
 }
 
 
@@ -87,7 +92,7 @@ void eulerCN_d2::timeAdvance(vfield &V, sfield &P) {
     // Compute the diffusion term of momentum equation
     V.computeDiff(nseRHS);
     // Split the diffusion term and multiply by diffusion coefficient
-    nseRHS *= nu/2;
+    nseRHS *= nu*alphCN2;
 
     // Compute the non-linear term and subtract it from the RHS
     V.computeNLin(V, nseRHS);
@@ -108,8 +113,8 @@ void eulerCN_d2::timeAdvance(vfield &V, sfield &P) {
     nseRHS.syncFaces();
 
     // Using the RHS term computed, compute the guessed velocity of CN method iteratively (and store it in V)
-    solveVx(V, nseRHS);
-    solveVz(V, nseRHS);
+    solveVx(V, nseRHS, betaCN2);
+    solveVz(V, nseRHS, betaCN2);
 
     // Calculate the rhs for the poisson solver (mgRHS) using the divergence of guessed velocity in V
     V.divergence(mgRHS);
@@ -175,12 +180,12 @@ void eulerCN_d2::timeAdvance(vfield &V, sfield &P, sfield &T) {
     // Compute the diffusion term of momentum equation
     V.computeDiff(nseRHS);
     // Split the diffusion term and multiply by diffusion coefficient
-    nseRHS *= nu/2;
+    nseRHS *= nu*alphCN2;
 
     // Compute the diffusion term of scalar equation
     T.computeDiff(tmpRHS);
     // Split the diffusion term and multiply by diffusion coefficient
-    tmpRHS *= kappa/2;
+    tmpRHS *= kappa*alphCN2;
 
     // Compute the non-linear term and subtract it from the RHS of momentum equation
     V.computeNLin(V, nseRHS);
@@ -225,11 +230,11 @@ void eulerCN_d2::timeAdvance(vfield &V, sfield &P, sfield &T) {
     tmpRHS.syncFaces();
 
     // Using the RHS term computed, compute the guessed velocity of CN method iteratively (and store it in V)
-    solveVx(V, nseRHS);
-    solveVz(V, nseRHS);
+    solveVx(V, nseRHS, betaCN2);
+    solveVz(V, nseRHS, betaCN2);
 
     // Using the RHS term computed, compute the temperature at next time-step iteratively (and store it in T)
-    solveT(T, tmpRHS);
+    solveT(T, tmpRHS, betaCN2);
 
     // Calculate the rhs for the poisson solver (mgRHS) using the divergence of guessed velocity in V
     V.divergence(mgRHS);
@@ -273,7 +278,7 @@ void eulerCN_d2::timeAdvance(vfield &V, sfield &P, sfield &T) {
  *
  ********************************************************************************************************************************************
  */
-void eulerCN_d2::solveVx(vfield &V, plainvf &nseRHS) {
+void eulerCN_d2::solveVx(vfield &V, plainvf &nseRHS, real beta) {
     int iterCount = 0;
     real locMax = 0.0;
     real gloMax = 0.0;
@@ -281,15 +286,15 @@ void eulerCN_d2::solveVx(vfield &V, plainvf &nseRHS) {
 
     while (true) {
         int iY = 0;
-#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(nseRHS) shared(tempVx) shared(iY)
+#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(nseRHS) shared(tempVx) shared(iY) shared(beta)
         for (int iX = xSt; iX <= xEn; iX++) {
             for (int iZ = zSt; iZ <= zEn; iZ++) {
                 tempVx(iX, iY, iZ) = ((ihx2 * mesh.xix2(iX) * (V.Vx.F(iX+1, iY, iZ) + V.Vx.F(iX-1, iY, iZ)) +
                                        i2hx * mesh.xixx(iX) * (V.Vx.F(iX+1, iY, iZ) - V.Vx.F(iX-1, iY, iZ)) +
                                        ihz2 * mesh.ztz2(iZ) * (V.Vx.F(iX, iY, iZ+1) + V.Vx.F(iX, iY, iZ-1)) +
                                        i2hz * mesh.ztzz(iZ) * (V.Vx.F(iX, iY, iZ+1) - V.Vx.F(iX, iY, iZ-1))) *
-                        dt * nu / 2.0 + nseRHS.Vx(iX, iY, iZ)) /
-                 (1.0 + dt * nu * (ihx2 * mesh.xix2(iX) + ihz2 * mesh.ztz2(iZ)));
+                        dt * nu * beta + nseRHS.Vx(iX, iY, iZ)) /
+           (1.0 + 2.0 * dt * nu * beta * (ihx2 * mesh.xix2(iX) + ihz2 * mesh.ztz2(iZ)));
             }
         }
 
@@ -297,10 +302,10 @@ void eulerCN_d2::solveVx(vfield &V, plainvf &nseRHS) {
 
         V.imposeVxBC();
 
-#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(tempVx) shared(iY)
+#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(tempVx) shared(iY) shared(beta)
         for (int iX = xSt; iX <= xEn; iX++) {
             for (int iZ = zSt; iZ <= zEn; iZ++) {
-                tempVx(iX, iY, iZ) = V.Vx.F(iX, iY, iZ) - 0.5 * dt * nu * (
+                tempVx(iX, iY, iZ) = V.Vx.F(iX, iY, iZ) - beta * dt * nu * (
                           mesh.xix2(iX) * (V.Vx.F(iX+1, iY, iZ) - 2.0 * V.Vx.F(iX, iY, iZ) + V.Vx.F(iX-1, iY, iZ)) * ihx2 +
                           mesh.xixx(iX) * (V.Vx.F(iX+1, iY, iZ) - V.Vx.F(iX-1, iY, iZ)) * i2hx +
                           mesh.ztz2(iZ) * (V.Vx.F(iX, iY, iZ+1) - 2.0 * V.Vx.F(iX, iY, iZ) + V.Vx.F(iX, iY, iZ-1)) * ihz2 +
@@ -341,7 +346,7 @@ void eulerCN_d2::solveVx(vfield &V, plainvf &nseRHS) {
  *
  ********************************************************************************************************************************************
  */
-void eulerCN_d2::solveVz(vfield &V, plainvf &nseRHS) {
+void eulerCN_d2::solveVz(vfield &V, plainvf &nseRHS, real beta) {
     int iterCount = 0;
     real locMax = 0.0;
     real gloMax = 0.0;
@@ -349,15 +354,15 @@ void eulerCN_d2::solveVz(vfield &V, plainvf &nseRHS) {
 
     while (true) {
         int iY = 0;
-#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(nseRHS) shared(tempVz) shared(iY)
+#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(nseRHS) shared(tempVz) shared(iY) shared(beta)
         for (int iX = xSt; iX <= xEn; iX++) {
             for (int iZ = zSt; iZ <= zEn; iZ++) {
                 tempVz(iX, iY, iZ) = ((ihx2 * mesh.xix2(iX) * (V.Vz.F(iX+1, iY, iZ) + V.Vz.F(iX-1, iY, iZ)) +
                                        i2hx * mesh.xixx(iX) * (V.Vz.F(iX+1, iY, iZ) - V.Vz.F(iX-1, iY, iZ)) +
                                        ihz2 * mesh.ztz2(iZ) * (V.Vz.F(iX, iY, iZ+1) + V.Vz.F(iX, iY, iZ-1)) +
                                        i2hz * mesh.ztzz(iZ) * (V.Vz.F(iX, iY, iZ+1) - V.Vz.F(iX, iY, iZ-1))) *
-                        dt * nu / 2.0 + nseRHS.Vz(iX, iY, iZ)) /
-                 (1.0 + dt * nu * (ihx2 * mesh.xix2(iX) + ihz2 * mesh.ztz2(iZ)));
+                        dt * nu * beta + nseRHS.Vz(iX, iY, iZ)) /
+           (1.0 + 2.0 * dt * nu * beta * (ihx2 * mesh.xix2(iX) + ihz2 * mesh.ztz2(iZ)));
             }
         }
 
@@ -365,10 +370,10 @@ void eulerCN_d2::solveVz(vfield &V, plainvf &nseRHS) {
 
         V.imposeVzBC();
 
-#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(tempVz) shared(iY)
+#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(tempVz) shared(iY) shared(beta)
         for (int iX = xSt; iX <= xEn; iX++) {
             for (int iZ = zSt; iZ <= zEn; iZ++) {
-                tempVz(iX, iY, iZ) = V.Vz.F(iX, iY, iZ) - 0.5 * dt * nu * (
+                tempVz(iX, iY, iZ) = V.Vz.F(iX, iY, iZ) - beta * dt * nu * (
                           mesh.xix2(iX) * (V.Vz.F(iX+1, iY, iZ) - 2.0 * V.Vz.F(iX, iY, iZ) + V.Vz.F(iX-1, iY, iZ)) * ihx2 +
                           mesh.xixx(iX) * (V.Vz.F(iX+1, iY, iZ) - V.Vz.F(iX-1, iY, iZ)) * i2hx +
                           mesh.ztz2(iZ) * (V.Vz.F(iX, iY, iZ+1) - 2.0 * V.Vz.F(iX, iY, iZ) + V.Vz.F(iX, iY, iZ-1)) * ihz2 +
@@ -409,7 +414,7 @@ void eulerCN_d2::solveVz(vfield &V, plainvf &nseRHS) {
  *
  ********************************************************************************************************************************************
  */
-void eulerCN_d2::solveT(sfield &T, plainsf &tmpRHS) {
+void eulerCN_d2::solveT(sfield &T, plainsf &tmpRHS, real beta) {
     int iterCount = 0;
     real locMax = 0.0;
     real gloMax = 0.0;
@@ -417,15 +422,15 @@ void eulerCN_d2::solveT(sfield &T, plainsf &tmpRHS) {
 
     while (true) {
         int iY = 0;
-#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(T) shared(tmpRHS) shared(tempT) shared(iY)
+#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(T) shared(tmpRHS) shared(tempT) shared(iY) shared(beta)
         for (int iX = xSt; iX <= xEn; iX++) {
             for (int iZ = zSt; iZ <= zEn; iZ++) {
                 tempT(iX, iY, iZ) = ((ihx2 * mesh.xix2(iX) * (T.F.F(iX+1, iY, iZ) + T.F.F(iX-1, iY, iZ)) +
                                       i2hx * mesh.xixx(iX) * (T.F.F(iX+1, iY, iZ) - T.F.F(iX-1, iY, iZ)) +
                                       ihz2 * mesh.ztz2(iZ) * (T.F.F(iX, iY, iZ+1) + T.F.F(iX, iY, iZ-1)) +
                                       i2hz * mesh.ztzz(iZ) * (T.F.F(iX, iY, iZ+1) - T.F.F(iX, iY, iZ-1))) *
-                    dt * kappa / 2.0 + tmpRHS.F(iX, iY, iZ)) /
-             (1.0 + dt * kappa * (ihx2 * mesh.xix2(iX) + ihz2 * mesh.ztz2(iZ)));
+                    dt * kappa * beta + tmpRHS.F(iX, iY, iZ)) /
+       (1.0 + 2.0 * dt * kappa * beta * (ihx2 * mesh.xix2(iX) + ihz2 * mesh.ztz2(iZ)));
             }
         }
 
@@ -433,10 +438,10 @@ void eulerCN_d2::solveT(sfield &T, plainsf &tmpRHS) {
 
         T.imposeBCs();
 
-#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(T) shared(tempT) shared(iY)
+#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(T) shared(tempT) shared(iY) shared(beta)
         for (int iX = xSt; iX <= xEn; iX++) {
             for (int iZ = zSt; iZ <= zEn; iZ++) {
-                tempT(iX, iY, iZ) = T.F.F(iX, iY, iZ) - 0.5 * dt * kappa * (
+                tempT(iX, iY, iZ) = T.F.F(iX, iY, iZ) - beta * dt * kappa * (
                        mesh.xix2(iX) * (T.F.F(iX+1, iY, iZ) - 2.0 * T.F.F(iX, iY, iZ) + T.F.F(iX-1, iY, iZ)) * ihx2 +
                        mesh.xixx(iX) * (T.F.F(iX+1, iY, iZ) - T.F.F(iX-1, iY, iZ)) * i2hx +
                        mesh.ztz2(iZ) * (T.F.F(iX, iY, iZ+1) - 2.0 * T.F.F(iX, iY, iZ) + T.F.F(iX, iY, iZ-1)) * ihz2 +

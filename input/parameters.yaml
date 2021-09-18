@@ -121,10 +121,10 @@
 
 # Parellelization parameters
 "Parallel":
-    "Number of OMP threads": 1
-    "X Number of Procs": 2
-    "Y Number of Procs": 2
-    "Z Number of Procs": 2
+    "Number of OMP threads": 4
+    "X Number of Procs": 1
+    "Y Number of Procs": 1
+    "Z Number of Procs": 1
 
 
 # Solver parameters
@@ -137,7 +137,7 @@
     # Choose from following list of integration schemes:
     # 1 = Implicit Crank-Nicholson
     # 2 = Low Storage 3rd Order Runge-Kutta
-    "Integration Scheme": 2
+    "Integration Scheme": 1
 
     # Tolerance used in iterative method (if Implicit Crank-Nicholson scheme is chosen above)
     "Solve Tolerance": 1.0e-6

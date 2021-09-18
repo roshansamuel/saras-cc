@@ -298,6 +298,7 @@ void lsRK3_d2::solveVx(vfield &V, plainvf &nseRHS, real beta) {
 
     while (true) {
         int iY = 0;
+#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(nseRHS) shared(tempVx) shared(iY) shared(beta)
         for (int iX = xSt; iX <= xEn; iX++) {
             for (int iZ = zSt; iZ <= zEn; iZ++) {
                 tempVx(iX, iY, iZ) = ((ihx2 * mesh.xix2(iX) * (V.Vx.F(iX+1, iY, iZ) + V.Vx.F(iX-1, iY, iZ)) +
@@ -313,6 +314,7 @@ void lsRK3_d2::solveVx(vfield &V, plainvf &nseRHS, real beta) {
 
         V.imposeVxBC();
 
+#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(tempVx) shared(iY) shared(beta)
         for (int iX = xSt; iX <= xEn; iX++) {
             for (int iZ = zSt; iZ <= zEn; iZ++) {
                 tempVx(iX, iY, iZ) = V.Vx.F(iX, iY, iZ) - beta * dt * nu * (
@@ -364,6 +366,7 @@ void lsRK3_d2::solveVz(vfield &V, plainvf &nseRHS, real beta) {
 
     while (true) {
         int iY = 0;
+#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(nseRHS) shared(tempVz) shared(iY) shared(beta)
         for (int iX = xSt; iX <= xEn; iX++) {
             for (int iZ = zSt; iZ <= zEn; iZ++) {
                 tempVz(iX, iY, iZ) = ((ihx2 * mesh.xix2(iX) * (V.Vz.F(iX+1, iY, iZ) + V.Vz.F(iX-1, iY, iZ)) +
@@ -379,6 +382,7 @@ void lsRK3_d2::solveVz(vfield &V, plainvf &nseRHS, real beta) {
 
         V.imposeVzBC();
 
+#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(tempVz) shared(iY) shared(beta)
         for (int iX = xSt; iX <= xEn; iX++) {
             for (int iZ = zSt; iZ <= zEn; iZ++) {
                 tempVz(iX, iY, iZ) = V.Vz.F(iX, iY, iZ) - beta * dt * nu * (
@@ -430,6 +434,7 @@ void lsRK3_d2::solveT(sfield &T, plainsf &tmpRHS, real beta) {
 
     while (true) {
         int iY = 0;
+#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(T) shared(tmpRHS) shared(tempT) shared(iY) shared(beta)
         for (int iX = xSt; iX <= xEn; iX++) {
             for (int iZ = zSt; iZ <= zEn; iZ++) {
                 tempT(iX, iY, iZ) = ((ihx2 * mesh.xix2(iX) * (T.F.F(iX+1, iY, iZ) + T.F.F(iX-1, iY, iZ)) +
@@ -445,6 +450,7 @@ void lsRK3_d2::solveT(sfield &T, plainsf &tmpRHS, real beta) {
 
         T.imposeBCs();
 
+#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(T) shared(tempT) shared(iY) shared(beta)
         for (int iX = xSt; iX <= xEn; iX++) {
             for (int iZ = zSt; iZ <= zEn; iZ++) {
                 tempT(iX, iY, iZ) = T.F.F(iX, iY, iZ) - beta * dt * kappa * (

@@ -104,12 +104,14 @@ class eulerCN_d2: public timestep {
         real ihx2, ihz2;
         real i2hx, i2hz;
 
+        real alphCN2, betaCN2;
+
         multigrid_d2 mgSolver;
 
-        void solveVx(vfield &V, plainvf &nseRHS);
-        void solveVz(vfield &V, plainvf &nseRHS);
+        void solveVx(vfield &V, plainvf &nseRHS, real beta);
+        void solveVz(vfield &V, plainvf &nseRHS, real beta);
 
-        void solveT(sfield &T, plainsf &tmpRHS);
+        void solveT(sfield &T, plainsf &tmpRHS, real beta);
 
         void setCoefficients();
 };
@@ -136,15 +138,17 @@ class eulerCN_d3: public timestep {
         real ihx2, ihy2, ihz2;
         real i2hx, i2hy, i2hz;
 
+        real alphCN2, betaCN2;
+
         multigrid_d3 mgSolver;
 
         les *sgsLES;
 
-        void solveVx(vfield &V, plainvf &nseRHS);
-        void solveVy(vfield &V, plainvf &nseRHS);
-        void solveVz(vfield &V, plainvf &nseRHS);
+        void solveVx(vfield &V, plainvf &nseRHS, real beta);
+        void solveVy(vfield &V, plainvf &nseRHS, real beta);
+        void solveVz(vfield &V, plainvf &nseRHS, real beta);
 
-        void solveT(sfield &T, plainsf &tmpRHS);
+        void solveT(sfield &T, plainsf &tmpRHS, real beta);
 
         void setCoefficients();
 };

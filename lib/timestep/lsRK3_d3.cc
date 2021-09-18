@@ -335,6 +335,7 @@ void lsRK3_d3::solveVx(vfield &V, plainvf &nseRHS, real beta) {
     static blitz::Array<real, 3> tempVx(V.Vx.F.lbound(), V.Vx.F.shape());
 
     while (true) {
+#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(nseRHS) shared(tempVx) shared(beta)
         for (int iX = xSt; iX <= xEn; iX++) {
             for (int iY = ySt; iY <= yEn; iY++) {
                 for (int iZ = zSt; iZ <= zEn; iZ++) {
@@ -354,6 +355,7 @@ void lsRK3_d3::solveVx(vfield &V, plainvf &nseRHS, real beta) {
 
         V.imposeVxBC();
 
+#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(tempVx) shared(beta)
         for (int iX = xSt; iX <= xEn; iX++) {
             for (int iY = ySt; iY <= yEn; iY++) {
                 for (int iZ = zSt; iZ <= zEn; iZ++) {
@@ -408,6 +410,7 @@ void lsRK3_d3::solveVy(vfield &V, plainvf &nseRHS, real beta) {
     static blitz::Array<real, 3> tempVy(V.Vy.F.lbound(), V.Vy.F.shape());
 
     while (true) {
+#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(nseRHS) shared(tempVy) shared(beta)
         for (int iX = xSt; iX <= xEn; iX++) {
             for (int iY = ySt; iY <= yEn; iY++) {
                 for (int iZ = zSt; iZ <= zEn; iZ++) {
@@ -427,6 +430,7 @@ void lsRK3_d3::solveVy(vfield &V, plainvf &nseRHS, real beta) {
 
         V.imposeVyBC();
 
+#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(tempVy) shared(beta)
         for (int iX = xSt; iX <= xEn; iX++) {
             for (int iY = ySt; iY <= yEn; iY++) {
                 for (int iZ = zSt; iZ <= zEn; iZ++) {
@@ -481,6 +485,7 @@ void lsRK3_d3::solveVz(vfield &V, plainvf &nseRHS, real beta) {
     static blitz::Array<real, 3> tempVz(V.Vz.F.lbound(), V.Vz.F.shape());
 
     while (true) {
+#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(nseRHS) shared(tempVz) shared(beta)
         for (int iX = xSt; iX <= xEn; iX++) {
             for (int iY = ySt; iY <= yEn; iY++) {
                 for (int iZ = zSt; iZ <= zEn; iZ++) {
@@ -500,6 +505,7 @@ void lsRK3_d3::solveVz(vfield &V, plainvf &nseRHS, real beta) {
 
         V.imposeVzBC();
 
+#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(tempVz) shared(beta)
         for (int iX = xSt; iX <= xEn; iX++) {
             for (int iY = ySt; iY <= yEn; iY++) {
                 for (int iZ = zSt; iZ <= zEn; iZ++) {
@@ -541,6 +547,7 @@ void lsRK3_d3::solveT(sfield &T, plainsf &tmpRHS, real beta) {
     static blitz::Array<real, 3> tempT(T.F.F.lbound(), T.F.F.shape());
 
     while (true) {
+#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(T) shared(tmpRHS) shared(tempT) shared(beta)
         for (int iX = xSt; iX <= xEn; iX++) {
             for (int iY = ySt; iY <= yEn; iY++) {
                 for (int iZ = zSt; iZ <= zEn; iZ++) {
@@ -560,6 +567,7 @@ void lsRK3_d3::solveT(sfield &T, plainsf &tmpRHS, real beta) {
 
         T.imposeBCs();
 
+#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(T) shared(tempT) shared(beta)
         for (int iX = xSt; iX <= xEn; iX++) {
             for (int iY = ySt; iY <= yEn; iY++) {
                 for (int iZ = zSt; iZ <= zEn; iZ++) {
