@@ -96,6 +96,7 @@ class parser {
         real fwInt;
         real rsInt;
         real prInt;
+        real sorParam;
         real meanPGrad;
         real Lx, Ly, Lz;
         real tStp, tMax;

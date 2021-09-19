@@ -103,7 +103,7 @@ poisson::poisson(const grid &mesh, const parser &solParam): mesh(mesh), inputPar
 
     // PARAMETER FOR SUCCESSIVE OVER-RELAXATION METHOD.
     // USED IN SOLVE() AND SMOOTH() FUNCTIONS.
-    sorParam = 1.2;
+    sorParam = inputParams.sorParam;
 }
 
 

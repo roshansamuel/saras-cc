@@ -190,8 +190,10 @@
 
     # Set the flag to true if the solver should solve at coarsest level instead of just smoothing
     "Solve Coarsest": true
-    # If the above flag is true, set the tolerance used in iterative method when solving
+    # If the above flag is true, set the tolerance for the Red-Black Gauss-Seidel solver
     "Solve Tolerance": 1.0e-6
+    # Parameter for Successive Over-Relaxation (SOR) in iterative solver - setting to 1 disables SOR
+    "SOR Parameter": 1.0
 
     # Number of smoothing iterations to be performed after restriction operations
     "Pre-Smoothing Count": 5
