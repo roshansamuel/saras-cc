@@ -65,6 +65,8 @@ class poisson {
         const grid &mesh;
         const parser &inputParams;
 
+        real sorParam;
+
         blitz::Range all;
 
         blitz::Array<blitz::Array<real, 3>, 1> lhs;

@@ -67,6 +67,9 @@ lsRK3_d3::lsRK3_d3(const grid &mesh, const real &sTime, const real &dt, tseries 
     // It remains to be seen if this upper limit is safe.
     maxIterations = int(std::pow(std::log(mesh.coreSize(0)*mesh.coreSize(1)*mesh.coreSize(2)), 3));
 
+    iterTemp.resize(mesh.fullSize);
+    iterTemp.reindexSelf(-mesh.padWidths);
+
     // These coefficients are taken from references [2], [3] and [4] of the Journal references in README
     alphRK3 = 4.0/15.0, 1.0/15.0, 1.0/6.0;
     betaRK3 = 4.0/15.0, 1.0/15.0, 1.0/6.0;
@@ -332,34 +335,33 @@ void lsRK3_d3::solveVx(vfield &V, plainvf &nseRHS, real beta) {
     int iterCount = 0;
     real locMax = 0.0;
     real gloMax = 0.0;
-    static blitz::Array<real, 3> tempVx(V.Vx.F.lbound(), V.Vx.F.shape());
 
     while (true) {
-#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(nseRHS) shared(tempVx) shared(beta)
+#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(nseRHS) shared(beta)
         for (int iX = xSt; iX <= xEn; iX++) {
             for (int iY = ySt; iY <= yEn; iY++) {
                 for (int iZ = zSt; iZ <= zEn; iZ++) {
-                    tempVx(iX, iY, iZ) = ((ihx2 * mesh.xix2(iX) * (V.Vx.F(iX+1, iY, iZ) + V.Vx.F(iX-1, iY, iZ)) +
-                                           i2hx * mesh.xixx(iX) * (V.Vx.F(iX+1, iY, iZ) - V.Vx.F(iX-1, iY, iZ)) +
-                                           ihy2 * mesh.ety2(iY) * (V.Vx.F(iX, iY+1, iZ) + V.Vx.F(iX, iY-1, iZ)) +
-                                           i2hy * mesh.etyy(iY) * (V.Vx.F(iX, iY+1, iZ) - V.Vx.F(iX, iY-1, iZ)) +
-                                           ihz2 * mesh.ztz2(iZ) * (V.Vx.F(iX, iY, iZ+1) + V.Vx.F(iX, iY, iZ-1)) +
-                                           i2hz * mesh.ztzz(iZ) * (V.Vx.F(iX, iY, iZ+1) - V.Vx.F(iX, iY, iZ-1))) *
+                    iterTemp(iX, iY, iZ) = ((ihx2 * mesh.xix2(iX) * (V.Vx.F(iX+1, iY, iZ) + V.Vx.F(iX-1, iY, iZ)) +
+                                             i2hx * mesh.xixx(iX) * (V.Vx.F(iX+1, iY, iZ) - V.Vx.F(iX-1, iY, iZ)) +
+                                             ihy2 * mesh.ety2(iY) * (V.Vx.F(iX, iY+1, iZ) + V.Vx.F(iX, iY-1, iZ)) +
+                                             i2hy * mesh.etyy(iY) * (V.Vx.F(iX, iY+1, iZ) - V.Vx.F(iX, iY-1, iZ)) +
+                                             ihz2 * mesh.ztz2(iZ) * (V.Vx.F(iX, iY, iZ+1) + V.Vx.F(iX, iY, iZ-1)) +
+                                             i2hz * mesh.ztzz(iZ) * (V.Vx.F(iX, iY, iZ+1) - V.Vx.F(iX, iY, iZ-1))) *
                             dt * nu * beta + nseRHS.Vx(iX, iY, iZ)) /
                (1.0 + 2.0 * dt * nu * beta * (ihx2 * mesh.xix2(iX) + ihy2 * mesh.ety2(iY) + ihz2 * mesh.ztz2(iZ)));
                 }
             }
         }
 
-        V.Vx.F = tempVx;
+        V.Vx.F = iterTemp;
 
         V.imposeVxBC();
 
-#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(tempVx) shared(beta)
+#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(beta)
         for (int iX = xSt; iX <= xEn; iX++) {
             for (int iY = ySt; iY <= yEn; iY++) {
                 for (int iZ = zSt; iZ <= zEn; iZ++) {
-                    tempVx(iX, iY, iZ) = V.Vx.F(iX, iY, iZ) - beta * dt * nu * (
+                    iterTemp(iX, iY, iZ) = V.Vx.F(iX, iY, iZ) - beta * dt * nu * (
                               mesh.xix2(iX) * (V.Vx.F(iX+1, iY, iZ) - 2.0 * V.Vx.F(iX, iY, iZ) + V.Vx.F(iX-1, iY, iZ)) * ihx2 +
                               mesh.xixx(iX) * (V.Vx.F(iX+1, iY, iZ) - V.Vx.F(iX-1, iY, iZ)) * i2hx +
                               mesh.ety2(iY) * (V.Vx.F(iX, iY+1, iZ) - 2.0 * V.Vx.F(iX, iY, iZ) + V.Vx.F(iX, iY-1, iZ)) * ihy2 +
@@ -370,9 +372,9 @@ void lsRK3_d3::solveVx(vfield &V, plainvf &nseRHS, real beta) {
             }
         }
 
-        tempVx(core) = abs(tempVx(core) - nseRHS.Vx(core));
+        iterTemp(core) = abs(iterTemp(core) - nseRHS.Vx(core));
 
-        locMax = blitz::max(tempVx(core));
+        locMax = blitz::max(iterTemp(core));
         MPI_Allreduce(&locMax, &gloMax, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);
 
         if (gloMax < mesh.inputParams.cnTolerance) break;
@@ -407,34 +409,33 @@ void lsRK3_d3::solveVy(vfield &V, plainvf &nseRHS, real beta) {
     int iterCount = 0;
     real locMax = 0.0;
     real gloMax = 0.0;
-    static blitz::Array<real, 3> tempVy(V.Vy.F.lbound(), V.Vy.F.shape());
 
     while (true) {
-#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(nseRHS) shared(tempVy) shared(beta)
+#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(nseRHS) shared(beta)
         for (int iX = xSt; iX <= xEn; iX++) {
             for (int iY = ySt; iY <= yEn; iY++) {
                 for (int iZ = zSt; iZ <= zEn; iZ++) {
-                    tempVy(iX, iY, iZ) = ((ihx2 * mesh.xix2(iX) * (V.Vy.F(iX+1, iY, iZ) + V.Vy.F(iX-1, iY, iZ)) +
-                                           i2hx * mesh.xixx(iX) * (V.Vy.F(iX+1, iY, iZ) - V.Vy.F(iX-1, iY, iZ)) +
-                                           ihy2 * mesh.ety2(iY) * (V.Vy.F(iX, iY+1, iZ) + V.Vy.F(iX, iY-1, iZ)) +
-                                           i2hy * mesh.etyy(iY) * (V.Vy.F(iX, iY+1, iZ) - V.Vy.F(iX, iY-1, iZ)) +
-                                           ihz2 * mesh.ztz2(iZ) * (V.Vy.F(iX, iY, iZ+1) + V.Vy.F(iX, iY, iZ-1)) +
-                                           i2hz * mesh.ztzz(iZ) * (V.Vy.F(iX, iY, iZ+1) - V.Vy.F(iX, iY, iZ-1))) *
+                    iterTemp(iX, iY, iZ) = ((ihx2 * mesh.xix2(iX) * (V.Vy.F(iX+1, iY, iZ) + V.Vy.F(iX-1, iY, iZ)) +
+                                             i2hx * mesh.xixx(iX) * (V.Vy.F(iX+1, iY, iZ) - V.Vy.F(iX-1, iY, iZ)) +
+                                             ihy2 * mesh.ety2(iY) * (V.Vy.F(iX, iY+1, iZ) + V.Vy.F(iX, iY-1, iZ)) +
+                                             i2hy * mesh.etyy(iY) * (V.Vy.F(iX, iY+1, iZ) - V.Vy.F(iX, iY-1, iZ)) +
+                                             ihz2 * mesh.ztz2(iZ) * (V.Vy.F(iX, iY, iZ+1) + V.Vy.F(iX, iY, iZ-1)) +
+                                             i2hz * mesh.ztzz(iZ) * (V.Vy.F(iX, iY, iZ+1) - V.Vy.F(iX, iY, iZ-1))) *
                             dt * nu * beta + nseRHS.Vy(iX, iY, iZ)) /
                (1.0 + 2.0 * dt * nu * beta * (ihx2 * mesh.xix2(iX) + ihy2 * mesh.ety2(iY) + ihz2 * mesh.ztz2(iZ)));
                 }
             }
         }
 
-        V.Vy.F = tempVy;
+        V.Vy.F = iterTemp;
 
         V.imposeVyBC();
 
-#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(tempVy) shared(beta)
+#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(beta)
         for (int iX = xSt; iX <= xEn; iX++) {
             for (int iY = ySt; iY <= yEn; iY++) {
                 for (int iZ = zSt; iZ <= zEn; iZ++) {
-                    tempVy(iX, iY, iZ) = V.Vy.F(iX, iY, iZ) - beta * dt * nu * (
+                    iterTemp(iX, iY, iZ) = V.Vy.F(iX, iY, iZ) - beta * dt * nu * (
                               mesh.xix2(iX) * (V.Vy.F(iX+1, iY, iZ) - 2.0 * V.Vy.F(iX, iY, iZ) + V.Vy.F(iX-1, iY, iZ)) * ihx2 +
                               mesh.xixx(iX) * (V.Vy.F(iX+1, iY, iZ) - V.Vy.F(iX-1, iY, iZ)) * i2hx +
                               mesh.ety2(iY) * (V.Vy.F(iX, iY+1, iZ) - 2.0 * V.Vy.F(iX, iY, iZ) + V.Vy.F(iX, iY-1, iZ)) * ihy2 +
@@ -445,9 +446,9 @@ void lsRK3_d3::solveVy(vfield &V, plainvf &nseRHS, real beta) {
             }
         }
 
-        tempVy(core) = abs(tempVy(core) - nseRHS.Vy(core));
+        iterTemp(core) = abs(iterTemp(core) - nseRHS.Vy(core));
 
-        locMax = blitz::max(tempVy(core));
+        locMax = blitz::max(iterTemp(core));
         MPI_Allreduce(&locMax, &gloMax, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);
 
         if (gloMax < mesh.inputParams.cnTolerance) break;
@@ -482,34 +483,33 @@ void lsRK3_d3::solveVz(vfield &V, plainvf &nseRHS, real beta) {
     int iterCount = 0;
     real locMax = 0.0;
     real gloMax = 0.0;
-    static blitz::Array<real, 3> tempVz(V.Vz.F.lbound(), V.Vz.F.shape());
 
     while (true) {
-#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(nseRHS) shared(tempVz) shared(beta)
+#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(nseRHS) shared(beta)
         for (int iX = xSt; iX <= xEn; iX++) {
             for (int iY = ySt; iY <= yEn; iY++) {
                 for (int iZ = zSt; iZ <= zEn; iZ++) {
-                    tempVz(iX, iY, iZ) = ((ihx2 * mesh.xix2(iX) * (V.Vz.F(iX+1, iY, iZ) + V.Vz.F(iX-1, iY, iZ)) +
-                                           i2hx * mesh.xixx(iX) * (V.Vz.F(iX+1, iY, iZ) - V.Vz.F(iX-1, iY, iZ)) +
-                                           ihy2 * mesh.ety2(iY) * (V.Vz.F(iX, iY+1, iZ) + V.Vz.F(iX, iY-1, iZ)) +
-                                           i2hy * mesh.etyy(iY) * (V.Vz.F(iX, iY+1, iZ) - V.Vz.F(iX, iY-1, iZ)) +
-                                           ihz2 * mesh.ztz2(iZ) * (V.Vz.F(iX, iY, iZ+1) + V.Vz.F(iX, iY, iZ-1)) +
-                                           i2hz * mesh.ztzz(iZ) * (V.Vz.F(iX, iY, iZ+1) - V.Vz.F(iX, iY, iZ-1))) *
+                    iterTemp(iX, iY, iZ) = ((ihx2 * mesh.xix2(iX) * (V.Vz.F(iX+1, iY, iZ) + V.Vz.F(iX-1, iY, iZ)) +
+                                             i2hx * mesh.xixx(iX) * (V.Vz.F(iX+1, iY, iZ) - V.Vz.F(iX-1, iY, iZ)) +
+                                             ihy2 * mesh.ety2(iY) * (V.Vz.F(iX, iY+1, iZ) + V.Vz.F(iX, iY-1, iZ)) +
+                                             i2hy * mesh.etyy(iY) * (V.Vz.F(iX, iY+1, iZ) - V.Vz.F(iX, iY-1, iZ)) +
+                                             ihz2 * mesh.ztz2(iZ) * (V.Vz.F(iX, iY, iZ+1) + V.Vz.F(iX, iY, iZ-1)) +
+                                             i2hz * mesh.ztzz(iZ) * (V.Vz.F(iX, iY, iZ+1) - V.Vz.F(iX, iY, iZ-1))) *
                             dt * nu * beta + nseRHS.Vz(iX, iY, iZ)) /
                (1.0 + 2.0 * dt * nu * beta * (ihx2 * mesh.xix2(iX) + ihy2 * mesh.ety2(iY) + ihz2 * mesh.ztz2(iZ)));
                 }
             }
         }
 
-        V.Vz.F = tempVz;
+        V.Vz.F = iterTemp;
 
         V.imposeVzBC();
 
-#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(tempVz) shared(beta)
+#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(V) shared(beta)
         for (int iX = xSt; iX <= xEn; iX++) {
             for (int iY = ySt; iY <= yEn; iY++) {
                 for (int iZ = zSt; iZ <= zEn; iZ++) {
-                    tempVz(iX, iY, iZ) = V.Vz.F(iX, iY, iZ) - beta * dt * nu * (
+                    iterTemp(iX, iY, iZ) = V.Vz.F(iX, iY, iZ) - beta * dt * nu * (
                               mesh.xix2(iX) * (V.Vz.F(iX+1, iY, iZ) - 2.0 * V.Vz.F(iX, iY, iZ) + V.Vz.F(iX-1, iY, iZ)) * ihx2 +
                               mesh.xixx(iX) * (V.Vz.F(iX+1, iY, iZ) - V.Vz.F(iX-1, iY, iZ)) * i2hx +
                               mesh.ety2(iY) * (V.Vz.F(iX, iY+1, iZ) - 2.0 * V.Vz.F(iX, iY, iZ) + V.Vz.F(iX, iY-1, iZ)) * ihy2 +
@@ -520,9 +520,9 @@ void lsRK3_d3::solveVz(vfield &V, plainvf &nseRHS, real beta) {
             }
         }
 
-        tempVz(core) = abs(tempVz(core) - nseRHS.Vz(core));
+        iterTemp(core) = abs(iterTemp(core) - nseRHS.Vz(core));
 
-        locMax = blitz::max(tempVz(core));
+        locMax = blitz::max(iterTemp(core));
         MPI_Allreduce(&locMax, &gloMax, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);
 
         if (gloMax < mesh.inputParams.cnTolerance) break;
@@ -544,34 +544,33 @@ void lsRK3_d3::solveT(sfield &T, plainsf &tmpRHS, real beta) {
     int iterCount = 0;
     real locMax = 0.0;
     real gloMax = 0.0;
-    static blitz::Array<real, 3> tempT(T.F.F.lbound(), T.F.F.shape());
 
     while (true) {
-#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(T) shared(tmpRHS) shared(tempT) shared(beta)
+#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(T) shared(tmpRHS) shared(beta)
         for (int iX = xSt; iX <= xEn; iX++) {
             for (int iY = ySt; iY <= yEn; iY++) {
                 for (int iZ = zSt; iZ <= zEn; iZ++) {
-                    tempT(iX, iY, iZ) = ((ihx2 * mesh.xix2(iX) * (T.F.F(iX+1, iY, iZ) + T.F.F(iX-1, iY, iZ)) +
-                                          i2hx * mesh.xixx(iX) * (T.F.F(iX+1, iY, iZ) - T.F.F(iX-1, iY, iZ)) +
-                                          ihy2 * mesh.ety2(iY) * (T.F.F(iX, iY+1, iZ) + T.F.F(iX, iY-1, iZ)) +
-                                          i2hy * mesh.etyy(iY) * (T.F.F(iX, iY+1, iZ) - T.F.F(iX, iY-1, iZ)) +
-                                          ihz2 * mesh.ztz2(iZ) * (T.F.F(iX, iY, iZ+1) + T.F.F(iX, iY, iZ-1)) +
-                                          i2hz * mesh.ztzz(iZ) * (T.F.F(iX, iY, iZ+1) - T.F.F(iX, iY, iZ-1))) *
+                    iterTemp(iX, iY, iZ) = ((ihx2 * mesh.xix2(iX) * (T.F.F(iX+1, iY, iZ) + T.F.F(iX-1, iY, iZ)) +
+                                             i2hx * mesh.xixx(iX) * (T.F.F(iX+1, iY, iZ) - T.F.F(iX-1, iY, iZ)) +
+                                             ihy2 * mesh.ety2(iY) * (T.F.F(iX, iY+1, iZ) + T.F.F(iX, iY-1, iZ)) +
+                                             i2hy * mesh.etyy(iY) * (T.F.F(iX, iY+1, iZ) - T.F.F(iX, iY-1, iZ)) +
+                                             ihz2 * mesh.ztz2(iZ) * (T.F.F(iX, iY, iZ+1) + T.F.F(iX, iY, iZ-1)) +
+                                             i2hz * mesh.ztzz(iZ) * (T.F.F(iX, iY, iZ+1) - T.F.F(iX, iY, iZ-1))) *
                         dt * kappa * beta + tmpRHS.F(iX, iY, iZ)) /
            (1.0 + 2.0 * dt * kappa * beta * (ihx2 * mesh.xix2(iX) + ihy2 * mesh.ety2(iY) + ihz2 * mesh.ztz2(iZ)));
                 }
             }
         }
 
-        T.F.F = tempT;
+        T.F.F = iterTemp;
 
         T.imposeBCs();
 
-#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(T) shared(tempT) shared(beta)
+#pragma omp parallel for num_threads(mesh.inputParams.nThreads) default(none) shared(T) shared(beta)
         for (int iX = xSt; iX <= xEn; iX++) {
             for (int iY = ySt; iY <= yEn; iY++) {
                 for (int iZ = zSt; iZ <= zEn; iZ++) {
-                    tempT(iX, iY, iZ) = T.F.F(iX, iY, iZ) - beta * dt * kappa * (
+                    iterTemp(iX, iY, iZ) = T.F.F(iX, iY, iZ) - beta * dt * kappa * (
                            mesh.xix2(iX) * (T.F.F(iX+1, iY, iZ) - 2.0 * T.F.F(iX, iY, iZ) + T.F.F(iX-1, iY, iZ)) * ihx2 +
                            mesh.xixx(iX) * (T.F.F(iX+1, iY, iZ) - T.F.F(iX-1, iY, iZ)) * i2hx +
                            mesh.ety2(iY) * (T.F.F(iX, iY+1, iZ) - 2.0 * T.F.F(iX, iY, iZ) + T.F.F(iX, iY-1, iZ)) * ihy2 +
@@ -582,9 +581,9 @@ void lsRK3_d3::solveT(sfield &T, plainsf &tmpRHS, real beta) {
             }
         }
 
-        tempT(core) = abs(tempT(core) - tmpRHS.F(core));
+        iterTemp(core) = abs(iterTemp(core) - tmpRHS.F(core));
 
-        locMax = blitz::max(tempT(core));
+        locMax = blitz::max(iterTemp(core));
         MPI_Allreduce(&locMax, &gloMax, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);
 
         if (gloMax < mesh.inputParams.cnTolerance) break;

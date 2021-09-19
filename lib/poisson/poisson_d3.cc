@@ -106,13 +106,14 @@ void multigrid_d3::smooth(const int smoothCount) {
         for (int i = 0; i < xEnd(vLevel); i+=2) {
             for (int j = 0; j < yEnd(vLevel); j+=2) {
                 for (int k = 0; k < zEnd(vLevel); k+=2) {
-                    lhs(vLevel)(i, j, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
+                    lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
+                                           (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
                                             xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, j, k) - lhs(vLevel)(i - 1, j, k)) +
                                             ety2(vLevel)(j) * ihy2(vLevel) * (lhs(vLevel)(i, j + 1, k) + lhs(vLevel)(i, j - 1, k)) +
                                             etyy(vLevel)(j) * i2hy(vLevel) * (lhs(vLevel)(i, j + 1, k) - lhs(vLevel)(i, j - 1, k)) +
                                             ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, j, k + 1) + lhs(vLevel)(i, j, k - 1)) +
                                             ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, j, k + 1) - lhs(vLevel)(i, j, k - 1)) -
-                                                rhs(vLevel)(i, j, k)) / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
+                                                rhs(vLevel)(i, j, k)) * sorParam / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
                 }
             }
         }
@@ -122,13 +123,14 @@ void multigrid_d3::smooth(const int smoothCount) {
         for (int i = 1; i <= xEnd(vLevel); i+=2) {
             for (int j = 1; j <= yEnd(vLevel); j+=2) {
                 for (int k = 0; k < zEnd(vLevel); k+=2) {
-                    lhs(vLevel)(i, j, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
+                    lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
+                                           (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
                                             xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, j, k) - lhs(vLevel)(i - 1, j, k)) +
                                             ety2(vLevel)(j) * ihy2(vLevel) * (lhs(vLevel)(i, j + 1, k) + lhs(vLevel)(i, j - 1, k)) +
                                             etyy(vLevel)(j) * i2hy(vLevel) * (lhs(vLevel)(i, j + 1, k) - lhs(vLevel)(i, j - 1, k)) +
                                             ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, j, k + 1) + lhs(vLevel)(i, j, k - 1)) +
                                             ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, j, k + 1) - lhs(vLevel)(i, j, k - 1)) -
-                                                rhs(vLevel)(i, j, k)) / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
+                                                rhs(vLevel)(i, j, k)) * sorParam / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
                 }
             }
         }
@@ -138,13 +140,14 @@ void multigrid_d3::smooth(const int smoothCount) {
         for (int i = 1; i <= xEnd(vLevel); i+=2) {
             for (int j = 0; j < yEnd(vLevel); j+=2) {
                 for (int k = 1; k <= zEnd(vLevel); k+=2) {
-                    lhs(vLevel)(i, j, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
+                    lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
+                                           (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
                                             xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, j, k) - lhs(vLevel)(i - 1, j, k)) +
                                             ety2(vLevel)(j) * ihy2(vLevel) * (lhs(vLevel)(i, j + 1, k) + lhs(vLevel)(i, j - 1, k)) +
                                             etyy(vLevel)(j) * i2hy(vLevel) * (lhs(vLevel)(i, j + 1, k) - lhs(vLevel)(i, j - 1, k)) +
                                             ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, j, k + 1) + lhs(vLevel)(i, j, k - 1)) +
                                             ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, j, k + 1) - lhs(vLevel)(i, j, k - 1)) -
-                                                rhs(vLevel)(i, j, k)) / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
+                                                rhs(vLevel)(i, j, k)) * sorParam / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
                 }
             }
         }
@@ -154,13 +157,14 @@ void multigrid_d3::smooth(const int smoothCount) {
         for (int i = 0; i < xEnd(vLevel); i+=2) {
             for (int j = 1; j <= yEnd(vLevel); j+=2) {
                 for (int k = 1; k <= zEnd(vLevel); k+=2) {
-                    lhs(vLevel)(i, j, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
+                    lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
+                                           (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
                                             xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, j, k) - lhs(vLevel)(i - 1, j, k)) +
                                             ety2(vLevel)(j) * ihy2(vLevel) * (lhs(vLevel)(i, j + 1, k) + lhs(vLevel)(i, j - 1, k)) +
                                             etyy(vLevel)(j) * i2hy(vLevel) * (lhs(vLevel)(i, j + 1, k) - lhs(vLevel)(i, j - 1, k)) +
                                             ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, j, k + 1) + lhs(vLevel)(i, j, k - 1)) +
                                             ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, j, k + 1) - lhs(vLevel)(i, j, k - 1)) -
-                                                rhs(vLevel)(i, j, k)) / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
+                                                rhs(vLevel)(i, j, k)) * sorParam / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
                 }
             }
         }
@@ -174,13 +178,14 @@ void multigrid_d3::smooth(const int smoothCount) {
         for (int i = 1; i <= xEnd(vLevel); i+=2) {
             for (int j = 0; j < yEnd(vLevel); j+=2) {
                 for (int k = 0; k < zEnd(vLevel); k+=2) {
-                    lhs(vLevel)(i, j, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
+                    lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
+                                           (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
                                             xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, j, k) - lhs(vLevel)(i - 1, j, k)) +
                                             ety2(vLevel)(j) * ihy2(vLevel) * (lhs(vLevel)(i, j + 1, k) + lhs(vLevel)(i, j - 1, k)) +
                                             etyy(vLevel)(j) * i2hy(vLevel) * (lhs(vLevel)(i, j + 1, k) - lhs(vLevel)(i, j - 1, k)) +
                                             ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, j, k + 1) + lhs(vLevel)(i, j, k - 1)) +
                                             ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, j, k + 1) - lhs(vLevel)(i, j, k - 1)) -
-                                                rhs(vLevel)(i, j, k)) / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
+                                                rhs(vLevel)(i, j, k)) * sorParam / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
                 }
             }
         }
@@ -190,13 +195,14 @@ void multigrid_d3::smooth(const int smoothCount) {
         for (int i = 0; i < xEnd(vLevel); i+=2) {
             for (int j = 1; j <= yEnd(vLevel); j+=2) {
                 for (int k = 0; k < zEnd(vLevel); k+=2) {
-                    lhs(vLevel)(i, j, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
+                    lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
+                                           (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
                                             xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, j, k) - lhs(vLevel)(i - 1, j, k)) +
                                             ety2(vLevel)(j) * ihy2(vLevel) * (lhs(vLevel)(i, j + 1, k) + lhs(vLevel)(i, j - 1, k)) +
                                             etyy(vLevel)(j) * i2hy(vLevel) * (lhs(vLevel)(i, j + 1, k) - lhs(vLevel)(i, j - 1, k)) +
                                             ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, j, k + 1) + lhs(vLevel)(i, j, k - 1)) +
                                             ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, j, k + 1) - lhs(vLevel)(i, j, k - 1)) -
-                                                rhs(vLevel)(i, j, k)) / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
+                                                rhs(vLevel)(i, j, k)) * sorParam / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
                 }
             }
         }
@@ -206,13 +212,14 @@ void multigrid_d3::smooth(const int smoothCount) {
         for (int i = 0; i < xEnd(vLevel); i+=2) {
             for (int j = 0; j < yEnd(vLevel); j+=2) {
                 for (int k = 1; k <= zEnd(vLevel); k+=2) {
-                    lhs(vLevel)(i, j, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
+                    lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
+                                           (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
                                             xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, j, k) - lhs(vLevel)(i - 1, j, k)) +
                                             ety2(vLevel)(j) * ihy2(vLevel) * (lhs(vLevel)(i, j + 1, k) + lhs(vLevel)(i, j - 1, k)) +
                                             etyy(vLevel)(j) * i2hy(vLevel) * (lhs(vLevel)(i, j + 1, k) - lhs(vLevel)(i, j - 1, k)) +
                                             ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, j, k + 1) + lhs(vLevel)(i, j, k - 1)) +
                                             ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, j, k + 1) - lhs(vLevel)(i, j, k - 1)) -
-                                                rhs(vLevel)(i, j, k)) / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
+                                                rhs(vLevel)(i, j, k)) * sorParam / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
                 }
             }
         }
@@ -222,13 +229,14 @@ void multigrid_d3::smooth(const int smoothCount) {
         for (int i = 1; i <= xEnd(vLevel); i+=2) {
             for (int j = 1; j <= yEnd(vLevel); j+=2) {
                 for (int k = 1; k <= zEnd(vLevel); k+=2) {
-                    lhs(vLevel)(i, j, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
+                    lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
+                                           (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
                                             xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, j, k) - lhs(vLevel)(i - 1, j, k)) +
                                             ety2(vLevel)(j) * ihy2(vLevel) * (lhs(vLevel)(i, j + 1, k) + lhs(vLevel)(i, j - 1, k)) +
                                             etyy(vLevel)(j) * i2hy(vLevel) * (lhs(vLevel)(i, j + 1, k) - lhs(vLevel)(i, j - 1, k)) +
                                             ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, j, k + 1) + lhs(vLevel)(i, j, k - 1)) +
                                             ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, j, k + 1) - lhs(vLevel)(i, j, k - 1)) -
-                                                rhs(vLevel)(i, j, k)) / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
+                                                rhs(vLevel)(i, j, k)) * sorParam / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
                 }
             }
         }
@@ -252,13 +260,14 @@ void multigrid_d3::solve() {
         for (int i = 0; i < xEnd(vLevel); i+=2) {
             for (int j = 0; j < yEnd(vLevel); j+=2) {
                 for (int k = 0; k < zEnd(vLevel); k+=2) {
-                    lhs(vLevel)(i, j, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
+                    lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
+                                           (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
                                             xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, j, k) - lhs(vLevel)(i - 1, j, k)) +
                                             ety2(vLevel)(j) * ihy2(vLevel) * (lhs(vLevel)(i, j + 1, k) + lhs(vLevel)(i, j - 1, k)) +
                                             etyy(vLevel)(j) * i2hy(vLevel) * (lhs(vLevel)(i, j + 1, k) - lhs(vLevel)(i, j - 1, k)) +
                                             ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, j, k + 1) + lhs(vLevel)(i, j, k - 1)) +
                                             ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, j, k + 1) - lhs(vLevel)(i, j, k - 1)) -
-                                                rhs(vLevel)(i, j, k)) / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
+                                                rhs(vLevel)(i, j, k)) * sorParam / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
                 }
             }
         }
@@ -268,13 +277,14 @@ void multigrid_d3::solve() {
         for (int i = 1; i <= xEnd(vLevel); i+=2) {
             for (int j = 1; j <= yEnd(vLevel); j+=2) {
                 for (int k = 0; k < zEnd(vLevel); k+=2) {
-                    lhs(vLevel)(i, j, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
+                    lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
+                                           (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
                                             xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, j, k) - lhs(vLevel)(i - 1, j, k)) +
                                             ety2(vLevel)(j) * ihy2(vLevel) * (lhs(vLevel)(i, j + 1, k) + lhs(vLevel)(i, j - 1, k)) +
                                             etyy(vLevel)(j) * i2hy(vLevel) * (lhs(vLevel)(i, j + 1, k) - lhs(vLevel)(i, j - 1, k)) +
                                             ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, j, k + 1) + lhs(vLevel)(i, j, k - 1)) +
                                             ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, j, k + 1) - lhs(vLevel)(i, j, k - 1)) -
-                                                rhs(vLevel)(i, j, k)) / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
+                                                rhs(vLevel)(i, j, k)) * sorParam / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
                 }
             }
         }
@@ -284,13 +294,14 @@ void multigrid_d3::solve() {
         for (int i = 1; i <= xEnd(vLevel); i+=2) {
             for (int j = 0; j < yEnd(vLevel); j+=2) {
                 for (int k = 1; k <= zEnd(vLevel); k+=2) {
-                    lhs(vLevel)(i, j, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
+                    lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
+                                           (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
                                             xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, j, k) - lhs(vLevel)(i - 1, j, k)) +
                                             ety2(vLevel)(j) * ihy2(vLevel) * (lhs(vLevel)(i, j + 1, k) + lhs(vLevel)(i, j - 1, k)) +
                                             etyy(vLevel)(j) * i2hy(vLevel) * (lhs(vLevel)(i, j + 1, k) - lhs(vLevel)(i, j - 1, k)) +
                                             ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, j, k + 1) + lhs(vLevel)(i, j, k - 1)) +
                                             ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, j, k + 1) - lhs(vLevel)(i, j, k - 1)) -
-                                                rhs(vLevel)(i, j, k)) / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
+                                                rhs(vLevel)(i, j, k)) * sorParam / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
                 }
             }
         }
@@ -300,13 +311,14 @@ void multigrid_d3::solve() {
         for (int i = 0; i < xEnd(vLevel); i+=2) {
             for (int j = 1; j <= yEnd(vLevel); j+=2) {
                 for (int k = 1; k <= zEnd(vLevel); k+=2) {
-                    lhs(vLevel)(i, j, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
+                    lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
+                                           (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
                                             xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, j, k) - lhs(vLevel)(i - 1, j, k)) +
                                             ety2(vLevel)(j) * ihy2(vLevel) * (lhs(vLevel)(i, j + 1, k) + lhs(vLevel)(i, j - 1, k)) +
                                             etyy(vLevel)(j) * i2hy(vLevel) * (lhs(vLevel)(i, j + 1, k) - lhs(vLevel)(i, j - 1, k)) +
                                             ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, j, k + 1) + lhs(vLevel)(i, j, k - 1)) +
                                             ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, j, k + 1) - lhs(vLevel)(i, j, k - 1)) -
-                                                rhs(vLevel)(i, j, k)) / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
+                                                rhs(vLevel)(i, j, k)) * sorParam / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
                 }
             }
         }
@@ -320,13 +332,14 @@ void multigrid_d3::solve() {
         for (int i = 1; i <= xEnd(vLevel); i+=2) {
             for (int j = 0; j < yEnd(vLevel); j+=2) {
                 for (int k = 0; k < zEnd(vLevel); k+=2) {
-                    lhs(vLevel)(i, j, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
+                    lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
+                                           (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
                                             xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, j, k) - lhs(vLevel)(i - 1, j, k)) +
                                             ety2(vLevel)(j) * ihy2(vLevel) * (lhs(vLevel)(i, j + 1, k) + lhs(vLevel)(i, j - 1, k)) +
                                             etyy(vLevel)(j) * i2hy(vLevel) * (lhs(vLevel)(i, j + 1, k) - lhs(vLevel)(i, j - 1, k)) +
                                             ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, j, k + 1) + lhs(vLevel)(i, j, k - 1)) +
                                             ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, j, k + 1) - lhs(vLevel)(i, j, k - 1)) -
-                                                rhs(vLevel)(i, j, k)) / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
+                                                rhs(vLevel)(i, j, k)) * sorParam / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
                 }
             }
         }
@@ -336,13 +349,14 @@ void multigrid_d3::solve() {
         for (int i = 0; i < xEnd(vLevel); i+=2) {
             for (int j = 1; j <= yEnd(vLevel); j+=2) {
                 for (int k = 0; k < zEnd(vLevel); k+=2) {
-                    lhs(vLevel)(i, j, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
+                    lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
+                                           (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
                                             xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, j, k) - lhs(vLevel)(i - 1, j, k)) +
                                             ety2(vLevel)(j) * ihy2(vLevel) * (lhs(vLevel)(i, j + 1, k) + lhs(vLevel)(i, j - 1, k)) +
                                             etyy(vLevel)(j) * i2hy(vLevel) * (lhs(vLevel)(i, j + 1, k) - lhs(vLevel)(i, j - 1, k)) +
                                             ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, j, k + 1) + lhs(vLevel)(i, j, k - 1)) +
                                             ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, j, k + 1) - lhs(vLevel)(i, j, k - 1)) -
-                                                rhs(vLevel)(i, j, k)) / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
+                                                rhs(vLevel)(i, j, k)) * sorParam / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
                 }
             }
         }
@@ -352,13 +366,14 @@ void multigrid_d3::solve() {
         for (int i = 0; i < xEnd(vLevel); i+=2) {
             for (int j = 0; j < yEnd(vLevel); j+=2) {
                 for (int k = 1; k <= zEnd(vLevel); k+=2) {
-                    lhs(vLevel)(i, j, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
+                    lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
+                                           (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
                                             xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, j, k) - lhs(vLevel)(i - 1, j, k)) +
                                             ety2(vLevel)(j) * ihy2(vLevel) * (lhs(vLevel)(i, j + 1, k) + lhs(vLevel)(i, j - 1, k)) +
                                             etyy(vLevel)(j) * i2hy(vLevel) * (lhs(vLevel)(i, j + 1, k) - lhs(vLevel)(i, j - 1, k)) +
                                             ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, j, k + 1) + lhs(vLevel)(i, j, k - 1)) +
                                             ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, j, k + 1) - lhs(vLevel)(i, j, k - 1)) -
-                                                rhs(vLevel)(i, j, k)) / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
+                                                rhs(vLevel)(i, j, k)) * sorParam / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
                 }
             }
         }
@@ -368,19 +383,21 @@ void multigrid_d3::solve() {
         for (int i = 1; i <= xEnd(vLevel); i+=2) {
             for (int j = 1; j <= yEnd(vLevel); j+=2) {
                 for (int k = 1; k <= zEnd(vLevel); k+=2) {
-                    lhs(vLevel)(i, j, k) = (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
+                    lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
+                                           (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
                                             xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, j, k) - lhs(vLevel)(i - 1, j, k)) +
                                             ety2(vLevel)(j) * ihy2(vLevel) * (lhs(vLevel)(i, j + 1, k) + lhs(vLevel)(i, j - 1, k)) +
                                             etyy(vLevel)(j) * i2hy(vLevel) * (lhs(vLevel)(i, j + 1, k) - lhs(vLevel)(i, j - 1, k)) +
                                             ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, j, k + 1) + lhs(vLevel)(i, j, k - 1)) +
                                             ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, j, k + 1) - lhs(vLevel)(i, j, k - 1)) -
-                                                rhs(vLevel)(i, j, k)) / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
+                                                rhs(vLevel)(i, j, k)) * sorParam / (2.0 * (ihx2(vLevel)*xix2(vLevel)(i) + ihy2(vLevel)*ety2(vLevel)(j) + ihz2(vLevel)*ztz2(vLevel)(k)));
                 }
             }
         }
 
         tempValue = 0.0;
         localMax = -1.0e-10;
+#pragma omp parallel for num_threads(inputParams.nThreads) default(none) private(tempValue) reduction(max: localMax)
         for (int i = 0; i <= xEnd(vLevel); ++i) {
             for (int j = 0; j <= yEnd(vLevel); ++j) {
                 for (int k = 0; k <= zEnd(vLevel); ++k) {
@@ -423,6 +440,7 @@ void multigrid_d3::coarsen() {
     pLevel = vLevel;
     vLevel += 1;
 
+#pragma omp parallel for num_threads(inputParams.nThreads) default(none) shared(pLevel) private(i2) private(j2) private(k2)
     for (int i = 0; i <= xEnd(vLevel); ++i) {
         i2 = i*2;
         for (int j = 0; j <= yEnd(vLevel); ++j) {
@@ -448,6 +466,7 @@ void multigrid_d3::prolong() {
 
     lhs(vLevel) = 0.0;
 
+#pragma omp parallel for num_threads(inputParams.nThreads) default(none) shared(pLevel) private(i2) private(j2) private(k2)
     for (int i = 0; i <= xEnd(vLevel); ++i) {
         i2 = i/2;
         for (int j = 0; j <= yEnd(vLevel); j++) {
@@ -462,55 +481,37 @@ void multigrid_d3::prolong() {
 
 
 real multigrid_d3::computeError(const int normOrder) {
+    int pointCount = mesh.totalPoints;
+
     real residualVal = 0.0;
     real numValLoc = 0.0;
     real denValLoc = 0.0;
+    real numValGlo = 0.0;
+    real denValGlo = 0.0;
     real tempNum = 0.0;
-    real tempDen = 0.0;
 
     // This function is called at the finest grid level only.
 
-    // Problem with Koenig lookup is that when using the function abs with blitz arrays, it automatically computes
-    // the absolute of the float values without hitch.
-    // When replacing with computing absolute of individual array elements in a loop, ADL chooses a version of
-    // abs in the STL which **rounds off** the number.
-    // In this case, abs has to be replaced with fabs.
-    for (int i = 0; i <= xEnd(0); ++i) {
-        for (int j = 0; j <= yEnd(0); ++j) {
-            for (int k = 0; k <= zEnd(0); ++k) {
-                tempNum = fabs(rhs(0)(i, j, k) -
-                           (xix2(0)(i) * ihx2(0) * (lhs(0)(i + 1, j, k) - 2.0*lhs(0)(i, j, k) + lhs(0)(i - 1, j, k)) +
-                            xixx(0)(i) * i2hx(0) * (lhs(0)(i + 1, j, k) - lhs(0)(i - 1, j, k)) +
-                            ety2(0)(j) * ihy2(0) * (lhs(0)(i, j + 1, k) - 2.0*lhs(0)(i, j, k) + lhs(0)(i, j - 1, k)) +
-                            etyy(0)(j) * i2hy(0) * (lhs(0)(i, j + 1, k) - lhs(0)(i, j - 1, k)) +
-                            ztz2(0)(k) * ihz2(0) * (lhs(0)(i, j, k + 1) - 2.0*lhs(0)(i, j, k) + lhs(0)(i, j, k - 1)) +
-                            ztzz(0)(k) * i2hz(0) * (lhs(0)(i, j, k + 1) - lhs(0)(i, j, k - 1))));
-
-                tempDen = fabs(rhs(0)(i, j, k));
-
-                switch (normOrder) {
-                    case 0: // L-Infinity Norm
-                        if (tempNum > numValLoc) numValLoc = tempNum;
-                        if (tempDen > denValLoc) denValLoc = tempDen;
-                        break;
-                    case 1: // L-1 Norm
-                        numValLoc += tempNum;
-                        denValLoc += tempDen;
-                        break;
-                    case 2: // L-2 Norm
-                        numValLoc += tempNum*tempNum;
-                        denValLoc += tempDen*tempDen;
-                        break;
-                }
-            }
-        }
-    }
-
-    real numValGlo = 0.0;
-    real denValGlo = 0.0;
-    int pointCount = mesh.totalPoints;
     switch (normOrder) {
         case 0:     // L-Infinity Norm
+#pragma omp parallel for num_threads(inputParams.nThreads) default(none) private(tempNum) reduction(max: numValLoc)
+            for (int i = 0; i <= xEnd(0); ++i) {
+                for (int j = 0; j <= yEnd(0); ++j) {
+                    for (int k = 0; k <= zEnd(0); ++k) {
+                        tempNum = fabs(rhs(0)(i, j, k) -
+                                (xix2(0)(i) * ihx2(0) * (lhs(0)(i + 1, j, k) - 2.0*lhs(0)(i, j, k) + lhs(0)(i - 1, j, k)) +
+                                 xixx(0)(i) * i2hx(0) * (lhs(0)(i + 1, j, k) - lhs(0)(i - 1, j, k)) +
+                                 ety2(0)(j) * ihy2(0) * (lhs(0)(i, j + 1, k) - 2.0*lhs(0)(i, j, k) + lhs(0)(i, j - 1, k)) +
+                                 etyy(0)(j) * i2hy(0) * (lhs(0)(i, j + 1, k) - lhs(0)(i, j - 1, k)) +
+                                 ztz2(0)(k) * ihz2(0) * (lhs(0)(i, j, k + 1) - 2.0*lhs(0)(i, j, k) + lhs(0)(i, j, k - 1)) +
+                                 ztzz(0)(k) * i2hz(0) * (lhs(0)(i, j, k + 1) - lhs(0)(i, j, k - 1))));
+
+                        if (tempNum > numValLoc) numValLoc = tempNum;
+                    }
+                }
+            }
+
+            denValLoc = blitz::max(fabs(rhs(0)(stagCore(0))));
             MPI_Allreduce(&numValLoc, &numValGlo, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);
             MPI_Allreduce(&denValLoc, &denValGlo, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);
 
@@ -521,6 +522,24 @@ real multigrid_d3::computeError(const int normOrder) {
             }
             break;
         case 1:     // L-1 Norm
+#pragma omp parallel for num_threads(inputParams.nThreads) default(none) private(tempNum) reduction(+: numValLoc)
+            for (int i = 0; i <= xEnd(0); ++i) {
+                for (int j = 0; j <= yEnd(0); ++j) {
+                    for (int k = 0; k <= zEnd(0); ++k) {
+                        tempNum = fabs(rhs(0)(i, j, k) -
+                                (xix2(0)(i) * ihx2(0) * (lhs(0)(i + 1, j, k) - 2.0*lhs(0)(i, j, k) + lhs(0)(i - 1, j, k)) +
+                                 xixx(0)(i) * i2hx(0) * (lhs(0)(i + 1, j, k) - lhs(0)(i - 1, j, k)) +
+                                 ety2(0)(j) * ihy2(0) * (lhs(0)(i, j + 1, k) - 2.0*lhs(0)(i, j, k) + lhs(0)(i, j - 1, k)) +
+                                 etyy(0)(j) * i2hy(0) * (lhs(0)(i, j + 1, k) - lhs(0)(i, j - 1, k)) +
+                                 ztz2(0)(k) * ihz2(0) * (lhs(0)(i, j, k + 1) - 2.0*lhs(0)(i, j, k) + lhs(0)(i, j, k - 1)) +
+                                 ztzz(0)(k) * i2hz(0) * (lhs(0)(i, j, k + 1) - lhs(0)(i, j, k - 1))));
+
+                        numValLoc += tempNum;
+                    }
+                }
+            }
+
+            denValLoc = blitz::sum(fabs(rhs(0)(stagCore(0))));
             MPI_Allreduce(&numValLoc, &numValGlo, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
             MPI_Allreduce(&denValLoc, &denValGlo, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
 
@@ -531,6 +550,24 @@ real multigrid_d3::computeError(const int normOrder) {
             }
             break;
         case 2:     // L-2 Norm
+#pragma omp parallel for num_threads(inputParams.nThreads) default(none) private(tempNum) reduction(+: numValLoc)
+            for (int i = 0; i <= xEnd(0); ++i) {
+                for (int j = 0; j <= yEnd(0); ++j) {
+                    for (int k = 0; k <= zEnd(0); ++k) {
+                        tempNum = rhs(0)(i, j, k) -
+                                   (xix2(0)(i) * ihx2(0) * (lhs(0)(i + 1, j, k) - 2.0*lhs(0)(i, j, k) + lhs(0)(i - 1, j, k)) +
+                                    xixx(0)(i) * i2hx(0) * (lhs(0)(i + 1, j, k) - lhs(0)(i - 1, j, k)) +
+                                    ety2(0)(j) * ihy2(0) * (lhs(0)(i, j + 1, k) - 2.0*lhs(0)(i, j, k) + lhs(0)(i, j - 1, k)) +
+                                    etyy(0)(j) * i2hy(0) * (lhs(0)(i, j + 1, k) - lhs(0)(i, j - 1, k)) +
+                                    ztz2(0)(k) * ihz2(0) * (lhs(0)(i, j, k + 1) - 2.0*lhs(0)(i, j, k) + lhs(0)(i, j, k - 1)) +
+                                    ztzz(0)(k) * i2hz(0) * (lhs(0)(i, j, k + 1) - lhs(0)(i, j, k - 1)));
+
+                        numValLoc += tempNum*tempNum;
+                    }
+                }
+            }
+
+            denValLoc = blitz::sum(blitz::pow(rhs(0)(stagCore(0)), 2));
             MPI_Allreduce(&numValLoc, &numValGlo, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
             MPI_Allreduce(&denValLoc, &denValGlo, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
 

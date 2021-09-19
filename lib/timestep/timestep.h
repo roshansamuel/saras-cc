@@ -175,6 +175,7 @@ class lsRK3_d2: public timestep {
         real ihx2, ihz2;
         real i2hx, i2hz;
 
+        blitz::Array<real, 3> iterTemp;
         blitz::TinyVector<real, 3> alphRK3, betaRK3, zetaRK3, gammRK3;
 
         multigrid_d2 mgSolver;
@@ -209,6 +210,7 @@ class lsRK3_d3: public timestep {
         real ihx2, ihy2, ihz2;
         real i2hx, i2hy, i2hz;
 
+        blitz::Array<real, 3> iterTemp;
         blitz::TinyVector<real, 3> alphRK3, betaRK3, zetaRK3, gammRK3;
 
         multigrid_d3 mgSolver;

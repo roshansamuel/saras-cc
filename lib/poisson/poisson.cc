@@ -100,6 +100,10 @@ poisson::poisson(const grid &mesh, const parser &solParam): mesh(mesh), inputPar
     // SINCE ALL THE BOUNDARIES ARE ASSUMED TO HAVE NEUMANN BC WHEN 
     // SOLVING THE PRESSURE CORRECTION EQUATION.
     allNeumann = true;
+
+    // PARAMETER FOR SUCCESSIVE OVER-RELAXATION METHOD.
+    // USED IN SOLVE() AND SMOOTH() FUNCTIONS.
+    sorParam = 1.2;
 }
 
 
