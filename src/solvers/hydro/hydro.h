@@ -87,10 +87,16 @@ class hydro {
         void initVForcing();
 
         inline int roundNum(int numToRound, int multiple) {
+            // A tolerance of 2 dt is allowed when setting
+            // file-write, restart-write, and data-probe intervals.
+            // Hence using very fine intervals for these are discouraged.
+            int tolerance = 2;
+
             int remainder = numToRound % multiple;
-            int halfNum = int(multiple/2);
+            int tolCutOff = multiple - tolerance;
+
             if (remainder == 0) return numToRound;
-            if (remainder < halfNum) return numToRound - remainder;
+            if (remainder < tolCutOff) return numToRound - remainder;
             return numToRound + multiple - remainder;
         };
 };
