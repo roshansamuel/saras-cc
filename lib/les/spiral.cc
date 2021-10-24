@@ -624,9 +624,8 @@ real spiral::eigenvalueSymm() {
     real r = (9.0 * a * b - 27.0 * c - 2.0 * a * a * a) / 54.0;
 
     if (q >= 0.0) {
-        if (mesh.rankData.rank == 0) {
-            std::cout << "The value of q is greater than or equal to 0 in Spiral Eigenvalue calculation. Aborting" << std::endl;
-        }
+        if (mesh.pf) std::cout << "The value of q is greater than or equal to 0 in Spiral Eigenvalue calculation. Aborting" << std::endl;
+
         MPI_Finalize();
         exit(0);
     }
@@ -680,9 +679,8 @@ blitz::TinyVector<real, 3> spiral::eigenvectorSymm(real eigval) {
     if (fabs((Sxx - eigval) * ((Syy - eigval) * (Szz - eigval) - Syz * Syz)
             + Sxy * (Syz * Szx - Sxy * (Szz - eigval))
             + Szx * (Sxy * Syz - (Syy - eigval) * Szx))/fabs(fNorm) > EPS) {
-        if (mesh.rankData.rank == 0) {
-            std::cout << "Invalid eigenvalue in Spiral Eigenvector calculation. Aborting" << std::endl;
-        }
+        if (mesh.pf) std::cout << "Invalid eigenvalue in Spiral Eigenvector calculation. Aborting" << std::endl;
+
         MPI_Finalize();
         exit(0);
     }
@@ -703,9 +701,8 @@ blitz::TinyVector<real, 3> spiral::eigenvectorSymm(real eigval) {
         eigvec = (-Szx*(Syy - eigval) + Syz*Sxy)/det[2], (-Syz*(Sxx - eigval) + Szx*Sxy)/det[2], 1.0;
     }
     else {
-        if (mesh.rankData.rank == 0) {
-            std::cout << "Eigenvalues are not distinct in Spiral Eigenvector calculation. Aborting" << std::endl;
-        }
+        if (mesh.pf) std::cout << "Eigenvalues are not distinct in Spiral Eigenvector calculation. Aborting" << std::endl;
+
         MPI_Finalize();
         exit(0);
     }

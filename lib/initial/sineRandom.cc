@@ -56,7 +56,7 @@
  ********************************************************************************************************************************************
  */
 void sineRandom::initializeField(vfield &uField) {
-    if (mesh.rankData.rank == 0) std::cout << "Imposing sinusoidal random initial condition for channel flow" << std::endl << std::endl;
+    if (mesh.pf) std::cout << "Imposing sinusoidal random initial condition for channel flow" << std::endl << std::endl;
 
     // Seed the random number generator with both time and rank to get different random numbers in different MPI sub-domains
     int randSeed = std::time(0) + mesh.rankData.rank;

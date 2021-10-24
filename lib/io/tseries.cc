@@ -129,7 +129,7 @@ tseries::tseries(const grid &mesh, vfield &solverV, const real &solverTime, cons
  */
 void tseries::writeTSHeader() {
     // WRITE THE HEADERS FOR BOTH STANDARD I/O AS WELL AS THE OUTPUT TIME-SERIES FILE
-    if (mesh.rankData.rank == 0) {
+    if (mesh.pf) {
         if (mesh.inputParams.probType <= 4) {
             std::cout << std::setw(9)  << "Time" <<
                          std::setw(20) << "Total KE" <<
@@ -171,7 +171,7 @@ void tseries::writeTSData() {
     divValue = maxSwitch? divV.fxMaxAbs(): divV.fxMean();
 
     if (divValue > 1.0e5) {
-        if (mesh.rankData.rank == 0) std::cout << std::endl << "ERROR: Divergence exceeds permissible limits. ABORTING" << std::endl << std::endl;
+        if (mesh.pf) std::cout << std::endl << "ERROR: Divergence exceeds permissible limits. ABORTING" << std::endl << std::endl;
         MPI_Finalize();
         exit(0);
     }
@@ -200,7 +200,7 @@ void tseries::writeTSData() {
     totalKineticEnergy /= totalVol;
     if (mesh.inputParams.lesModel) subgridEnergy /= totalVol;
 
-    if (mesh.rankData.rank == 0) {
+    if (mesh.pf) {
         std::cout << std::fixed << std::setprecision(4) << std::setw(9)  << time <<
                                    std::setprecision(8) << std::setw(20) << totalKineticEnergy <<
                                                            std::setw(20) << divValue << std::endl;
@@ -244,7 +244,7 @@ void tseries::writeTSData(const sfield &T) {
     divValue = maxSwitch? divV.fxMaxAbs(): divV.fxMean();
 
     if (divValue > 1.0e5) {
-        if (mesh.rankData.rank == 0) std::cout << std::endl << "ERROR: Divergence exceeds permissible limits. ABORTING" << std::endl << std::endl;
+        if (mesh.pf) std::cout << std::endl << "ERROR: Divergence exceeds permissible limits. ABORTING" << std::endl << std::endl;
         MPI_Finalize();
         exit(0);
     }
@@ -309,7 +309,7 @@ void tseries::writeTSData(const sfield &T) {
     ReynoldsNo = sqrt(2.0*totalKineticEnergy)/mDiff;
     if (mesh.inputParams.lesModel) subgridEnergy /= totalVol;
 
-    if (mesh.rankData.rank == 0) {
+    if (mesh.pf) {
         std::cout << std::fixed << std::setprecision(4) << std::setw(9)  << time <<
                                    std::setprecision(8) << std::setw(20) << ReynoldsNo <<
                                                            std::setw(20) << NusseltNo <<

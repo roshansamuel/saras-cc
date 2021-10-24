@@ -62,9 +62,6 @@ class grid {
         blitz::Array<real, 1> xiGlo, etGlo, ztGlo;
         //@}
 
-        // Print flag - basically flag to ease printing to I/O. It is true for root rank (0)
-        bool pf;
-
         void resizeGrid();
         void makeSizeArray();
         void setDomainSizes();
@@ -88,6 +85,9 @@ class grid {
 
         /** Total number of points (cell-centers) in the full global domain */
         int totalPoints;
+
+        // Print flag - basically flag to ease printing to I/O. It is true for root rank (0)
+        bool pf;
 
         /** The sizes of the core of MPI decomposed sub-domains without the pads (staggered points) */
         blitz::TinyVector<int, 3> coreSize;

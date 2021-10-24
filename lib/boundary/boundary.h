@@ -149,6 +149,7 @@ class neumann: public boundary {
         inline void imposeBC();
     private:
         const real fieldValue;
+        real khWall;
 };
 
 /**

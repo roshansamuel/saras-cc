@@ -79,9 +79,8 @@ hydro_d3::hydro_d3(const grid &mesh, const parser &solParam, parallel &mpiParam)
 
         // Abort if this time is greater than the final time specified by the user
         if (time >= inputParams.tMax) {
-            if (mesh.rankData.rank == 0) {
-                std::cout << "ERROR: Restart file is starting from a point beyond the final time specified. Aborting" << std::endl;
-            }
+            if (mesh.pf) std::cout << "ERROR: Restart file is starting from a point beyond the final time specified. Aborting" << std::endl;
+
             MPI_Finalize();
             exit(0);
         }

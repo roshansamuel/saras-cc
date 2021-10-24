@@ -323,7 +323,7 @@ void eulerCN_d2::solveVx(vfield &V, plainvf &nseRHS, real beta) {
         iterCount += 1;
 
         if (iterCount > maxIterations) {
-            if (mesh.rankData.rank == 0) {
+            if (mesh.pf) {
                 std::cout << "ERROR: Jacobi iterations for solution of Vx not converging. Aborting" << std::endl;
             }
             MPI_Finalize();
@@ -391,7 +391,7 @@ void eulerCN_d2::solveVz(vfield &V, plainvf &nseRHS, real beta) {
         iterCount += 1;
 
         if (iterCount > maxIterations) {
-            if (mesh.rankData.rank == 0) {
+            if (mesh.pf) {
                 std::cout << "ERROR: Jacobi iterations for solution of Vz not converging. Aborting" << std::endl;
             }
             MPI_Finalize();
@@ -459,7 +459,7 @@ void eulerCN_d2::solveT(sfield &T, plainsf &tmpRHS, real beta) {
         iterCount += 1;
 
         if (iterCount > maxIterations) {
-            if (mesh.rankData.rank == 0) {
+            if (mesh.pf) {
                 std::cout << "ERROR: Jacobi iterations for solution of T not converging. Aborting" << std::endl;
             }
             MPI_Finalize();

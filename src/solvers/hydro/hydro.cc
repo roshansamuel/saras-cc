@@ -75,19 +75,19 @@ hydro::hydro(const grid &mesh, const parser &solParam, parallel &mpiParam):
         int rCount = inputParams.rsInt/inputParams.tStp;
 
         if (fCount <= 2) {
-            if (mesh.rankData.rank == 0) std::cout << "ERROR: File-write interval is too small to estimate the next file-write time within floating point tolerance. Aborting" << std::endl;
+            if (mesh.pf) std::cout << "ERROR: File-write interval is too small to estimate the next file-write time within floating point tolerance. Aborting" << std::endl;
             MPI_Finalize();
             exit(0);
         }
         
         if (pCount <= 2) {
-            if (mesh.rankData.rank == 0) std::cout << "ERROR: Data-probe interval is too small to estimate the next data-probe time within floating point tolerance. Aborting" << std::endl;
+            if (mesh.pf) std::cout << "ERROR: Data-probe interval is too small to estimate the next data-probe time within floating point tolerance. Aborting" << std::endl;
             MPI_Finalize();
             exit(0);
         }
 
         if (rCount <= 2) {
-            if (mesh.rankData.rank == 0) std::cout << "ERROR: Restart-write interval is too small to estimate the next restart-write time within floating point tolerance. Aborting" << std::endl;
+            if (mesh.pf) std::cout << "ERROR: Restart-write interval is too small to estimate the next restart-write time within floating point tolerance. Aborting" << std::endl;
             MPI_Finalize();
             exit(0);
         }

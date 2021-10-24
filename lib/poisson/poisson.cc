@@ -183,14 +183,14 @@ void poisson::mgSolve(plainsf &outLHS, const plainsf &inpRHS) {
         real locMax = blitz::max(fabs(tempArray));
         MPI_Allreduce(&locMax, &gloMax, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);
 
-        if (mesh.rankData.rank == 0) {
+        if (mesh.pf) {
             std::cout << std::endl;
             std::cout << "Maximum absolute deviation from analytic solution is: " << std::scientific << std::setprecision(3) << gloMax << std::endl;
         }
 #endif
 
         if (inputParams.printResidual)
-            if (mesh.rankData.rank == 0)
+            if (mesh.pf)
                 std::cout << std::endl << "Residual after V Cycle " << i << " is " << std::scientific << std::setprecision(3) << mgResidual << std::endl;
 
 #ifndef TEST_POISSON
@@ -404,7 +404,7 @@ void poisson::setStagBounds() {
     maxCount = cgSize(0)*cgSize(1)*cgSize(2)*mesh.rankData.npX*mesh.rankData.npY*mesh.rankData.npZ;
 
     if (inputParams.solveFlag)
-        if (mesh.rankData.rank == 0)
+        if (mesh.pf)
             std::cout << "Iteration limit for Red-Black Gauss-Seidel solver in multi-grid is " << maxCount << "\n" << std::endl;
 };
 

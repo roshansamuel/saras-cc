@@ -83,7 +83,7 @@ lsRK3_d3::lsRK3_d3(const grid &mesh, const real &sTime, const real &dt, tseries 
 
     // If LES switch is enabled, initialize LES model
     if (mesh.inputParams.lesModel) {
-        if (mesh.rankData.rank == 0) {
+        if (mesh.pf) {
             std::cout << "LES Switch is ON. Using stretched spiral vortex LES Model\n" << std::endl;
         }
 
@@ -382,7 +382,7 @@ void lsRK3_d3::solveVx(vfield &V, plainvf &nseRHS, real beta) {
         iterCount += 1;
 
         if (iterCount > maxIterations) {
-            if (mesh.rankData.rank == 0) {
+            if (mesh.pf) {
                 std::cout << "ERROR: Jacobi iterations for solution of Vx not converging. Aborting" << std::endl;
             }
             MPI_Finalize();
@@ -456,7 +456,7 @@ void lsRK3_d3::solveVy(vfield &V, plainvf &nseRHS, real beta) {
         iterCount += 1;
 
         if (iterCount > maxIterations) {
-            if (mesh.rankData.rank == 0) {
+            if (mesh.pf) {
                 std::cout << "ERROR: Jacobi iterations for solution of Vy not converging. Aborting" << std::endl;
             }
             MPI_Finalize();
@@ -530,7 +530,7 @@ void lsRK3_d3::solveVz(vfield &V, plainvf &nseRHS, real beta) {
         iterCount += 1;
 
         if (iterCount > maxIterations) {
-            if (mesh.rankData.rank == 0) {
+            if (mesh.pf) {
                 std::cout << "ERROR: Jacobi iterations for solution of Vz not converging. Aborting" << std::endl;
             }
             MPI_Finalize();
@@ -591,7 +591,7 @@ void lsRK3_d3::solveT(sfield &T, plainsf &tmpRHS, real beta) {
         iterCount += 1;
 
         if (iterCount > maxIterations) {
-            if (mesh.rankData.rank == 0) {
+            if (mesh.pf) {
                 std::cout << "ERROR: Jacobi iterations for solution of T not converging. Aborting" << std::endl;
             }
             MPI_Finalize();

@@ -52,7 +52,7 @@
  ********************************************************************************************************************************************
  */
 void taylorGreen::initializeField(vfield &uField) {
-    if (mesh.rankData.rank == 0) std::cout << "Imposing Taylor-Green vortices initial condition" << std::endl << std::endl;
+    if (mesh.pf) std::cout << "Imposing Taylor-Green vortices initial condition" << std::endl << std::endl;
 
 #ifdef PLANAR
     // X-VELOCITY

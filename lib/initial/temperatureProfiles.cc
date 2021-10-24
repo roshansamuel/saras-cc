@@ -52,7 +52,7 @@
  ********************************************************************************************************************************************
  */
 void linearProfile::initializeField(vfield &uField, sfield &tField) {
-    if (mesh.rankData.rank == 0) std::cout << "Imposing linear temperature profile" << std::endl << std::endl;
+    if (mesh.pf) std::cout << "Imposing linear temperature profile" << std::endl << std::endl;
 
     uField.Vx = 0.0;
 #ifdef PLANAR
@@ -85,7 +85,7 @@ void linearProfile::initializeField(vfield &uField, sfield &tField) {
  ********************************************************************************************************************************************
  */
 void cosineProfile::initializeField(vfield &uField, sfield &tField) {
-    if (mesh.rankData.rank == 0) std::cout << "Imposing cosine temperature profile" << std::endl << std::endl;
+    if (mesh.pf) std::cout << "Imposing cosine temperature profile" << std::endl << std::endl;
 
     uField.Vx = 0.0;
 #ifdef PLANAR
@@ -118,7 +118,7 @@ void cosineProfile::initializeField(vfield &uField, sfield &tField) {
  ********************************************************************************************************************************************
  */
 void sineProfile::initializeField(vfield &uField, sfield &tField) {
-    if (mesh.rankData.rank == 0) std::cout << "Imposing sine temperature profile" << std::endl << std::endl;
+    if (mesh.pf) std::cout << "Imposing sine temperature profile" << std::endl << std::endl;
 
     uField.Vx = 0.0;
 #ifdef PLANAR

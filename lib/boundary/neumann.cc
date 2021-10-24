@@ -56,7 +56,25 @@
  ********************************************************************************************************************************************
  */
 neumann::neumann(const grid &mesh, field &inField, const int bcWall, const real bcValue):
-                            boundary(mesh, inField, bcWall), fieldValue(bcValue) { }
+                            boundary(mesh, inField, bcWall), fieldValue(bcValue) {
+    real hWall = 0.0;
+
+    switch (wallNum) {
+        case 0: hWall = 2*mesh.xGlobal(0);
+            break;
+        case 1: hWall = 2*(mesh.xGlobal(mesh.globalSize(0) - 1) - mesh.inputParams.Lx);
+            break;
+        case 2: hWall = 2*mesh.yGlobal(0);
+            break;
+        case 3: hWall = 2*(mesh.yGlobal(mesh.globalSize(1) - 1) - mesh.inputParams.Ly);
+            break;
+        case 4: hWall = 2*mesh.zGlobal(0);
+            break;
+        case 5: hWall = 2*(mesh.zGlobal(mesh.globalSize(2) - 1) - mesh.inputParams.Lz);
+            break;
+    }
+    khWall = fieldValue*hWall;
+}
 
 /**
  ********************************************************************************************************************************************
@@ -70,7 +88,6 @@ neumann::neumann(const grid &mesh, field &inField, const int bcWall, const real 
  */
 inline void neumann::imposeBC() {
     if (rankFlag) {
-        // This implementation assumes that the derivative at boundary is 0, and needs update
-        dField.F(wallSlice) = dField.F(dataSlice);
+        dField.F(wallSlice) = dField.F(dataSlice) - khWall;
     }
 }

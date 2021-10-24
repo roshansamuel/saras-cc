@@ -86,7 +86,7 @@ timestep::timestep(const grid &mesh, const real &sTime, const real &dt, tseries 
             nu = sqrt(mesh.inputParams.Pr/mesh.inputParams.Ra);
             kappa = 1.0/sqrt(mesh.inputParams.Pr*mesh.inputParams.Ra);
         } else {
-            if (mesh.rankData.rank == 0) {
+            if (mesh.pf) {
                 std::cout << "ERROR: Invalid RBC non-dimensionalization type. Aborting" << std::endl;
             }
             exit(0);

@@ -422,7 +422,7 @@ void multigrid_d3::solve() {
         iterCount += 1;
         if (iterCount > maxCount) {
             if (inputParams.printResidual)
-                if (mesh.rankData.rank == 0)
+                if (mesh.pf)
                     std::cout << "WARNING: Iterations for solution at coarsest level not converging." << std::endl;
 
             break;
