@@ -1,0 +1,127 @@
+# YAML File to set custom boundary conditions for SARAS
+#
+# WARNING: THIS FEATURE IS UNDER DEVELOPMENT
+#
+############################################################
+#
+# For each entry of "BC Type"
+# 0 = Dirichlet BC
+# 1 = Neumann BC
+#
+# Correspondingly, the "BC Value" will set the value of
+# the variable or its derivative at the boundary.
+#
+# Use the following rules to identify walls
+# 1. Left and right walls are perpendicular to X-axis
+# 2. Front and back walls are perpendicular to Y-axis
+# 3. Bottom and top walls are perpendicular to Z-axis
+#
+#                   Back
+#              +--------+
+#             /        /|
+#            /  Top   / |
+#           +--------+  |               Z
+#     Left  |        |  | Right         ^   Y
+#           |        |  +               |  +
+#           | Front  | /                | /
+#           |        |/                 |/
+#           +--------+                  +----->X
+#             Bottom
+#
+############################################################
+#
+# Boundary conditions for vector field - V (velocity)
+"V":
+    # X-Component
+    "Vx":
+        "Left Wall":
+            "BC Type": 0
+            "BC Value": 0.0
+        "Right Wall":
+            "BC Type": 0
+            "BC Value": 0.0
+
+        "Front Wall":
+            "BC Type": 0
+            "BC Value": 0.0
+        "Back Wall":
+            "BC Type": 0
+            "BC Value": 0.0
+
+        "Bottom Wall":
+            "BC Type": 0
+            "BC Value": 0.0
+        "Top Wall":
+            "BC Type": 0
+            "BC Value": 0.0
+
+    # Y-Component
+    "Vy":
+        "Left Wall":
+            "BC Type": 0
+            "BC Value": 0.0
+        "Right Wall":
+            "BC Type": 0
+            "BC Value": 0.0
+
+        "Front Wall":
+            "BC Type": 0
+            "BC Value": 0.0
+        "Back Wall":
+            "BC Type": 0
+            "BC Value": 0.0
+
+        "Bottom Wall":
+            "BC Type": 0
+            "BC Value": 0.0
+        "Top Wall":
+            "BC Type": 0
+            "BC Value": 0.0
+
+    # Z-Component
+    "Vz":
+        "Left Wall":
+            "BC Type": 0
+            "BC Value": 0.0
+        "Right Wall":
+            "BC Type": 0
+            "BC Value": 0.0
+
+        "Front Wall":
+            "BC Type": 0
+            "BC Value": 0.0
+        "Back Wall":
+            "BC Type": 0
+            "BC Value": 0.0
+
+        "Bottom Wall":
+            "BC Type": 0
+            "BC Value": 0.0
+        "Top Wall":
+            "BC Type": 0
+            "BC Value": 0.0
+
+# Boundary conditions for scalar field - T (temperature)
+"T":
+    # Scalar component
+    "F":
+        "Left Wall":
+            "BC Type": 1
+            "BC Value": 0.0
+        "Right Wall":
+            "BC Type": 1
+            "BC Value": 0.0
+
+        "Front Wall":
+            "BC Type": 1
+            "BC Value": 0.0
+        "Back Wall":
+            "BC Type": 1
+            "BC Value": 0.0
+
+        "Bottom Wall":
+            "BC Type": 0
+            "BC Value": 1.0
+        "Top Wall":
+            "BC Type": 0
+            "BC Value": 0.0
