@@ -61,6 +61,10 @@ class vfield {
 
         blitz::RectDomain<3> core;
 
+        // Average grid spacing in physical plane - used in CFL condition.
+        // This will be same as hx, hy and hz for uniform grid.
+        real avgDx, avgDy, avgDz;
+
     public:
         field Vx, Vy, Vz;
 

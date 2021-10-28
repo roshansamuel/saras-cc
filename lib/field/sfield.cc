@@ -73,8 +73,10 @@ sfield::sfield(const grid &gridData, std::string fieldName):
  ********************************************************************************************************************************************
  * \brief   Function to compute the diffusion term
  *
- *          It is assumed that the velocity is specified at face-centers, as required by the \ref sfield#computeNLin
- *          "computeNLin" function of sfield.
+ *          The diffusion term (grad-squared) is caulculated here.
+ *          The second derivatives of the scalar field are calculated along x, y and z.
+ *          These terms are added to the given plain scalar field (plainsf),
+ *          which is usually the RHS of the PDE being solved.
  *
  * \param   H is a reference to the plain scalar field (plainsf) to which the output will be written
  ********************************************************************************************************************************************
@@ -100,10 +102,10 @@ void sfield::computeDiff(plainsf &H) {
  * \brief   Function to compute the convective derivative of the scalar field
  *
  *          The function calculates \f$ (\mathbf{u}.\nabla)f \f$ at the grid nodes of the scalar field f.
- *          To do so, the function needs the vector field (vfield) of velocity. It is assumed that the velocity is always
- *          specified at face-centers, and is interpolated accordingly to the scalar field grid points.
+ *          To do so, the function needs the vector field (vfield) of velocity, \f$\mathbf{u}\f$.
  *
  * \param   V is a const reference to a vector field (vfield) that specifies the convection velocity
+ * \param   H is a reference to the plainsf into which the output is written
  ********************************************************************************************************************************************
  */
 void sfield::computeNLin(const vfield &V, plainsf &H) {

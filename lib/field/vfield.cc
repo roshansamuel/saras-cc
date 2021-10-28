@@ -68,6 +68,14 @@ vfield::vfield(const grid &gridData, std::string fieldName):
     derivTemp.reindexSelf(Vx.flBound);
 
     core = gridData.coreDomain;
+
+    // The following average grid spacings in physical plane are used when
+    // calculating time-step using CFL condition in computeTStp(dt) function.
+    avgDx = gridData.xLen/gridData.globalSize(0);
+#ifndef PLANAR
+    avgDy = gridData.yLen/gridData.globalSize(1);
+#endif
+    avgDz = gridData.zLen/gridData.globalSize(2);
 }
 
 /**
@@ -132,8 +140,6 @@ void vfield::computeDiff(plainvf &H) {
  *
  *          The function calculates \f$ (\mathbf{u}.\nabla)\mathbf{v} \f$ on the vector field, \f$\mathbf{v}\f$.
  *          To do so, the function needs the vector field (vfield) of velocity, \f$\mathbf{u}\f$.
- *          For each term, there is first an interpolation operation to get the velocity at the
- *          location of data, and a differentiation operation to get the derivatives of the components of vfield.
  *
  * \param   V is a const reference to the vfield denoting convection velocity
  * \param   H is a reference to the plainvf into which the output is written
@@ -202,12 +208,12 @@ void vfield::computeTStp(real &dt) {
     real locMax, gloMax;
 
 #ifdef PLANAR
-    locMax = blitz::max((blitz::abs(Vx.F(core))/gridData.dXi) +
-                        (blitz::abs(Vz.F(core))/gridData.dZt));
+    locMax = blitz::max((blitz::abs(Vx.F(core))/avgDx) +
+                        (blitz::abs(Vz.F(core))/avgDz));
 #else
-    locMax = blitz::max((blitz::abs(Vx.F(core))/gridData.dXi) +
-                        (blitz::abs(Vy.F(core))/gridData.dEt) +
-                        (blitz::abs(Vz.F(core))/gridData.dZt));
+    locMax = blitz::max((blitz::abs(Vx.F(core))/avgDx) +
+                        (blitz::abs(Vy.F(core))/avgDy) +
+                        (blitz::abs(Vz.F(core))/avgDz));
 #endif
 
     MPI_Allreduce(&locMax, &gloMax, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);
