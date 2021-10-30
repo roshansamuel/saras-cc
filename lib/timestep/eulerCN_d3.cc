@@ -95,7 +95,6 @@ eulerCN_d3::eulerCN_d3(const grid &mesh, const real &sTime, const real &dt, tser
  */
 void eulerCN_d3::timeAdvance(vfield &V, sfield &P) {
     static plainvf nseRHS(mesh);
-    real subgridKE;
 
     nseRHS = 0.0;
 
@@ -112,8 +111,10 @@ void eulerCN_d3::timeAdvance(vfield &V, sfield &P) {
 
     // Add sub-grid stress contribution from LES Model, if enabled
     if (mesh.inputParams.lesModel and solTime > 5*mesh.inputParams.tStp) {
-        subgridKE = sgsLES->computeSG(nseRHS, V);
-        tsWriter.subgridEnergy = subgridKE;
+        sgsLES->computeSG(nseRHS, V);
+        tsWriter.subgridEnergy = sgsLES->totalSGKE;
+        tsWriter.sgDissipation = sgsLES->totalDisp;
+        tsWriter.nuTurbulent = sgsLES->totalNuSG;
     }
 
     // Subtract the pressure gradient term
@@ -185,7 +186,6 @@ void eulerCN_d3::timeAdvance(vfield &V, sfield &P) {
 void eulerCN_d3::timeAdvance(vfield &V, sfield &P, sfield &T) {
     static plainvf nseRHS(mesh);
     static plainsf tmpRHS(mesh);
-    real subgridKE;
 
     nseRHS = 0.0;
     tmpRHS = 0.0;
@@ -214,14 +214,14 @@ void eulerCN_d3::timeAdvance(vfield &V, sfield &P, sfield &T) {
 
     // Add sub-grid stress contribution from LES Model, if enabled
     if (mesh.inputParams.lesModel and solTime > 5*mesh.inputParams.tStp) {
-        subgridKE = 0.0;
-
         if (mesh.inputParams.lesModel == 1)
-            subgridKE = sgsLES->computeSG(nseRHS, V);
+            sgsLES->computeSG(nseRHS, V);
         else if (mesh.inputParams.lesModel == 2)
-            subgridKE = sgsLES->computeSG(nseRHS, tmpRHS, V, T);
+            sgsLES->computeSG(nseRHS, tmpRHS, V, T);
 
-        tsWriter.subgridEnergy = subgridKE;
+        tsWriter.subgridEnergy = sgsLES->totalSGKE;
+        tsWriter.sgDissipation = sgsLES->totalDisp;
+        tsWriter.nuTurbulent = sgsLES->totalNuSG;
     }
 
     // Subtract the pressure gradient term from momentum equation

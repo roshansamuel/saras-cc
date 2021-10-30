@@ -62,8 +62,10 @@ class les {
     public:
         les(const grid &mesh);
 
-        virtual real computeSG(plainvf &nseRHS, vfield &V);
-        virtual real computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T);
+        real totalSGKE, totalDisp, totalNuSG;
+
+        virtual void computeSG(plainvf &nseRHS, vfield &V);
+        virtual void computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T);
 
     protected:
         const grid &mesh;
@@ -85,8 +87,8 @@ class spiral: public les {
 
         spiral(const grid &mesh, const real &kDiff);
 
-        real computeSG(plainvf &nseRHS, vfield &V);
-        real computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T);
+        void computeSG(plainvf &nseRHS, vfield &V);
+        void computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T);
 
     private:
         // Kinematic viscosity

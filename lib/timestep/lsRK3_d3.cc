@@ -108,8 +108,6 @@ void lsRK3_d3::timeAdvance(vfield &V, sfield &P) {
     static plainvf nseRHS(mesh);
     static plainvf tempVF(mesh);
 
-    real subgridKE;
-
     for (rkLev = 0; rkLev < 3; rkLev++) {
         nseRHS = 0.0;
 
@@ -142,8 +140,10 @@ void lsRK3_d3::timeAdvance(vfield &V, sfield &P) {
 
         // Add sub-grid stress contribution from LES Model, if enabled
         if (mesh.inputParams.lesModel and solTime > 5*mesh.inputParams.tStp) {
-            subgridKE = sgsLES->computeSG(tempVF, V);
-            tsWriter.subgridEnergy = subgridKE;
+            sgsLES->computeSG(tempVF, V);
+            tsWriter.subgridEnergy = sgsLES->totalSGKE;
+            tsWriter.sgDissipation = sgsLES->totalDisp;
+            tsWriter.nuTurbulent = sgsLES->totalNuSG;
         }
 
         // Add non-linear term to RHS
@@ -207,8 +207,6 @@ void lsRK3_d3::timeAdvance(vfield &V, sfield &P, sfield &T) {
     static plainsf tmpRHS(mesh);
     static plainsf tempSF(mesh);
 
-    real subgridKE;
-
     for (rkLev = 0; rkLev < 3; rkLev++) {
         nseRHS = 0.0;
         tmpRHS = 0.0;
@@ -254,14 +252,14 @@ void lsRK3_d3::timeAdvance(vfield &V, sfield &P, sfield &T) {
 
         // Add sub-grid stress contribution from LES Model to the non-linear term, if enabled
         if (mesh.inputParams.lesModel and solTime > 5*mesh.inputParams.tStp) {
-            subgridKE = 0.0;
-
             if (mesh.inputParams.lesModel == 1)
-                subgridKE = sgsLES->computeSG(tempVF, V);
+                sgsLES->computeSG(tempVF, V);
             else if (mesh.inputParams.lesModel == 2)
-                subgridKE = sgsLES->computeSG(tempVF, tempSF, V, T);
+                sgsLES->computeSG(tempVF, tempSF, V, T);
 
-            tsWriter.subgridEnergy = subgridKE;
+            tsWriter.subgridEnergy = sgsLES->totalSGKE;
+            tsWriter.sgDissipation = sgsLES->totalDisp;
+            tsWriter.nuTurbulent = sgsLES->totalNuSG;
         }
 
         // Add non-linear terms

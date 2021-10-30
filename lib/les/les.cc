@@ -63,9 +63,10 @@ les::les(const grid &mesh): mesh(mesh) {
  *          to the momentum equations of the Navier-Stokes equations.
  *
  * \param   nseRHS is a reference to the plain vector field which holds the RHS terms of the NSE
+ * \param   V is a reference to the velocity vector field
  ********************************************************************************************************************************************
  */
-real les::computeSG(plainvf &nseRHS, vfield &V) { return 0; };
+void les::computeSG(plainvf &nseRHS, vfield &V) { };
 
 /**
  ********************************************************************************************************************************************
@@ -76,7 +77,8 @@ real les::computeSG(plainvf &nseRHS, vfield &V) { return 0; };
  *
  * \param   nseRHS is a reference to the plain vector field which holds the RHS terms of the NSE
  * \param   tmpRHS is a reference to the plain scalar field which holds the RHS terms of the temperature equation
- * \param   T is a const reference to the temperature scalar field
+ * \param   V is a reference to the velocity vector field
+ * \param   T is a reference to the temperature scalar field
  ********************************************************************************************************************************************
  */
-real les::computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T) { return 0; };
+void les::computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T) { };

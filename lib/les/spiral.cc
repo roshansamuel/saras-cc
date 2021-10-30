@@ -126,8 +126,10 @@ spiral::spiral(const grid &mesh, const real &kDiff): les(mesh), nu(kDiff) {
  * \param   V is a reference the vector field denoting the velocity field
  ********************************************************************************************************************************************
  */
-real spiral::computeSG(plainvf &nseRHS, vfield &V) {
-    real localSGKE, totalSGKE;
+void spiral::computeSG(plainvf &nseRHS, vfield &V) {
+    real sNorm, tNorm;
+    real nuTurb, sgDiss;
+    real localSGKE, localDisp, localNuSG;
 
     V.syncAll();
 
@@ -194,12 +196,25 @@ real spiral::computeSG(plainvf &nseRHS, vfield &V) {
                 Tyz->F.F(iX, iY, iZ) = sTyz;
                 Tzx->F.F(iX, iY, iZ) = sTzx;
 
+                // Subgrid kinetic energy
                 localSGKE += abs(K)*(mesh.dXi/mesh.xi_x(iX))*(mesh.dEt/mesh.et_y(iY))*(mesh.dZt/mesh.zt_z(iZ));
+
+                // Subgrid dissipation
+                sgDiss = -(Sxx*sTxx + Syy*sTyy + Szz*sTzz + 2.0*(Sxy*sTxy + Syz*sTyz + Szx*sTzx));
+                localDisp += sgDiss*(mesh.dXi/mesh.xi_x(iX))*(mesh.dEt/mesh.et_y(iY))*(mesh.dZt/mesh.zt_z(iZ));
+
+                // Compute turbulent viscosity norms of T_ij and S_ij tensors
+                sNorm = std::sqrt(Sxx*Sxx + Syy*Syy + Szz*Szz + 2.0*(Sxy*Sxy + Syz*Syz + Szx*Szx));
+                tNorm = std::sqrt(sTxx*sTxx + sTyy*sTyy + sTzz*sTzz + 2.0*(sTxy*sTxy + sTyz*sTyz + sTzx*sTzx));
+                nuTurb = (tNorm/sNorm)/2;
+                localNuSG += nuTurb*(mesh.dXi/mesh.xi_x(iX))*(mesh.dEt/mesh.et_y(iY))*(mesh.dZt/mesh.zt_z(iZ));
             }
         }
     }
 
     MPI_Allreduce(&localSGKE, &totalSGKE, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&localDisp, &totalDisp, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&localNuSG, &totalNuSG, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
 
     // Synchronize the sub-grid stress tensor field data across MPI processors
     Txx->syncFaces();
@@ -224,12 +239,10 @@ real spiral::computeSG(plainvf &nseRHS, vfield &V) {
     Tyz->derS.calcDerivative1_z(A32);
     Tzz->derS.calcDerivative1_z(A33);
 
-    // Add the divergence of the stress tensor field to the RHS of NSE provided as argument to the function
-    nseRHS.Vx(core) = nseRHS.Vx(core) + A11(core) + A21(core) + A31(core);
-    nseRHS.Vy(core) = nseRHS.Vy(core) + A12(core) + A22(core) + A32(core);
-    nseRHS.Vz(core) = nseRHS.Vz(core) + A13(core) + A23(core) + A33(core);
-
-    return totalSGKE;
+    // Subtract the divergence of the stress tensor field to the RHS of NSE provided as argument to the function
+    nseRHS.Vx(core) = nseRHS.Vx(core) - (A11(core) + A21(core) + A31(core));
+    nseRHS.Vy(core) = nseRHS.Vy(core) - (A12(core) + A22(core) + A32(core));
+    nseRHS.Vz(core) = nseRHS.Vz(core) - (A13(core) + A23(core) + A33(core));
 }
 
 
@@ -249,9 +262,11 @@ real spiral::computeSG(plainvf &nseRHS, vfield &V) {
  * \param   T is a reference the scalar field denoting the scalar equation
  ********************************************************************************************************************************************
  */
-real spiral::computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T) {
-    real localSGKE, totalSGKE;
+void spiral::computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T) {
+    real sNorm, tNorm;
     real sQx, sQy, sQz;
+    real nuTurb, sgDiss;
+    real localSGKE, localDisp, localNuSG;
 
     V.syncAll();
 
@@ -328,9 +343,9 @@ real spiral::computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T) {
                 Tzx->F.F(iX, iY, iZ) = sTzx;
 
                 if (sgfFlag) {
+                    // 5. The temperature gradient vector specified as a 3 component tiny vector
                     // To compute sub-grid scalar flux, the sgsStress calculations have already provided
                     // most of the necessary values. Only an additional temperature gradient vector is needed
-                    // 5. The temperature gradient vector specified as a 3 component tiny vector
                     dsdx = B1(iX, iY, iZ), B2(iX, iY, iZ), B3(iX, iY, iZ);
 
                     // Now the sub-grid scalar flus can be calculated
@@ -342,12 +357,25 @@ real spiral::computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T) {
                     qZ->F.F(iX, iY, iZ) = sQz;
                 }
 
+                // Subgrid kinetic energy
                 localSGKE += abs(K)*(mesh.dXi/mesh.xi_x(iX))*(mesh.dEt/mesh.et_y(iY))*(mesh.dZt/mesh.zt_z(iZ));
+
+                // Subgrid dissipation
+                sgDiss = -(Sxx*sTxx + Syy*sTyy + Szz*sTzz + 2.0*(Sxy*sTxy + Syz*sTyz + Szx*sTzx));
+                localDisp += sgDiss*(mesh.dXi/mesh.xi_x(iX))*(mesh.dEt/mesh.et_y(iY))*(mesh.dZt/mesh.zt_z(iZ));
+
+                // Compute turbulent viscosity norms of T_ij and S_ij tensors
+                sNorm = std::sqrt(Sxx*Sxx + Syy*Syy + Szz*Szz + 2.0*(Sxy*Sxy + Syz*Syz + Szx*Szx));
+                tNorm = std::sqrt(sTxx*sTxx + sTyy*sTyy + sTzz*sTzz + 2.0*(sTxy*sTxy + sTyz*sTyz + sTzx*sTzx));
+                nuTurb = (tNorm/sNorm)/2;
+                localNuSG += nuTurb*(mesh.dXi/mesh.xi_x(iX))*(mesh.dEt/mesh.et_y(iY))*(mesh.dZt/mesh.zt_z(iZ));
             }
         }
     }
 
     MPI_Allreduce(&localSGKE, &totalSGKE, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&localDisp, &totalDisp, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&localNuSG, &totalNuSG, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
 
     // Synchronize the sub-grid stress tensor field data across MPI processors
     Txx->syncFaces();
@@ -373,10 +401,10 @@ real spiral::computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T) {
     B2 = A12 + A22 + A32;
     B3 = A13 + A23 + A33;
 
-    // Add the divergence to the RHS of NSE provided as argument to the function
-    nseRHS.Vx(core) = nseRHS.Vx(core) + B1(core);
-    nseRHS.Vy(core) = nseRHS.Vy(core) + B2(core);
-    nseRHS.Vz(core) = nseRHS.Vz(core) + B3(core);
+    // Subtract the divergence to the RHS of NSE provided as argument to the function
+    nseRHS.Vx(core) = nseRHS.Vx(core) - B1(core);
+    nseRHS.Vy(core) = nseRHS.Vy(core) - B2(core);
+    nseRHS.Vz(core) = nseRHS.Vz(core) - B3(core);
 
     if (sgfFlag) {
         // Synchronize the sub-grid scalar flux vector field data across MPI processors
@@ -389,9 +417,9 @@ real spiral::computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T) {
         qY->derS.calcDerivative1_y(B2);
         qZ->derS.calcDerivative1_z(B3);
 
-        // Sum the components to get the divergence of scalar flux, and add its contribution
+        // Sum the components to get the divergence of scalar flux, and subtract its contribution
         // to the RHS of the temperature field equation provided as argument to the function
-        tmpRHS.F(core) = tmpRHS.F(core) + B1(core) + B2(core) + B3(core);
+        tmpRHS.F(core) = tmpRHS.F(core) - (B1(core) + B2(core) + B3(core));
 
     } else {
         V.derVx.calcDerivative2xx(A11);
@@ -418,10 +446,8 @@ real spiral::computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T) {
         T.derS.calcDerivative2yy(A22);
         T.derS.calcDerivative2zz(A33);
 
-        tmpRHS.F(core) = tmpRHS.F(core) + B1(core)*(A11(core) + A22(core) + A33(core));
+        tmpRHS.F(core) = tmpRHS.F(core) - B1(core)*(A11(core) + A22(core) + A33(core));
     }
-
-    return totalSGKE;
 }
 
 

@@ -49,11 +49,14 @@
 
 class tseries {
     public:
-        /** The real value for sub-grid energy computed by LES model is used only when LES switch is on */
-        real subgridEnergy;
+        /** The real values for sub-grid energy, dissipation and eddy viscosity computed by LES model - used only when LES switch is on */
+        real subgridEnergy, sgDissipation, nuTurbulent;
 
         /** Values momentum and thermal diffusion constants - these are set externally */
         real mDiff, tDiff;
+
+        /** Total volume of the domain */
+        real totalVol;
 
         tseries(const grid &mesh, vfield &solverV, const real &solverTime, const real &timeStep);
 
@@ -71,7 +74,6 @@ class tseries {
         int yLow, yTop;
         int zLow, zTop;
 
-        real totalVol;
         real divValue;
         real totalKineticEnergy, localKineticEnergy;
         real totalThermalEnergy, localThermalEnergy;

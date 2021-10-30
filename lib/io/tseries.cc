@@ -109,7 +109,11 @@ tseries::tseries(const grid &mesh, vfield &solverV, const real &solverTime, cons
     // For certain cases however, T may have to be multiplied with Vx
     if (mesh.inputParams.gAxis(2) == 0) zGravity = false;
 
-    if (mesh.inputParams.lesModel) subgridEnergy = 0.0;
+    if (mesh.inputParams.lesModel) {
+        subgridEnergy = 0.0;
+        sgDissipation = 0.0;
+        nuTurbulent = 0.0;
+    }
 }
 
 
@@ -136,7 +140,7 @@ void tseries::writeTSHeader() {
                          std::setw(20) << "Divergence" << std::endl;
 
             if (mesh.inputParams.lesModel) {
-                ofFile << "#VARIABLES = Time, Total KE, U_rms, Divergence, Subgrid KE, dt\n";
+                ofFile << "#VARIABLES = Time, Total KE, U_rms, Divergence, Subgrid KE, SG Dissipation, Turb. Viscosity, dt\n";
             } else {
                 ofFile << "#VARIABLES = Time, Total KE, U_rms, Divergence, dt\n";
             }
@@ -147,7 +151,7 @@ void tseries::writeTSHeader() {
                          std::setw(20) << "Divergence" << std::endl;
 
             if (mesh.inputParams.lesModel) {
-                ofFile << "#VARIABLES = Time, Reynolds No., Nusselt No., Total KE, Total TE, Divergence, Subgrid KE, dt\n";
+                ofFile << "#VARIABLES = Time, Reynolds No., Nusselt No., Total KE, Total TE, Divergence, Subgrid KE, SG Dissipation, Turb. Viscosity, dt\n";
             } else {
                 ofFile << "#VARIABLES = Time, Reynolds No., Nusselt No., Total KE, Total TE, Divergence, dt\n";
             }
@@ -198,7 +202,12 @@ void tseries::writeTSData() {
 #endif
     MPI_Allreduce(&localKineticEnergy, &totalKineticEnergy, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
     totalKineticEnergy /= totalVol;
-    if (mesh.inputParams.lesModel) subgridEnergy /= totalVol;
+
+    if (mesh.inputParams.lesModel) {
+        subgridEnergy /= totalVol;
+        sgDissipation /= totalVol;
+        nuTurbulent /= totalVol;
+    }
 
     if (mesh.pf) {
         std::cout << std::fixed << std::setprecision(4) << std::setw(9)  << time <<
@@ -211,6 +220,8 @@ void tseries::writeTSData() {
                                                             std::setw(20) << sqrt(2.0*totalKineticEnergy) <<
                                                             std::setw(20) << divValue <<
                                                             std::setw(20) << subgridEnergy <<
+                                                            std::setw(20) << sgDissipation <<
+                                                            std::setw(20) << nuTurbulent <<
                                                             std::setw(20) << tStp << std::endl;
         } else {
             ofFile << std::fixed << std::setprecision(4) << std::setw(9)  << time <<
@@ -307,7 +318,11 @@ void tseries::writeTSData(const sfield &T) {
     totalThermalEnergy /= totalVol;
     NusseltNo = 1.0 + (totalUzT/totalVol)/tDiff;
     ReynoldsNo = sqrt(2.0*totalKineticEnergy)/mDiff;
-    if (mesh.inputParams.lesModel) subgridEnergy /= totalVol;
+    if (mesh.inputParams.lesModel) {
+        subgridEnergy /= totalVol;
+        sgDissipation /= totalVol;
+        nuTurbulent /= totalVol;
+    }
 
     if (mesh.pf) {
         std::cout << std::fixed << std::setprecision(4) << std::setw(9)  << time <<
@@ -323,6 +338,8 @@ void tseries::writeTSData(const sfield &T) {
                                                             std::setw(20) << totalThermalEnergy <<
                                                             std::setw(20) << divValue <<
                                                             std::setw(20) << subgridEnergy <<
+                                                            std::setw(20) << sgDissipation <<
+                                                            std::setw(20) << nuTurbulent <<
                                                             std::setw(20) << tStp << std::endl;
         } else {
             ofFile << std::fixed << std::setprecision(4) << std::setw(9)  << time <<
