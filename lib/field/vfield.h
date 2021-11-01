@@ -55,6 +55,8 @@ class force;
 
 class vfield {
     private:
+        real diffCoeff;
+
         const grid &gridData;
 
         blitz::Array<real, 3> derivTemp;
@@ -64,6 +66,8 @@ class vfield {
         // Average grid spacing in physical plane - used in CFL condition.
         // This will be same as hx, hy and hz for uniform grid.
         real avgDx, avgDy, avgDz;
+
+        void upwindNLin(const vfield &V, plainvf &H);
 
     public:
         field Vx, Vy, Vz;
@@ -100,6 +104,7 @@ class vfield {
         void imposeVzBC();
 
         void imposeBCs();
+        void setDiffCoeff(real dCoeff);
 
         vfield& operator += (plainvf &a);
         vfield& operator -= (plainvf &a);

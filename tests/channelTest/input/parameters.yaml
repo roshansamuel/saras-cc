@@ -134,6 +134,16 @@
     # 2 = Fourth-order central-difference
     "Differentiation Scheme": 1
 
+    # Flag to enable/disable upwinding
+    # If this flag is enabled, the solver will ignore "Differentiation Scheme"
+    # when computing the non-linear term and use second-order upwinding.
+    # Computation of viscous terms will honour "Differentiation Scheme".
+    # Use with caution, since upwinding can be highly diffusive.
+    "Enable Upwinding": false
+
+    # If upwinding is enabled above, the limiting Peclet number can be adjusted.
+    "Peclet Limit": 2.0
+
     # Choose from following list of integration schemes:
     # 1 = Implicit Crank-Nicholson
     # 2 = Low Storage 3rd Order Runge-Kutta

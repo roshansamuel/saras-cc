@@ -64,16 +64,18 @@ grid::grid(const parser &solParam, parallel &parallelData): inputParams(solParam
     if (rankData.rank == 0) pf = true;
 
     /** Depending on the finite-difference scheme chosen for calculating derivatives, set the \ref padWidths along all directions. */
-    if (inputParams.dScheme == 1) {
-        padWidths = 1, 1, 1;
-    } else if (inputParams.dScheme == 2) {
+    if (inputParams.upwindFlag) {
         padWidths = 2, 2, 2;
     } else {
-        if (pf) {
-            std::cout << "Undefined finite differencing scheme in YAML file. ABORTING" << std::endl;
+        if (inputParams.dScheme == 1) {
+            padWidths = 1, 1, 1;
+        } else if (inputParams.dScheme == 2) {
+            padWidths = 2, 2, 2;
+        } else {
+            if (pf) std::cout << "Undefined finite differencing scheme in YAML file. ABORTING" << std::endl;
+            MPI_Finalize();
+            exit(0);
         }
-        MPI_Finalize();
-        exit(0);
     }
 
     // THE ARRAY sizeArray HAS ELEMENTS [1, 3, 5, 9, 17, 33 ..... ] - STAGGERED GRID SIZE

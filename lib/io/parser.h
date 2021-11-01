@@ -82,6 +82,7 @@ class parser {
         bool useCFL;
         bool nonHgBC;
         bool solveFlag;
+        bool upwindFlag;
         bool readProbes;
         bool restartFlag;
         bool printResidual;
@@ -96,6 +97,7 @@ class parser {
         real fwInt;
         real rsInt;
         real prInt;
+        real peLimit;
         real sorParam;
         real meanPGrad;
         real Lx, Ly, Lz;

@@ -55,11 +55,15 @@ class force;
 
 class sfield {
     private:
+        real diffCoeff;
+
         const grid &gridData;
 
         blitz::Array<real, 3> derivTemp;
 
         blitz::RectDomain<3> core;
+
+        void upwindNLin(const vfield &V, plainsf &H);
 
     public:
         field F;
@@ -86,6 +90,7 @@ class sfield {
         void gradient(plainvf &gradF);
 
         void imposeBCs();
+        void setDiffCoeff(real dCoeff);
 
         sfield& operator += (plainsf &a);
         sfield& operator -= (plainsf &a);

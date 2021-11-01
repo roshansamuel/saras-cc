@@ -160,6 +160,10 @@ void scalar_d3::solvePDE() {
             break;
     }
 
+    // SET DIFFUSION COEFFICIENTS OF FIELDS
+    V.setDiffCoeff(ivpSolver->nu);
+    T.setDiffCoeff(ivpSolver->kappa);
+
     // FILE WRITING TIME
     fwTime = time;
 

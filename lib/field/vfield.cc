@@ -146,50 +146,174 @@ void vfield::computeDiff(plainvf &H) {
  ********************************************************************************************************************************************
  */
 void vfield::computeNLin(const vfield &V, plainvf &H) {
-    // Compute non-linear term for the Vx component
-    derivTemp = 0.0;
-    derVx.calcDerivative1_x(derivTemp);
-    H.Vx(core) -= V.Vx.F(core)*derivTemp(core);
+    if (gridData.inputParams.upwindFlag) {
+        upwindNLin(V, H);
+    } else {
+        derivTemp = 0.0;
+        derVx.calcDerivative1_x(derivTemp);
+        H.Vx(core) -= V.Vx.F(core)*derivTemp(core);
 
 #ifndef PLANAR
-    derivTemp = 0.0;
-    derVx.calcDerivative1_y(derivTemp);
-    H.Vx(core) -= V.Vy.F(core)*derivTemp(core);
+        derivTemp = 0.0;
+        derVx.calcDerivative1_y(derivTemp);
+        H.Vx(core) -= V.Vy.F(core)*derivTemp(core);
 #endif
 
-    derivTemp = 0.0;    
-    derVx.calcDerivative1_z(derivTemp);
-    H.Vx(core) -= V.Vz.F(core)*derivTemp(core);
-
-    // Compute non-linear term for the Vy component
-#ifndef PLANAR
-    derivTemp = 0.0;
-    derVy.calcDerivative1_x(derivTemp);
-    H.Vy(core) -= V.Vx.F(core)*derivTemp(core);
-
-    derivTemp = 0.0;
-    derVy.calcDerivative1_y(derivTemp);
-    H.Vy(core) -= V.Vy.F(core)*derivTemp(core);
-
-    derivTemp = 0.0;
-    derVy.calcDerivative1_z(derivTemp);
-    H.Vy(core) -= V.Vz.F(core)*derivTemp(core);
-#endif
-
-    // Compute non-linear term for the Vz component
-    derivTemp = 0.0;
-    derVz.calcDerivative1_x(derivTemp);
-    H.Vz(core) -= V.Vx.F(core)*derivTemp(core);
+        derivTemp = 0.0;    
+        derVx.calcDerivative1_z(derivTemp);
+        H.Vx(core) -= V.Vz.F(core)*derivTemp(core);
 
 #ifndef PLANAR
-    derivTemp = 0.0;
-    derVz.calcDerivative1_y(derivTemp);
-    H.Vz(core) -= V.Vy.F(core)*derivTemp(core);
+        derivTemp = 0.0;
+        derVy.calcDerivative1_x(derivTemp);
+        H.Vy(core) -= V.Vx.F(core)*derivTemp(core);
+
+        derivTemp = 0.0;
+        derVy.calcDerivative1_y(derivTemp);
+        H.Vy(core) -= V.Vy.F(core)*derivTemp(core);
+
+        derivTemp = 0.0;
+        derVy.calcDerivative1_z(derivTemp);
+        H.Vy(core) -= V.Vz.F(core)*derivTemp(core);
 #endif
 
-    derivTemp = 0.0;
-    derVz.calcDerivative1_z(derivTemp);
-    H.Vz(core) -= V.Vz.F(core)*derivTemp(core);
+        derivTemp = 0.0;
+        derVz.calcDerivative1_x(derivTemp);
+        H.Vz(core) -= V.Vx.F(core)*derivTemp(core);
+
+#ifndef PLANAR
+        derivTemp = 0.0;
+        derVz.calcDerivative1_y(derivTemp);
+        H.Vz(core) -= V.Vy.F(core)*derivTemp(core);
+#endif
+
+        derivTemp = 0.0;
+        derVz.calcDerivative1_z(derivTemp);
+        H.Vz(core) -= V.Vz.F(core)*derivTemp(core);
+    }
+}
+
+/**
+ ********************************************************************************************************************************************
+ * \brief   Function to compute the convective derivative of the vector field with upwinding
+ *
+ *          The function calculates \f$ (\mathbf{u}.\nabla)\mathbf{v} \f$ on the vector field, \f$\mathbf{v}\f$.
+ *          To do so, the function needs the vector field (vfield) of velocity, \f$\mathbf{u}\f$.
+ *
+ * \param   V is a const reference to the vfield denoting convection velocity
+ * \param   H is a reference to the plainvf into which the output is written
+ ********************************************************************************************************************************************
+ */
+void vfield::upwindNLin(const vfield &V, plainvf &H) {
+    real pe;
+    real u, dh, i2dh;
+    bool xfr, xlr, yfr, ylr, zfr, zlr;
+
+    xfr = xlr = yfr = ylr = zfr = zlr = false;
+
+    if (gridData.rankData.xRank == 0) xfr = true;
+    if (gridData.rankData.yRank == 0) yfr = true;
+    if (gridData.rankData.zRank == 0) zfr = true;
+
+    if (gridData.rankData.xRank == gridData.rankData.npX - 1) xlr = true;
+    if (gridData.rankData.yRank == gridData.rankData.npY - 1) ylr = true;
+    if (gridData.rankData.zRank == gridData.rankData.npZ - 1) zlr = true;
+
+    for (int iX = 0; iX <= core.ubound(0); iX++) {
+        for (int iY = 0; iY <= core.ubound(1); iY++) {
+            for (int iZ = 0; iZ <= core.ubound(2); iZ++) {
+                u = V.Vx.F(iX, iY, iZ);
+                i2dh = 1.0/(2.0*gridData.dXi);
+                if (((iX == 0) and xfr) or ((iX == core.ubound(0)) and xlr)) {
+                    // Central difference for first and last point
+                    H.Vx(iX, iY, iZ) -= u*gridData.xi_x(iX)*(Vx.F(iX+1, iY, iZ) - Vx.F(iX-1, iY, iZ))*i2dh;
+                    H.Vy(iX, iY, iZ) -= u*gridData.xi_x(iX)*(Vy.F(iX+1, iY, iZ) - Vy.F(iX-1, iY, iZ))*i2dh;
+                    H.Vz(iX, iY, iZ) -= u*gridData.xi_x(iX)*(Vz.F(iX+1, iY, iZ) - Vz.F(iX-1, iY, iZ))*i2dh;
+                } else {
+                    dh = gridData.x(iX+1) - gridData.x(iX);
+                    pe = std::fabs(u)*dh/diffCoeff;
+                    if (pe < gridData.inputParams.peLimit) {
+                        // Central difference
+                        H.Vx(iX, iY, iZ) -= u*gridData.xi_x(iX)*(Vx.F(iX+1, iY, iZ) - Vx.F(iX-1, iY, iZ))*i2dh;
+                        H.Vy(iX, iY, iZ) -= u*gridData.xi_x(iX)*(Vy.F(iX+1, iY, iZ) - Vy.F(iX-1, iY, iZ))*i2dh;
+                        H.Vz(iX, iY, iZ) -= u*gridData.xi_x(iX)*(Vz.F(iX+1, iY, iZ) - Vz.F(iX-1, iY, iZ))*i2dh;
+                    } else {
+                        if (u > 0) {
+                            // Backward difference
+                            H.Vx(iX, iY, iZ) -= u*gridData.xi_x(iX)*(3.0*Vx.F(iX, iY, iZ) - 4.0*Vx.F(iX-1, iY, iZ) + Vx.F(iX-2, iY, iZ))*i2dh;
+                            H.Vy(iX, iY, iZ) -= u*gridData.xi_x(iX)*(3.0*Vy.F(iX, iY, iZ) - 4.0*Vy.F(iX-1, iY, iZ) + Vy.F(iX-2, iY, iZ))*i2dh;
+                            H.Vz(iX, iY, iZ) -= u*gridData.xi_x(iX)*(3.0*Vz.F(iX, iY, iZ) - 4.0*Vz.F(iX-1, iY, iZ) + Vz.F(iX-2, iY, iZ))*i2dh;
+                        } else {
+                            // Forward difference
+                            H.Vx(iX, iY, iZ) -= u*gridData.xi_x(iX)*(-3.0*Vx.F(iX, iY, iZ) + 4.0*Vx.F(iX+1, iY, iZ) - Vx.F(iX+2, iY, iZ))*i2dh;
+                            H.Vy(iX, iY, iZ) -= u*gridData.xi_x(iX)*(-3.0*Vy.F(iX, iY, iZ) + 4.0*Vy.F(iX+1, iY, iZ) - Vy.F(iX+2, iY, iZ))*i2dh;
+                            H.Vz(iX, iY, iZ) -= u*gridData.xi_x(iX)*(-3.0*Vz.F(iX, iY, iZ) + 4.0*Vz.F(iX+1, iY, iZ) - Vz.F(iX+2, iY, iZ))*i2dh;
+                        }
+                    }
+                }
+
+                u = V.Vy.F(iX, iY, iZ);
+                i2dh = 1.0/(2.0*gridData.dEt);
+                if (((iY == 0) and yfr) or ((iY == core.ubound(1)) and ylr)) {
+                    // Central difference for first and last point
+                    H.Vx(iX, iY, iZ) -= u*gridData.et_y(iY)*(Vx.F(iX, iY+1, iZ) - Vx.F(iX, iY-1, iZ))*i2dh;
+                    H.Vy(iX, iY, iZ) -= u*gridData.et_y(iY)*(Vy.F(iX, iY+1, iZ) - Vy.F(iX, iY-1, iZ))*i2dh;
+                    H.Vz(iX, iY, iZ) -= u*gridData.et_y(iY)*(Vz.F(iX, iY+1, iZ) - Vz.F(iX, iY-1, iZ))*i2dh;
+                } else {
+                    dh = gridData.y(iY+1) - gridData.y(iY);
+                    pe = std::fabs(u)*dh/diffCoeff;
+                    if (pe < gridData.inputParams.peLimit) {
+                        // Central difference
+                        H.Vx(iX, iY, iZ) -= u*gridData.et_y(iY)*(Vx.F(iX, iY+1, iZ) - Vx.F(iX, iY-1, iZ))*i2dh;
+                        H.Vy(iX, iY, iZ) -= u*gridData.et_y(iY)*(Vy.F(iX, iY+1, iZ) - Vy.F(iX, iY-1, iZ))*i2dh;
+                        H.Vz(iX, iY, iZ) -= u*gridData.et_y(iY)*(Vz.F(iX, iY+1, iZ) - Vz.F(iX, iY-1, iZ))*i2dh;
+                    } else {
+                        if (u > 0) {
+                            // Backward difference
+                            H.Vx(iX, iY, iZ) -= u*gridData.et_y(iY)*(3.0*Vx.F(iX, iY, iZ) - 4.0*Vx.F(iX, iY-1, iZ) + Vx.F(iX, iY-2, iZ))*i2dh;
+                            H.Vy(iX, iY, iZ) -= u*gridData.et_y(iY)*(3.0*Vy.F(iX, iY, iZ) - 4.0*Vy.F(iX, iY-1, iZ) + Vy.F(iX, iY-2, iZ))*i2dh;
+                            H.Vz(iX, iY, iZ) -= u*gridData.et_y(iY)*(3.0*Vz.F(iX, iY, iZ) - 4.0*Vz.F(iX, iY-1, iZ) + Vz.F(iX, iY-2, iZ))*i2dh;
+                        } else {
+                            // Forward difference
+                            H.Vx(iX, iY, iZ) -= u*gridData.et_y(iY)*(-3.0*Vx.F(iX, iY, iZ) + 4.0*Vx.F(iX, iY+1, iZ) - Vx.F(iX, iY+2, iZ))*i2dh;
+                            H.Vy(iX, iY, iZ) -= u*gridData.et_y(iY)*(-3.0*Vy.F(iX, iY, iZ) + 4.0*Vy.F(iX, iY+1, iZ) - Vy.F(iX, iY+2, iZ))*i2dh;
+                            H.Vz(iX, iY, iZ) -= u*gridData.et_y(iY)*(-3.0*Vz.F(iX, iY, iZ) + 4.0*Vz.F(iX, iY+1, iZ) - Vz.F(iX, iY+2, iZ))*i2dh;
+                        }
+                    }
+                }
+
+                u = V.Vz.F(iX, iY, iZ);
+                i2dh = 1.0/(2.0*gridData.dZt);
+                if (((iZ == 0) and zfr) or ((iZ == core.ubound(2)) and zlr)) {
+                    // Central difference for first and last point
+                    H.Vx(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(Vx.F(iX, iY, iZ+1) - Vx.F(iX, iY, iZ-1))*i2dh;
+                    H.Vy(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(Vy.F(iX, iY, iZ+1) - Vy.F(iX, iY, iZ-1))*i2dh;
+                    H.Vz(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(Vz.F(iX, iY, iZ+1) - Vz.F(iX, iY, iZ-1))*i2dh;
+                } else {
+                    dh = gridData.z(iZ+1) - gridData.z(iZ);
+                    pe = std::fabs(u)*dh/diffCoeff;
+                    if (pe < gridData.inputParams.peLimit) {
+                        // Central difference
+                        H.Vx(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(Vx.F(iX, iY, iZ+1) - Vx.F(iX, iY, iZ-1))*i2dh;
+                        H.Vy(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(Vy.F(iX, iY, iZ+1) - Vy.F(iX, iY, iZ-1))*i2dh;
+                        H.Vz(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(Vz.F(iX, iY, iZ+1) - Vz.F(iX, iY, iZ-1))*i2dh;
+                    } else {
+                        if (u > 0) {
+                            // Backward difference
+                            H.Vx(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(3.0*Vx.F(iX, iY, iZ) - 4.0*Vx.F(iX, iY, iZ-1) + Vx.F(iX, iY, iZ-2))*i2dh;
+                            H.Vy(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(3.0*Vy.F(iX, iY, iZ) - 4.0*Vy.F(iX, iY, iZ-1) + Vy.F(iX, iY, iZ-2))*i2dh;
+                            H.Vz(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(3.0*Vz.F(iX, iY, iZ) - 4.0*Vz.F(iX, iY, iZ-1) + Vz.F(iX, iY, iZ-2))*i2dh;
+                        } else {
+                            // Forward difference
+                            H.Vx(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(-3.0*Vx.F(iX, iY, iZ) + 4.0*Vx.F(iX, iY, iZ+1) - Vx.F(iX, iY, iZ+2))*i2dh;
+                            H.Vy(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(-3.0*Vy.F(iX, iY, iZ) + 4.0*Vy.F(iX, iY, iZ+1) - Vy.F(iX, iY, iZ+2))*i2dh;
+                            H.Vz(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(-3.0*Vz.F(iX, iY, iZ) + 4.0*Vz.F(iX, iY, iZ+1) - Vz.F(iX, iY, iZ+2))*i2dh;
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 /**
@@ -360,6 +484,20 @@ void vfield::imposeBCs() {
     imposeVyBC();
 #endif
     imposeVzBC();
+}
+
+/**
+ ********************************************************************************************************************************************
+ * \brief   Function to set the diffusion coefficient of the vector field
+ *
+ *          The function sets the diffusion coefficient corresponding to the vector field.
+ *          This constant is used when computing the Peclet number when upwinding is enabled.
+ *          Trying to use upwinding without setting this constant may cause the code to crash.
+ *
+ ********************************************************************************************************************************************
+ */
+void vfield::setDiffCoeff(real dCoeff) {
+    diffCoeff = dCoeff;
 }
 
 /**

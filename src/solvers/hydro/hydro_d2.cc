@@ -159,6 +159,9 @@ void hydro_d2::solvePDE() {
             break;
     }
 
+    // SET DIFFUSION COEFFICIENTS OF FIELDS
+    V.setDiffCoeff(ivpSolver->nu);
+
     // FILE WRITING TIME
     fwTime = time;
 
