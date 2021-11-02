@@ -97,7 +97,6 @@ class parser {
         real fwInt;
         real rsInt;
         real prInt;
-        real peLimit;
         real sorParam;
         real meanPGrad;
         real Lx, Ly, Lz;
@@ -106,6 +105,7 @@ class parser {
         real rfIntensity;
         real meanVelocity;
         real courantNumber;
+        real peLimit, upParam;
         real betaX, betaY, betaZ;
         real cnTolerance, mgTolerance;
 

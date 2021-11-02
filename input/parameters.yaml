@@ -139,10 +139,16 @@
     # when computing the non-linear term and use second-order upwinding.
     # Computation of viscous terms will honour "Differentiation Scheme".
     # Use with caution, since upwinding can be highly diffusive.
-    "Enable Upwinding": false
+    "Enable Upwinding": true
 
     # If upwinding is enabled above, the limiting Peclet number can be adjusted.
     "Peclet Limit": 2.0
+
+    # If upwinding is enabled above, the bias of upwinding stencils can be tuned
+    # The parameter adjusts the weight of central-difference stencil used in upwinding
+    # Hence 0 corresponds to pure forward/backward differencing,
+    # And 1 corresponds to pure central differencing, i.e. no upwinding.
+    "Central Bias": 0.8
 
     # Choose from following list of integration schemes:
     # 1 = Implicit Crank-Nicholson
