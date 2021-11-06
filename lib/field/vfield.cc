@@ -76,6 +76,27 @@ vfield::vfield(const grid &gridData, std::string fieldName):
     avgDy = gridData.yLen/gridData.globalSize(1);
 #endif
     avgDz = gridData.zLen/gridData.globalSize(2);
+
+    xfr = xlr = yfr = ylr = zfr = zlr = false;
+
+    if (gridData.rankData.xRank == 0) xfr = true;
+    if (gridData.rankData.yRank == 0) yfr = true;
+    if (gridData.rankData.zRank == 0) zfr = true;
+
+    if (gridData.rankData.xRank == gridData.rankData.npX - 1) xlr = true;
+    if (gridData.rankData.yRank == gridData.rankData.npY - 1) ylr = true;
+    if (gridData.rankData.zRank == gridData.rankData.npZ - 1) zlr = true;
+
+    // Parameter to adjust bias of upwinding
+    // omega is the weight to the central difference stencil used in upwinding
+    // Correspondingly the biasing stencil is weighted by (1.0 - omega)
+    omega = gridData.inputParams.upParam;
+
+    // The coefficients of the biased stencil are set using omega
+    a = 1.0 - omega;
+    b = 4.0 - 3.0*omega;
+    c = 3.0*(1 - omega);
+    d = -omega;
 }
 
 /**
@@ -207,29 +228,6 @@ void vfield::computeNLin(const vfield &V, plainvf &H) {
 void vfield::upwindNLin(const vfield &V, plainvf &H) {
     real pe;
     real u, dh, i2dh;
-    real omega, a, b, c, d;
-    bool xfr, xlr, yfr, ylr, zfr, zlr;
-
-    xfr = xlr = yfr = ylr = zfr = zlr = false;
-
-    if (gridData.rankData.xRank == 0) xfr = true;
-    if (gridData.rankData.yRank == 0) yfr = true;
-    if (gridData.rankData.zRank == 0) zfr = true;
-
-    if (gridData.rankData.xRank == gridData.rankData.npX - 1) xlr = true;
-    if (gridData.rankData.yRank == gridData.rankData.npY - 1) ylr = true;
-    if (gridData.rankData.zRank == gridData.rankData.npZ - 1) zlr = true;
-
-    // Parameter to adjust bias of upwinding
-    // omega is the weight to the central difference stencil used in upwinding
-    // Correspondingly the biasing stencil is weighted by (1.0 - omega)
-    omega = gridData.inputParams.upParam;
-
-    // The coefficients of the biased stencil are set using omega
-    a = 1.0 - omega;
-    b = 4.0 - 3.0*omega;
-    c = 3.0*(1 - omega);
-    d = -omega;
 
     for (int iX = 0; iX <= core.ubound(0); iX++) {
         for (int iY = 0; iY <= core.ubound(1); iY++) {

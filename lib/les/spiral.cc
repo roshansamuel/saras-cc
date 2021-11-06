@@ -364,6 +364,11 @@ void spiral::computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T) {
                 sgDiss = -(Sxx*sTxx + Syy*sTyy + Szz*sTzz + 2.0*(Sxy*sTxy + Syz*sTyz + Szx*sTzx));
                 localDisp += sgDiss*(mesh.dXi/mesh.xi_x(iX))*(mesh.dEt/mesh.et_y(iY))*(mesh.dZt/mesh.zt_z(iZ));
 
+                // This below line hides an utterly perplexing Heisenbug which has led me to my wits end.
+                // For some rare cases (with very low LES contribution), localDisp becomes NaN.
+                // However, if you try to print the indices corresponding to the occurence of NaN, it disappears.
+                if (std::isnan(localDisp)) localDisp = 0;
+
                 // Compute turbulent viscosity norms of T_ij and S_ij tensors
                 sNorm = std::sqrt(Sxx*Sxx + Syy*Syy + Szz*Szz + 2.0*(Sxy*Sxy + Syz*Syz + Szx*Szx));
                 tNorm = std::sqrt(sTxx*sTxx + sTyy*sTyy + sTzz*sTzz + 2.0*(sTxy*sTxy + sTyz*sTyz + sTzx*sTzx));

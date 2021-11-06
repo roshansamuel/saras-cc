@@ -57,6 +57,13 @@ class sfield {
     private:
         real diffCoeff;
 
+        // Coefficients to adjust strength of upwinding in computeNLin()
+        real omega, a, b, c, d;
+
+        // Boolean flags for first and last flags along each direction.
+        // These are used when upwinding is enabled for computeNlin()
+        bool xfr, xlr, yfr, ylr, zfr, zlr;
+
         const grid &gridData;
 
         blitz::Array<real, 3> derivTemp;
