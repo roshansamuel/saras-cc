@@ -63,8 +63,14 @@ sfield::sfield(const grid &gridData, std::string fieldName):
 {
     this->fieldName = fieldName;
 
-    derivTemp.resize(F.fSize);
-    derivTemp.reindexSelf(F.flBound);
+    tempX.resize(F.fSize);
+    tempX.reindexSelf(F.flBound);
+
+    tempY.resize(F.fSize);
+    tempY.reindexSelf(F.flBound);
+
+    tempZ.resize(F.fSize);
+    tempZ.reindexSelf(F.flBound);
 
     core = gridData.coreDomain;
 
@@ -88,6 +94,11 @@ sfield::sfield(const grid &gridData, std::string fieldName):
     b = 4.0 - 3.0*omega;
     c = 3.0*(1 - omega);
     d = -omega;
+
+    // The coefficients for finite-difference stencils
+    i2dx = 1.0/(2.0*gridData.dXi);
+    i2dy = 1.0/(2.0*gridData.dEt);
+    i2dz = 1.0/(2.0*gridData.dZt);
 }
 
 /**
@@ -103,19 +114,19 @@ sfield::sfield(const grid &gridData, std::string fieldName):
  ********************************************************************************************************************************************
  */
 void sfield::computeDiff(plainsf &H) {
-    derivTemp = 0.0;
-    derS.calcDerivative2xx(derivTemp);
-    H.F(core) += derivTemp(core);
+    tempX = 0.0;
+    derS.calcDerivative2xx(tempX);
+    H.F(core) += tempX(core);
 
 #ifndef PLANAR
-    derivTemp = 0.0;
-    derS.calcDerivative2yy(derivTemp);
-    H.F(core) += derivTemp(core);
+    tempY = 0.0;
+    derS.calcDerivative2yy(tempY);
+    H.F(core) += tempY(core);
 #endif
 
-    derivTemp = 0.0;
-    derS.calcDerivative2zz(derivTemp);
-    H.F(core) += derivTemp(core);
+    tempZ = 0.0;
+    derS.calcDerivative2zz(tempZ);
+    H.F(core) += tempZ(core);
 }
 
 /**
@@ -130,22 +141,87 @@ void sfield::computeDiff(plainsf &H) {
  ********************************************************************************************************************************************
  */
 void sfield::computeNLin(const vfield &V, plainsf &H) {
+    // Experimental feature to test Morinishi's scheme
+    bool morinishiFlag = false;
+
     if (gridData.inputParams.upwindFlag) {
-        upwindNLin(V, H);
+        morinishiFlag? morinishiNLin(V, H): upwindNLin(V, H);
     } else {
-        derivTemp = 0.0;
-        derS.calcDerivative1_x(derivTemp);
-        H.F(core) -= V.Vx.F(core)*derivTemp(core);
+        tempX = 0.0;
+        derS.calcDerivative1_x(tempX);
+        H.F(core) -= V.Vx.F(core)*tempX(core);
 
 #ifndef PLANAR
-        derivTemp = 0.0;
-        derS.calcDerivative1_y(derivTemp);
-        H.F(core) -= V.Vy.F(core)*derivTemp(core);
+        tempY = 0.0;
+        derS.calcDerivative1_y(tempY);
+        H.F(core) -= V.Vy.F(core)*tempY(core);
 #endif
 
-        derivTemp = 0.0;
-        derS.calcDerivative1_z(derivTemp);
-        H.F(core) -= V.Vz.F(core)*derivTemp(core);
+        tempZ = 0.0;
+        derS.calcDerivative1_z(tempZ);
+        H.F(core) -= V.Vz.F(core)*tempZ(core);
+    }
+}
+
+/**
+ ********************************************************************************************************************************************
+ * \brief   Function to compute the non-linear term using Morinishi scheme
+ *
+ *          The function calculates the non-linear term at the grid nodes of the scalar field f.
+ *          To do so, the function needs the vector field (vfield) of velocity, \f$\mathbf{u}\f$.
+ *          The function splits the non-linear term into two parts as described in Morinishi's paper.
+ *
+ * \param   V is a const reference to the vector field (vfield) denoting convection velocity
+ * \param   H is a reference to the plainsf into which the output is written
+ ********************************************************************************************************************************************
+ */
+void sfield::morinishiNLin(const vfield &V, plainsf &H) {
+    real advTerm, divTerm;
+
+    tempX = V.Vx.F * F.F;
+    tempY = V.Vy.F * F.F;
+    tempZ = V.Vz.F * F.F;
+
+    for (int iX = 0; iX <= core.ubound(0); iX++) {
+        for (int iY = 0; iY <= core.ubound(1); iY++) {
+            for (int iZ = 0; iZ <= core.ubound(2); iZ++) {
+                if (((iX == 0) and xfr) or ((iX == core.ubound(0)) and xlr)) {
+                    // Second order central difference for first and last point
+                    advTerm = V.Vx.F(iX, iY, iZ)*gridData.xi_x(iX)*(F.F(iX+1, iY, iZ) - F.F(iX-1, iY, iZ))*i2dx;
+                    divTerm = gridData.xi_x(iX)*(tempX(iX+1, iY, iZ) - tempX(iX-1, iY, iZ))*i2dx;
+                    H.F(iX, iY, iZ) -= (advTerm + divTerm)/2;
+                } else {
+                    // Fourth order central difference elsewhere
+                    advTerm = V.Vx.F(iX, iY, iZ)*gridData.xi_x(iX)*(-F.F(iX+2, iY, iZ) + 8.0*F.F(iX+1, iY, iZ) - 8.0*F.F(iX-1, iY, iZ) + F.F(iX-2, iY, iZ))*i2dx/6.0;
+                    divTerm = gridData.xi_x(iX)*(-tempX(iX+2, iY, iZ) + 8.0*tempX(iX+1, iY, iZ) - 8.0*tempX(iX-1, iY, iZ) + tempX(iX-2, iY, iZ))*i2dx/6.0;
+                    H.F(iX, iY, iZ) -= (advTerm + divTerm)/2;
+                }
+
+                if (((iY == 0) and yfr) or ((iY == core.ubound(1)) and ylr)) {
+                    // Second order central difference for first and last point
+                    advTerm = V.Vy.F(iX, iY, iZ)*gridData.et_y(iY)*(F.F(iX, iY+1, iZ) - F.F(iX, iY-1, iZ))*i2dy;
+                    divTerm = gridData.et_y(iY)*(tempY(iX, iY+1, iZ) - tempY(iX, iY-1, iZ))*i2dy;
+                    H.F(iX, iY, iZ) -= (advTerm + divTerm)/2;
+                } else {
+                    // Fourth order central difference elsewhere
+                    advTerm = V.Vy.F(iX, iY, iZ)*gridData.et_y(iY)*(-F.F(iX, iY+2, iZ) + 8.0*F.F(iX, iY+1, iZ) - 8.0*F.F(iX, iY-1, iZ) + F.F(iX, iY-2, iZ))*i2dy/6.0;
+                    divTerm = gridData.et_y(iY)*(-tempY(iX, iY+2, iZ) + 8.0*tempY(iX, iY+1, iZ) - 8.0*tempY(iX, iY-1, iZ) + tempY(iX, iY-2, iZ))*i2dy/6.0;
+                    H.F(iX, iY, iZ) -= (advTerm + divTerm)/2;
+                }
+
+                if (((iZ == 0) and zfr) or ((iZ == core.ubound(1)) and zlr)) {
+                    // Second order central difference for first and last point
+                    advTerm = V.Vz.F(iX, iY, iZ)*gridData.zt_z(iZ)*(F.F(iX, iY, iZ+1) - F.F(iX, iY, iZ-1))*i2dz;
+                    divTerm = gridData.zt_z(iZ)*(tempZ(iX, iY, iZ+1) - tempZ(iX, iY, iZ-1))*i2dz;
+                    H.F(iX, iY, iZ) -= (advTerm + divTerm)/2;
+                } else {
+                    // Fourth order central difference elsewhere
+                    advTerm = V.Vz.F(iX, iY, iZ)*gridData.zt_z(iZ)*(-F.F(iX, iY, iZ+2) + 8.0*F.F(iX, iY, iZ+1) - 8.0*F.F(iX, iY, iZ-1) + F.F(iX, iY, iZ-2))*i2dz/6.0;
+                    divTerm = gridData.zt_z(iZ)*(-tempZ(iX, iY, iZ+2) + 8.0*tempZ(iX, iY, iZ+1) - 8.0*tempZ(iX, iY, iZ-1) + tempZ(iX, iY, iZ-2))*i2dz/6.0;
+                    H.F(iX, iY, iZ) -= (advTerm + divTerm)/2;
+                }
+            }
+        }
     }
 }
 
@@ -162,16 +238,15 @@ void sfield::computeNLin(const vfield &V, plainsf &H) {
  */
 void sfield::upwindNLin(const vfield &V, plainsf &H) {
     real pe;
-    real u, dh, i2dh;
+    real u, dh;
 
     for (int iX = 0; iX <= core.ubound(0); iX++) {
         for (int iY = 0; iY <= core.ubound(1); iY++) {
             for (int iZ = 0; iZ <= core.ubound(2); iZ++) {
                 u = V.Vx.F(iX, iY, iZ);
-                i2dh = 1.0/(2.0*gridData.dXi);
                 if (((iX == 0) and xfr) or ((iX == core.ubound(0)) and xlr)) {
                     // Central difference for first and last point
-                    H.F(iX, iY, iZ) -= u*gridData.xi_x(iX)*(F.F(iX+1, iY, iZ) - F.F(iX-1, iY, iZ))*i2dh;
+                    H.F(iX, iY, iZ) -= u*gridData.xi_x(iX)*(F.F(iX+1, iY, iZ) - F.F(iX-1, iY, iZ))*i2dx;
                 } else {
                     // First compute Peclet number
                     dh = gridData.x(iX+1) - gridData.x(iX);
@@ -180,24 +255,23 @@ void sfield::upwindNLin(const vfield &V, plainsf &H) {
                     // If Peclet number is less than given limit, use central differencing, else biased stencils
                     if (pe < gridData.inputParams.peLimit) {
                         // Central difference
-                        H.F(iX, iY, iZ) -= u*gridData.xi_x(iX)*(-F.F(iX+2, iY, iZ) + 8.0*F.F(iX+1, iY, iZ) - 8.0*F.F(iX-1, iY, iZ) + F.F(iX-2, iY, iZ))*i2dh/6.0;
+                        H.F(iX, iY, iZ) -= u*gridData.xi_x(iX)*(-F.F(iX+2, iY, iZ) + 8.0*F.F(iX+1, iY, iZ) - 8.0*F.F(iX-1, iY, iZ) + F.F(iX-2, iY, iZ))*i2dx/6.0;
                     } else {
                         // When using biased stencils, choose the biasing according to the local advection velocity
                         if (u > 0) {
                             // Backward biased
-                            H.F(iX, iY, iZ) -= u*gridData.xi_x(iX)*(a*F.F(iX-2, iY, iZ) - b*F.F(iX-1, iY, iZ) + c*F.F(iX, iY, iZ) - d*F.F(iX+1, iY, iZ))*i2dh;
+                            H.F(iX, iY, iZ) -= u*gridData.xi_x(iX)*(a*F.F(iX-2, iY, iZ) - b*F.F(iX-1, iY, iZ) + c*F.F(iX, iY, iZ) - d*F.F(iX+1, iY, iZ))*i2dx;
                         } else {
                             // Forward biased
-                            H.F(iX, iY, iZ) -= u*gridData.xi_x(iX)*(-a*F.F(iX+2, iY, iZ) + b*F.F(iX+1, iY, iZ) - c*F.F(iX, iY, iZ) + d*F.F(iX-1, iY, iZ))*i2dh;
+                            H.F(iX, iY, iZ) -= u*gridData.xi_x(iX)*(-a*F.F(iX+2, iY, iZ) + b*F.F(iX+1, iY, iZ) - c*F.F(iX, iY, iZ) + d*F.F(iX-1, iY, iZ))*i2dx;
                         }
                     }
                 }
 
                 u = V.Vy.F(iX, iY, iZ);
-                i2dh = 1.0/(2.0*gridData.dEt);
                 if (((iY == 0) and yfr) or ((iY == core.ubound(1)) and ylr)) {
                     // Central difference for first and last point
-                    H.F(iX, iY, iZ) -= u*gridData.et_y(iY)*(F.F(iX, iY+1, iZ) - F.F(iX, iY-1, iZ))*i2dh;
+                    H.F(iX, iY, iZ) -= u*gridData.et_y(iY)*(F.F(iX, iY+1, iZ) - F.F(iX, iY-1, iZ))*i2dy;
                 } else {
                     // First compute Peclet number
                     dh = gridData.y(iY+1) - gridData.y(iY);
@@ -206,24 +280,23 @@ void sfield::upwindNLin(const vfield &V, plainsf &H) {
                     // If Peclet number is less than given limit, use central differencing, else biased stencils
                     if (pe < gridData.inputParams.peLimit) {
                         // Central difference
-                        H.F(iX, iY, iZ) -= u*gridData.et_y(iY)*(-F.F(iX, iY+2, iZ) + 8.0*F.F(iX, iY+1, iZ) - 8.0*F.F(iX, iY-1, iZ) + F.F(iX, iY-2, iZ))*i2dh/6.0;
+                        H.F(iX, iY, iZ) -= u*gridData.et_y(iY)*(-F.F(iX, iY+2, iZ) + 8.0*F.F(iX, iY+1, iZ) - 8.0*F.F(iX, iY-1, iZ) + F.F(iX, iY-2, iZ))*i2dy/6.0;
                     } else {
                         // When using biased stencils, choose the biasing according to the local advection velocity
                         if (u > 0) {
                             // Backward biased
-                            H.F(iX, iY, iZ) -= u*gridData.et_y(iY)*(a*F.F(iX, iY-2, iZ) - b*F.F(iX, iY-1, iZ) + c*F.F(iX, iY, iZ) - d*F.F(iX, iY+1, iZ))*i2dh;
+                            H.F(iX, iY, iZ) -= u*gridData.et_y(iY)*(a*F.F(iX, iY-2, iZ) - b*F.F(iX, iY-1, iZ) + c*F.F(iX, iY, iZ) - d*F.F(iX, iY+1, iZ))*i2dy;
                         } else {
                             // Forward biased
-                            H.F(iX, iY, iZ) -= u*gridData.et_y(iY)*(-a*F.F(iX, iY+2, iZ) + b*F.F(iX, iY+1, iZ) - c*F.F(iX, iY, iZ) + d*F.F(iX, iY-1, iZ))*i2dh;
+                            H.F(iX, iY, iZ) -= u*gridData.et_y(iY)*(-a*F.F(iX, iY+2, iZ) + b*F.F(iX, iY+1, iZ) - c*F.F(iX, iY, iZ) + d*F.F(iX, iY-1, iZ))*i2dy;
                         }
                     }
                 }
 
                 u = V.Vz.F(iX, iY, iZ);
-                i2dh = 1.0/(2.0*gridData.dZt);
                 if (((iZ == 0) and zfr) or ((iZ == core.ubound(2)) and zlr)) {
                     // Central difference for first and last point
-                    H.F(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(F.F(iX, iY, iZ+1) - F.F(iX, iY, iZ-1))*i2dh;
+                    H.F(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(F.F(iX, iY, iZ+1) - F.F(iX, iY, iZ-1))*i2dz;
                 } else {
                     // First compute Peclet number
                     dh = gridData.z(iZ+1) - gridData.z(iZ);
@@ -232,15 +305,15 @@ void sfield::upwindNLin(const vfield &V, plainsf &H) {
                     // If Peclet number is less than given limit, use central differencing, else biased stencils
                     if (pe < gridData.inputParams.peLimit) {
                         // Central difference
-                        H.F(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(-F.F(iX, iY, iZ+2) + 8.0*F.F(iX, iY, iZ+1) - 8.0*F.F(iX, iY, iZ-1) + F.F(iX, iY, iZ-2))*i2dh/6.0;
+                        H.F(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(-F.F(iX, iY, iZ+2) + 8.0*F.F(iX, iY, iZ+1) - 8.0*F.F(iX, iY, iZ-1) + F.F(iX, iY, iZ-2))*i2dz/6.0;
                     } else {
                         // When using biased stencils, choose the biasing according to the local advection velocity
                         if (u > 0) {
                             // Backward biased
-                            H.F(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(a*F.F(iX, iY, iZ-2) - b*F.F(iX, iY, iZ-1) + c*F.F(iX, iY, iZ) - d*F.F(iX, iY, iZ+1))*i2dh;
+                            H.F(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(a*F.F(iX, iY, iZ-2) - b*F.F(iX, iY, iZ-1) + c*F.F(iX, iY, iZ) - d*F.F(iX, iY, iZ+1))*i2dz;
                         } else {
                             // Forward biased
-                            H.F(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(-a*F.F(iX, iY, iZ+2) + b*F.F(iX, iY, iZ+1) - c*F.F(iX, iY, iZ) + d*F.F(iX, iY, iZ-1))*i2dh;
+                            H.F(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(-a*F.F(iX, iY, iZ+2) + b*F.F(iX, iY, iZ+1) - c*F.F(iX, iY, iZ) + d*F.F(iX, iY, iZ-1))*i2dz;
                         }
                     }
                 }
@@ -260,17 +333,17 @@ void sfield::upwindNLin(const vfield &V, plainsf &H) {
  ********************************************************************************************************************************************
  */
 void sfield::gradient(plainvf &gradF) {
-    derivTemp = 0.0;
-    derS.calcDerivative1_x(derivTemp);
-    gradF.Vx(core) = derivTemp(core);
+    tempX = 0.0;
+    derS.calcDerivative1_x(tempX);
+    gradF.Vx(core) = tempX(core);
 #ifndef PLANAR
-    derivTemp = 0.0;
-    derS.calcDerivative1_y(derivTemp);
-    gradF.Vy(core) = derivTemp(core);
+    tempY = 0.0;
+    derS.calcDerivative1_y(tempY);
+    gradF.Vy(core) = tempY(core);
 #endif
-    derivTemp = 0.0;
-    derS.calcDerivative1_z(derivTemp);
-    gradF.Vz(core) = derivTemp(core);
+    tempZ = 0.0;
+    derS.calcDerivative1_z(tempZ);
+    gradF.Vz(core) = tempZ(core);
 }
 
 /**

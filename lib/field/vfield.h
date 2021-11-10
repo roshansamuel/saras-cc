@@ -60,13 +60,17 @@ class vfield {
         // Coefficients to adjust strength of upwinding in computeNLin()
         real omega, a, b, c, d;
 
+        // Coefficients for finite-difference stencils in computeNLin()
+        real i2dx, i2dy, i2dz;
+
         // Boolean flags for first and last flags along each direction.
         // These are used when upwinding is enabled for computeNlin()
         bool xfr, xlr, yfr, ylr, zfr, zlr;
 
         const grid &gridData;
 
-        blitz::Array<real, 3> derivTemp;
+        blitz::Array<real, 3> tempXX, tempYY, tempZZ;
+        blitz::Array<real, 3> tempXY, tempYZ, tempZX;
 
         blitz::RectDomain<3> core;
 
@@ -75,6 +79,7 @@ class vfield {
         real avgDx, avgDy, avgDz;
 
         void upwindNLin(const vfield &V, plainvf &H);
+        void morinishiNLin(const vfield &V, plainvf &H);
 
     public:
         field Vx, Vy, Vz;
