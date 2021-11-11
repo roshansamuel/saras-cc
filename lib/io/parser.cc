@@ -143,7 +143,7 @@ void parser::parseYAML() {
     /********** Solver parameters **********/
 
     yamlNode["Solver"]["Differentiation Scheme"] >> dScheme;
-    yamlNode["Solver"]["Enable Upwinding"] >> upwindFlag;
+    yamlNode["Solver"]["Non-Linear Term"] >> nlScheme;
     yamlNode["Solver"]["Peclet Limit"] >> peLimit;
     yamlNode["Solver"]["Central Bias"] >> upParam;
 
@@ -243,7 +243,7 @@ void parser::parseYAML() {
     /********** Solver parameters **********/
 
     dScheme = yamlNode["Solver"]["Differentiation Scheme"].as<int>();
-    upwindFlag = yamlNode["Solver"]["Enable Upwinding"].as<bool>();
+    nlScheme = yamlNode["Solver"]["Non-Linear Term"].as<int>();
     peLimit = yamlNode["Solver"]["Peclet Limit"].as<real>();
     upParam = yamlNode["Solver"]["Central Bias"].as<real>();
 

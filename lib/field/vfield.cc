@@ -187,53 +187,56 @@ void vfield::computeDiff(plainvf &H) {
  ********************************************************************************************************************************************
  */
 void vfield::computeNLin(const vfield &V, plainvf &H) {
-    // Experimental feature to test Morinishi's scheme
-    bool morinishiFlag = false;
-
-    if (gridData.inputParams.upwindFlag) {
-        morinishiFlag? morinishiNLin(V, H): upwindNLin(V, H);
-    } else {
-        tempXX = 0.0;
-        derVx.calcDerivative1_x(tempXX);
-        H.Vx(core) -= V.Vx.F(core)*tempXX(core);
+    switch (gridData.inputParams.nlScheme) {
+        case 1:
+            tempXX = 0.0;
+            derVx.calcDerivative1_x(tempXX);
+            H.Vx(core) -= V.Vx.F(core)*tempXX(core);
+#ifndef PLANAR
+            tempXX = 0.0;
+            derVx.calcDerivative1_y(tempXX);
+            H.Vx(core) -= V.Vy.F(core)*tempXX(core);
+#endif
+            tempXX = 0.0;    
+            derVx.calcDerivative1_z(tempXX);
+            H.Vx(core) -= V.Vz.F(core)*tempXX(core);
 
 #ifndef PLANAR
-        tempXX = 0.0;
-        derVx.calcDerivative1_y(tempXX);
-        H.Vx(core) -= V.Vy.F(core)*tempXX(core);
+            tempYY = 0.0;
+            derVy.calcDerivative1_x(tempYY);
+            H.Vy(core) -= V.Vx.F(core)*tempYY(core);
+
+            tempYY = 0.0;
+            derVy.calcDerivative1_y(tempYY);
+            H.Vy(core) -= V.Vy.F(core)*tempYY(core);
+
+            tempYY = 0.0;
+            derVy.calcDerivative1_z(tempYY);
+            H.Vy(core) -= V.Vz.F(core)*tempYY(core);
 #endif
 
-        tempXX = 0.0;    
-        derVx.calcDerivative1_z(tempXX);
-        H.Vx(core) -= V.Vz.F(core)*tempXX(core);
-
+            tempZZ = 0.0;
+            derVz.calcDerivative1_x(tempZZ);
+            H.Vz(core) -= V.Vx.F(core)*tempZZ(core);
 #ifndef PLANAR
-        tempYY = 0.0;
-        derVy.calcDerivative1_x(tempYY);
-        H.Vy(core) -= V.Vx.F(core)*tempYY(core);
-
-        tempYY = 0.0;
-        derVy.calcDerivative1_y(tempYY);
-        H.Vy(core) -= V.Vy.F(core)*tempYY(core);
-
-        tempYY = 0.0;
-        derVy.calcDerivative1_z(tempYY);
-        H.Vy(core) -= V.Vz.F(core)*tempYY(core);
+            tempZZ = 0.0;
+            derVz.calcDerivative1_y(tempZZ);
+            H.Vz(core) -= V.Vy.F(core)*tempZZ(core);
 #endif
-
-        tempZZ = 0.0;
-        derVz.calcDerivative1_x(tempZZ);
-        H.Vz(core) -= V.Vx.F(core)*tempZZ(core);
-
-#ifndef PLANAR
-        tempZZ = 0.0;
-        derVz.calcDerivative1_y(tempZZ);
-        H.Vz(core) -= V.Vy.F(core)*tempZZ(core);
-#endif
-
-        tempZZ = 0.0;
-        derVz.calcDerivative1_z(tempZZ);
-        H.Vz(core) -= V.Vz.F(core)*tempZZ(core);
+            tempZZ = 0.0;
+            derVz.calcDerivative1_z(tempZZ);
+            H.Vz(core) -= V.Vz.F(core)*tempZZ(core);
+            break;
+        case 2:
+            upwindNLin(V, H);
+            break;
+        case 3:
+            morinishiNLin(V, H);
+            break;
+        default:
+            if (gridData.pf) std::cout << "ERROR: Invalid parameter for non-linear computation scheme. ABORTING" << std::endl;
+            MPI_Finalize();
+            exit(0);
     }
 }
 

@@ -75,6 +75,7 @@ class parser {
         int icType;
         int dScheme;
         int iScheme;
+        int nlScheme;
         int lesModel;
         int probType;
         int xGrid, yGrid, zGrid;
@@ -82,7 +83,6 @@ class parser {
         bool useCFL;
         bool nonHgBC;
         bool solveFlag;
-        bool upwindFlag;
         bool readProbes;
         bool restartFlag;
         bool printResidual;

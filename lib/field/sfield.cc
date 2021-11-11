@@ -141,25 +141,30 @@ void sfield::computeDiff(plainsf &H) {
  ********************************************************************************************************************************************
  */
 void sfield::computeNLin(const vfield &V, plainsf &H) {
-    // Experimental feature to test Morinishi's scheme
-    bool morinishiFlag = false;
-
-    if (gridData.inputParams.upwindFlag) {
-        morinishiFlag? morinishiNLin(V, H): upwindNLin(V, H);
-    } else {
-        tempX = 0.0;
-        derS.calcDerivative1_x(tempX);
-        H.F(core) -= V.Vx.F(core)*tempX(core);
-
+    switch (gridData.inputParams.nlScheme) {
+        case 1:
+            tempX = 0.0;
+            derS.calcDerivative1_x(tempX);
+            H.F(core) -= V.Vx.F(core)*tempX(core);
 #ifndef PLANAR
-        tempY = 0.0;
-        derS.calcDerivative1_y(tempY);
-        H.F(core) -= V.Vy.F(core)*tempY(core);
+            tempY = 0.0;
+            derS.calcDerivative1_y(tempY);
+            H.F(core) -= V.Vy.F(core)*tempY(core);
 #endif
-
-        tempZ = 0.0;
-        derS.calcDerivative1_z(tempZ);
-        H.F(core) -= V.Vz.F(core)*tempZ(core);
+            tempZ = 0.0;
+            derS.calcDerivative1_z(tempZ);
+            H.F(core) -= V.Vz.F(core)*tempZ(core);
+            break;
+        case 2:
+            upwindNLin(V, H);
+            break;
+        case 3:
+            morinishiNLin(V, H);
+            break;
+        default:
+            if (gridData.pf) std::cout << "ERROR: Invalid parameter for non-linear computation scheme. ABORTING" << std::endl;
+            MPI_Finalize();
+            exit(0);
     }
 }
 

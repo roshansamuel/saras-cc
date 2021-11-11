@@ -64,7 +64,7 @@ grid::grid(const parser &solParam, parallel &parallelData): inputParams(solParam
     if (rankData.rank == 0) pf = true;
 
     /** Depending on the finite-difference scheme chosen for calculating derivatives, set the \ref padWidths along all directions. */
-    if (inputParams.upwindFlag) {
+    if (inputParams.nlScheme > 1) {
         padWidths = 2, 2, 2;
     } else {
         if (inputParams.dScheme == 1) {
