@@ -70,26 +70,29 @@ hydro::hydro(const grid &mesh, const parser &solParam, parallel &mpiParam):
     plainvf why(mesh);
 
     if (inputParams.restartFlag) {
-        int fCount = inputParams.fwInt/inputParams.tStp;
-        int pCount = inputParams.prInt/inputParams.tStp;
-        int rCount = inputParams.rsInt/inputParams.tStp;
+        int countVal;
 
-        if (fCount <= 2) {
+        countVal = inputParams.fwInt/inputParams.tStp;
+        if (countVal <= 2) {
             if (mesh.pf) std::cout << "ERROR: File-write interval is too small to estimate the next file-write time within floating point tolerance. Aborting" << std::endl;
             MPI_Finalize();
             exit(0);
         }
-        
-        if (pCount <= 2) {
-            if (mesh.pf) std::cout << "ERROR: Data-probe interval is too small to estimate the next data-probe time within floating point tolerance. Aborting" << std::endl;
-            MPI_Finalize();
-            exit(0);
-        }
 
-        if (rCount <= 2) {
+        countVal = inputParams.rsInt/inputParams.tStp;
+        if (countVal <= 2) {
             if (mesh.pf) std::cout << "ERROR: Restart-write interval is too small to estimate the next restart-write time within floating point tolerance. Aborting" << std::endl;
             MPI_Finalize();
             exit(0);
+        }
+        
+        if (inputParams.readProbes) {
+            countVal = inputParams.prInt/inputParams.tStp;
+            if (countVal <= 2) {
+                if (mesh.pf) std::cout << "ERROR: Data-probe interval is too small to estimate the next data-probe time within floating point tolerance. Aborting" << std::endl;
+                MPI_Finalize();
+                exit(0);
+            }
         }
     }
 }

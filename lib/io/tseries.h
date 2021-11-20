@@ -74,7 +74,7 @@ class tseries {
         int yLow, yTop;
         int zLow, zTop;
 
-        real divValue;
+        real divVal, oldDiv;
         real totalKineticEnergy, localKineticEnergy;
         real totalThermalEnergy, localThermalEnergy;
         real totalUzT, localUzT, NusseltNo, ReynoldsNo;

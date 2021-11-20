@@ -589,17 +589,17 @@ void multigrid_d3::createMGSubArrays() {
     recvStatus.resize(12);
     recvRequest.resize(12);
 
-    xFace.resize(inputParams.vcDepth + 1);
-    yFace.resize(inputParams.vcDepth + 1);
-    zFace.resize(inputParams.vcDepth + 1);
+    xFace.resize(mesh.vcDepth + 1);
+    yFace.resize(mesh.vcDepth + 1);
+    zFace.resize(mesh.vcDepth + 1);
 
-    xEdge.resize(inputParams.vcDepth + 1);
-    yEdge.resize(inputParams.vcDepth + 1);
-    zEdge.resize(inputParams.vcDepth + 1);
+    xEdge.resize(mesh.vcDepth + 1);
+    yEdge.resize(mesh.vcDepth + 1);
+    zEdge.resize(mesh.vcDepth + 1);
 
-    sendInd.resize(inputParams.vcDepth + 1, 26);        recvInd.resize(inputParams.vcDepth + 1, 26);
+    sendInd.resize(mesh.vcDepth + 1, 26);        recvInd.resize(mesh.vcDepth + 1, 26);
 
-    for(int n=0; n<=inputParams.vcDepth; n++) {
+    for(int n=0; n<=mesh.vcDepth; n++) {
         int xCount = stagFull(n).ubound(0) + 2;
         int yCount = stagFull(n).ubound(1) + 2;
         int zCount = stagFull(n).ubound(2) + 2;

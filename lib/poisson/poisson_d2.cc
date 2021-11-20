@@ -392,11 +392,11 @@ void multigrid_d2::createMGSubArrays() {
     recvStatus.resize(2);
     recvRequest.resize(2);
 
-    xFace.resize(inputParams.vcDepth + 1);
+    xFace.resize(mesh.vcDepth + 1);
 
-    sendInd.resize(inputParams.vcDepth + 1, 2);         recvInd.resize(inputParams.vcDepth + 1, 2);
+    sendInd.resize(mesh.vcDepth + 1, 2);         recvInd.resize(mesh.vcDepth + 1, 2);
 
-    for(int n=0; n<=inputParams.vcDepth; ++n) {
+    for(int n=0; n<=mesh.vcDepth; ++n) {
         // MPI DATATYPE FOR TRANSFER ACROSS FACES OF SUB-DOMAINS
         count = stagFull(n).ubound(2) + 2;
 

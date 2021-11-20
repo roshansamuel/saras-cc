@@ -63,7 +63,6 @@ class grid {
         //@}
 
         void resizeGrid();
-        void makeSizeArray();
         void setDomainSizes();
         void createXiEtaZeta();
 
@@ -82,6 +81,9 @@ class grid {
 
         /** A const reference to the global variables stored in the parallel class to access MPI related parameters */
         const parallel &rankData;
+
+        /** Maximum depth of V-Cycle allowable for given mesh configuration */
+        int vcDepth;
 
         /** Total number of points (cell-centers) in the full global domain */
         int totalPoints;
@@ -116,12 +118,6 @@ class grid {
         //@{
         const real xLen, yLen, zLen;
         //@}
-
-        /** Array of collocated grid sizes such that the corresponding staggered grid will be multi-grid compatible */
-        blitz::Array<int, 1> sizeArray;
-
-        /** Vector of indices pointing to the <B>sizeArray</B> that determines the global full domain size along the 3 directions */
-        blitz::TinyVector<int, 3> sizeIndex;
 
         /** RectDomain object that defines the slice for the core of the local MPI decomposed sub-domain (staggered points) */
         blitz::RectDomain<3> coreDomain;

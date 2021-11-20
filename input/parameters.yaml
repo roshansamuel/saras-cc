@@ -54,7 +54,7 @@
     # Non-dimensional parameters
     "Reynolds Number": 1000
     "Rossby Number": 12
-    "Rayleigh Number": 1.0e6
+    "Rayleigh Number": 1.0e5
     "Prandtl Number": 0.786
     "Taylor Number": 0.0
 
@@ -109,14 +109,16 @@
     "Y Beta": 1.3
     "Z Beta": 1.3
 
-    # Choose the grid sizes (number of cells) as indices from the list below
-    # These sizes are set to allow multigrid operations on cell-centers
-    # 2D simulations can be run by setting Y Index to 0
-    # Grid sizes: 1 2 4 8 16 32 64 128 256 512 1024 2048 4096 8192 16384]
-    # Size index: 0 1 2 3  4  5  6  7   8   9   10   11   12   13    14
-    "X Index": 6
-    "Y Index": 6
-    "Z Index": 6
+    # Choose the grid sizes (number of cells)
+    # 1. The size specified along any given direction must be
+    # divisible by the number of processors along that direction.
+    # 2. After domain decomposition, each sub-domain must have
+    # a size that is divisible by a power of 2 (at least 4),
+    # so that the multi-grid solver can coarsen the grid effectively.
+    # 3. For 2D simulations, the value for Y Size must be 1
+    "X Size": 64
+    "Y Size": 64
+    "Z Size": 64
 
 
 # Parellelization parameters
@@ -168,10 +170,10 @@
     # If above flag is true, then set the value of Courant number below
     "Courant Number": 0.1
     "Time-Step": 0.001
-    "Final Time": 0.05
+    "Final Time": 1.0
 
     # Number of iterations to display output to standard I/O
-    "I/O Count": 5
+    "I/O Count": 10
 
     # Select the format in which solution data must be written at each solution write interval
     # 1 = Write a single HDF5 file inside ./output/, containing all the variables - Vx, Vy, P, etc.
@@ -197,8 +199,6 @@
 
 # Poisson solver parameters
 "Multigrid":
-    # Number of restriction/prolongation steps in each V-Cycle
-    "V-Cycle Depth": 4
     # Number of V-Cycles to be performed
     "V-Cycle Count": 20
 

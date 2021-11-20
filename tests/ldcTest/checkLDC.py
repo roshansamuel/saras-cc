@@ -85,8 +85,8 @@ def parseYAML(paraFile):
     yamlFile = open(paraFile, 'r')
     yamlData = yl.load(yamlFile)
 
-    Nx = 2**yamlData["Mesh"]["X Index"] + 1
-    Nz = 2**yamlData["Mesh"]["Z Index"] + 1
+    Nx = yamlData["Mesh"]["X Size"] + 1
+    Nz = yamlData["Mesh"]["Z Size"] + 1
 
     xLen = yamlData["Program"]["X Length"]
     zLen = yamlData["Program"]["Z Length"]

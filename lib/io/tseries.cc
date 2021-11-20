@@ -114,6 +114,8 @@ tseries::tseries(const grid &mesh, vfield &solverV, const real &solverTime, cons
         sgDissipation = 0.0;
         nuTurbulent = 0.0;
     }
+
+    oldDiv = 1.0e10;
 }
 
 
@@ -171,14 +173,19 @@ void tseries::writeTSHeader() {
  ********************************************************************************************************************************************
  */
 void tseries::writeTSData() {
-    V.divergence(divV);
-    divValue = maxSwitch? divV.fxMaxAbs(): divV.fxMean();
+    real divSlope;
 
-    if (divValue > 1.0e5) {
+    V.divergence(divV);
+    divVal = maxSwitch? divV.fxMaxAbs(): divV.fxMean();
+
+    // CHECK IF DIVERGENCE IS INCREASING OR DECREASING
+    divSlope = divVal - oldDiv;
+    if (divVal > 10 and divSlope > 0) {
         if (mesh.pf) std::cout << std::endl << "ERROR: Divergence exceeds permissible limits. ABORTING" << std::endl << std::endl;
         MPI_Finalize();
         exit(0);
     }
+    oldDiv = divVal;
 
     localKineticEnergy = 0.0;
     totalKineticEnergy = 0.0;
@@ -212,13 +219,13 @@ void tseries::writeTSData() {
     if (mesh.pf) {
         std::cout << std::fixed << std::setprecision(4) << std::setw(9)  << time <<
                                    std::setprecision(8) << std::setw(20) << totalKineticEnergy <<
-                                                           std::setw(20) << divValue << std::endl;
+                                                           std::setw(20) << divVal << std::endl;
 
         if (mesh.inputParams.lesModel) {
             ofFile << std::fixed << std::setprecision(4) << std::setw(9)  << time <<
                                     std::setprecision(8) << std::setw(20) << totalKineticEnergy <<
                                                             std::setw(20) << sqrt(2.0*totalKineticEnergy) <<
-                                                            std::setw(20) << divValue <<
+                                                            std::setw(20) << divVal <<
                                                             std::setw(20) << subgridEnergy <<
                                                             std::setw(20) << sgDissipation <<
                                                             std::setw(20) << nuTurbulent <<
@@ -227,7 +234,7 @@ void tseries::writeTSData() {
             ofFile << std::fixed << std::setprecision(4) << std::setw(9)  << time <<
                                     std::setprecision(8) << std::setw(20) << totalKineticEnergy <<
                                                             std::setw(20) << sqrt(2.0*totalKineticEnergy) <<
-                                                            std::setw(20) << divValue <<
+                                                            std::setw(20) << divVal <<
                                                             std::setw(20) << tStp << std::endl;
         }
     }
@@ -247,14 +254,17 @@ void tseries::writeTSData() {
  ********************************************************************************************************************************************
  */
 void tseries::writeTSData(const sfield &T) {
+    real divSlope;
     real theta = 0.0;
     real dVol = 0.0;
 
     // COMPUTE ENERGY AND DIVERGENCE FOR THE INITIAL CONDITION
     V.divergence(divV);
-    divValue = maxSwitch? divV.fxMaxAbs(): divV.fxMean();
+    divVal = maxSwitch? divV.fxMaxAbs(): divV.fxMean();
 
-    if (divValue > 1.0e5) {
+    // CHECK IF DIVERGENCE IS INCREASING OR DECREASING
+    divSlope = divVal - oldDiv;
+    if (divVal > 10 and divSlope > 0) {
         if (mesh.pf) std::cout << std::endl << "ERROR: Divergence exceeds permissible limits. ABORTING" << std::endl << std::endl;
         MPI_Finalize();
         exit(0);
@@ -328,7 +338,7 @@ void tseries::writeTSData(const sfield &T) {
         std::cout << std::fixed << std::setprecision(4) << std::setw(9)  << time <<
                                    std::setprecision(8) << std::setw(20) << ReynoldsNo <<
                                                            std::setw(20) << NusseltNo <<
-                                                           std::setw(20) << divValue << std::endl;
+                                                           std::setw(20) << divVal << std::endl;
 
         if (mesh.inputParams.lesModel) {
             ofFile << std::fixed << std::setprecision(4) << std::setw(9)  << time <<
@@ -336,7 +346,7 @@ void tseries::writeTSData(const sfield &T) {
                                                             std::setw(20) << NusseltNo <<
                                                             std::setw(20) << totalKineticEnergy <<
                                                             std::setw(20) << totalThermalEnergy <<
-                                                            std::setw(20) << divValue <<
+                                                            std::setw(20) << divVal <<
                                                             std::setw(20) << subgridEnergy <<
                                                             std::setw(20) << sgDissipation <<
                                                             std::setw(20) << nuTurbulent <<
@@ -347,7 +357,7 @@ void tseries::writeTSData(const sfield &T) {
                                                             std::setw(20) << NusseltNo <<
                                                             std::setw(20) << totalKineticEnergy <<
                                                             std::setw(20) << totalThermalEnergy <<
-                                                            std::setw(20) << divValue <<
+                                                            std::setw(20) << divVal <<
                                                             std::setw(20) << tStp << std::endl;
         }
     }

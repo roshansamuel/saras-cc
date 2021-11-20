@@ -128,9 +128,9 @@ void parser::parseYAML() {
     yamlNode["Mesh"]["Y Beta"] >> betaY;
     yamlNode["Mesh"]["Z Beta"] >> betaZ;
 
-    yamlNode["Mesh"]["X Index"] >> xInd;
-    yamlNode["Mesh"]["Y Index"] >> yInd;
-    yamlNode["Mesh"]["Z Index"] >> zInd;
+    yamlNode["Mesh"]["X Size"] >> Nx;
+    yamlNode["Mesh"]["Y Size"] >> Ny;
+    yamlNode["Mesh"]["Z Size"] >> Nz;
 
     /********** Parallelization parameters **********/
 
@@ -168,7 +168,6 @@ void parser::parseYAML() {
 
     /********** Multigrid parameters **********/
 
-    yamlNode["Multigrid"]["V-Cycle Depth"] >> vcDepth;
     yamlNode["Multigrid"]["V-Cycle Count"] >> vcCount;
 
     yamlNode["Multigrid"]["Solve Coarsest"] >> solveFlag;
@@ -228,9 +227,9 @@ void parser::parseYAML() {
     betaY = yamlNode["Mesh"]["Y Beta"].as<real>();
     betaZ = yamlNode["Mesh"]["Z Beta"].as<real>();
 
-    xInd = yamlNode["Mesh"]["X Index"].as<int>();
-    yInd = yamlNode["Mesh"]["Y Index"].as<int>();
-    zInd = yamlNode["Mesh"]["Z Index"].as<int>();
+    Nx = yamlNode["Mesh"]["X Size"].as<int>();
+    Ny = yamlNode["Mesh"]["Y Size"].as<int>();
+    Nz = yamlNode["Mesh"]["Z Size"].as<int>();
 
     /********** Parallelization parameters **********/
 
@@ -268,7 +267,6 @@ void parser::parseYAML() {
 
     /********** Multigrid parameters **********/
 
-    vcDepth = yamlNode["Multigrid"]["V-Cycle Depth"].as<int>();
     vcCount = yamlNode["Multigrid"]["V-Cycle Count"].as<int>();
 
     solveFlag = yamlNode["Multigrid"]["Solve Coarsest"].as<bool>();
@@ -295,21 +293,29 @@ void parser::parseYAML() {
  ********************************************************************************************************************************************
  */
 void parser::checkData() {
-    int gridSize, localSize, coarsestSize;
-
-    // CHECK IF THE yInd VARIABLE IS SET CORRECTLY FOR A 2D/3D SIMULATION
+    // CHECK IF GRID SIZES ARE SET CORRECTLY FOR A 2D/3D SIMULATION
+    if (Nx < 2) {
+        std::cout << "ERROR: Insufficient number of points along X axis. Aborting" << std::endl;
+        MPI_Finalize();
+        exit(0);
+    }
 #ifdef PLANAR
-    if (yInd != 0) {
-        std::cout << "WARNING: Y Index parameter of YAML file is non-zero although solver has been compiled with PLANAR flag. Setting Y Index to 0" << std::endl;
-        yInd = 0;
+    if (Ny != 1) {
+        std::cout << "WARNING: The number of points along Y is greater than 1 although solver has been compiled with PLANAR flag. Resetting Y Size to 1" << std::endl;
+        Ny = 1;
     }
 #else
-    if (yInd == 0) {
-        std::cout << "ERROR: Y Index parameter of YAML file is 0 for 3D simulation. Aborting" << std::endl;
+    if (Ny == 1) {
+        std::cout << "ERROR: Insufficient number of points along Y axis. Aborting" << std::endl;
         MPI_Finalize();
         exit(0);
     }
 #endif
+    if (Nz < 2) {
+        std::cout << "ERROR: Insufficient number of points along Z axis. Aborting" << std::endl;
+        MPI_Finalize();
+        exit(0);
+    }
 
     // CHECK IF LESS THAN 1 PROCESSOR IS ASKED FOR ALONG X-DIRECTION. IF SO, WARN AND SET IT TO DEFAULT VALUE OF 1
     if (npX < 1) {
@@ -357,55 +363,12 @@ void parser::checkData() {
     }
 
     // CHECK IF MORE THAN 1 PROCESSOR IS ASKED FOR ALONG Y-DIRECTION FOR A 2D SIMULATION
-    if (yInd == 0 and npY > 1) {
+#ifdef PLANAR
+    if (npY > 1) {
         std::cout << "WARNING: More than 1 processor is specified along Y-direction although the PLANAR flag is set. Setting npY to 1" << std::endl;
         npY = 1;
     }
-
-    // CHECK IF GRID SIZE SPECIFIED ALONG EACH DIRECTION IS SUFFICIENT ALONG WITH THE DOMAIN DIVIIONS TO REACH THE LOWEST LEVEL OF V-CYCLE DEPTH SPECIFIED
-    // ALONG X-DIRECTION
-    gridSize = int(pow(2, xInd));
-    localSize = gridSize/npX;
-    coarsestSize = int(pow(2, vcDepth+1));
-    if (localSize < coarsestSize) {
-        int origDepth = vcDepth;
-        while (localSize < coarsestSize) {
-            vcDepth -= 1;
-            coarsestSize = int(pow(2, vcDepth+1));
-        }
-
-        std::cout << "WARNING: The grid size and domain decomposition along X-direction results in sub-domains too small to reach the V-Cycle depth specified. Reducing depth from " << origDepth << " to " << vcDepth << std::endl;
-    }
-
-    // ALONG Y-DIRECTION
-#ifndef PLANAR
-    gridSize = int(pow(2, yInd));
-    localSize = gridSize/npY;
-    coarsestSize = int(pow(2, vcDepth+1));
-    if (localSize < coarsestSize) {
-        int origDepth = vcDepth;
-        while (localSize < coarsestSize) {
-            vcDepth -= 1;
-            coarsestSize = int(pow(2, vcDepth+1));
-        }
-
-        std::cout << "WARNING: The grid size and domain decomposition along Y-direction results in sub-domains too small to reach the V-Cycle depth specified. Reducing depth from " << origDepth << " to " << vcDepth << std::endl;
-    }
 #endif
-
-    // ALONG Z-DIRECTION
-    gridSize = int(pow(2, zInd));
-    localSize = gridSize/npZ;
-    coarsestSize = int(pow(2, vcDepth+1));
-    if (localSize < coarsestSize) {
-        int origDepth = vcDepth;
-        while (localSize < coarsestSize) {
-            vcDepth -= 1;
-            coarsestSize = int(pow(2, vcDepth+1));
-        }
-
-        std::cout << "WARNING: The grid size and domain decomposition along Z-direction results in sub-domains too small to reach the V-Cycle depth specified. Reducing depth from " << origDepth << " to " << vcDepth << std::endl;
-    }
 
 #ifdef REAL_SINGLE
     if ((cnTolerance < 5.0e-6) or (mgTolerance < 5.0e-6)) {
@@ -628,21 +591,21 @@ void parser::parseProbes() {
  */
 void parser::testProbes() {
     for (unsigned int i = 0; i < probesList.size(); i++) {
-        if (probesList[i][0] < 0 or probesList[i][0] > int(pow(2, xInd)) + 1) {
+        if (probesList[i][0] < 0 or probesList[i][0] > Nx) {
             std::cout << "ERROR: The X index of the probe " << probesList[i] << " lies outside the bounds of the domain. Aborting" << std::endl;
             MPI_Finalize();
             exit(0);
         }
 
 #ifndef PLANAR
-        if (probesList[i][1] < 0 or probesList[i][1] > int(pow(2, yInd)) + 1) {
+        if (probesList[i][1] < 0 or probesList[i][1] > Ny) {
             std::cout << "ERROR: The Y index of the probe " << probesList[i] << " lies outside the bounds of the domain. Aborting" << std::endl;
             MPI_Finalize();
             exit(0);
         }
 #endif
 
-        if (probesList[i][2] < 0 or probesList[i][2] > int(pow(2, zInd)) + 1) {
+        if (probesList[i][2] < 0 or probesList[i][2] > Nz) {
             std::cout << "ERROR: The Z index of the probe " << probesList[i] << " lies outside the bounds of the domain. Aborting" << std::endl;
             MPI_Finalize();
             exit(0);
