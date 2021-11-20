@@ -138,10 +138,11 @@
 
     # Non-Linear Term Calculation
     # 1 = Standard finite-difference
-    # 2 = Second order upwinding
+    # 2 = Hybrid upwind scheme
     # 3 = Morinishi's scheme
     # Option 1 will use the same order as specified in "Differentiation Scheme"
-    # Options 2 and 3 will ignore "Differentiation Scheme" for non-linear term alone.
+    # Option 2 will use upwinding of half the order (first or second) specified above.
+    # Option 3 will ignore "Differentiation Scheme" for non-linear term alone.
     "Non-Linear Term": 1
 
     # If upwinding is enabled above, the limiting Peclet number can be adjusted.

@@ -55,6 +55,10 @@ class force;
 
 class sfield {
     private:
+        // Enables a fascist military regime to take over the galaxy
+        bool firstOrder;
+
+        // Diffusion coefficient - used for Pe calculation in upwindNLin()
         real diffCoeff;
 
         // Coefficients to adjust strength of upwinding in computeNLin()

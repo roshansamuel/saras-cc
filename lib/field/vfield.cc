@@ -102,16 +102,30 @@ vfield::vfield(const grid &gridData, std::string fieldName):
     if (gridData.rankData.yRank == gridData.rankData.npY - 1) ylr = true;
     if (gridData.rankData.zRank == gridData.rankData.npZ - 1) zlr = true;
 
+    firstOrder = false;
+    // No, not Snoke's dictatorship - first order upwinding
+    // By default the solver will try to use second order upwinding
+    // If order of differentiation is set to 1 in parameters, it will
+    // use first order upwinding instead.
+    if (gridData.inputParams.dScheme == 1) firstOrder = true;
+
     // Parameter to adjust bias of upwinding
     // omega is the weight to the central difference stencil used in upwinding
     // Correspondingly the biasing stencil is weighted by (1.0 - omega)
     omega = gridData.inputParams.upParam;
 
     // The coefficients of the biased stencil are set using omega
-    a = 1.0 - omega;
-    b = 4.0 - 3.0*omega;
-    c = 3.0*(1 - omega);
-    d = -omega;
+    if (firstOrder) {
+        // First order upwinding coefficients
+        a = 2.0 - omega;
+        b = 2.0*(1.0 - omega);
+        c = -omega;
+    } else {
+        a = 1.0 - omega;
+        b = 4.0 - 3.0*omega;
+        c = 3.0*(1.0 - omega);
+        d = -omega;
+    }
 
     // The coefficients for finite-difference stencils
     i2dx = 1.0/(2.0*gridData.dXi);
@@ -372,16 +386,15 @@ void vfield::upwindNLin(const vfield &V, plainvf &H) {
     real pe;
     real u, dh;
 
-    for (int iX = 0; iX <= core.ubound(0); iX++) {
-        for (int iY = 0; iY <= core.ubound(1); iY++) {
-            for (int iZ = 0; iZ <= core.ubound(2); iZ++) {
-                u = V.Vx.F(iX, iY, iZ);
-                if (((iX == 0) and xfr) or ((iX == core.ubound(0)) and xlr)) {
-                    // Central difference for first and last point
-                    H.Vx(iX, iY, iZ) -= u*gridData.xi_x(iX)*(Vx.F(iX+1, iY, iZ) - Vx.F(iX-1, iY, iZ))*i2dx;
-                    H.Vy(iX, iY, iZ) -= u*gridData.xi_x(iX)*(Vy.F(iX+1, iY, iZ) - Vy.F(iX-1, iY, iZ))*i2dx;
-                    H.Vz(iX, iY, iZ) -= u*gridData.xi_x(iX)*(Vz.F(iX+1, iY, iZ) - Vz.F(iX-1, iY, iZ))*i2dx;
-                } else {
+    if (firstOrder) {
+        // FIRST ORDER UPWINDING
+        // This uses first order forward and backward finite-difference stencils
+        // mixed with second order central difference stencils where Pe is high.
+        // Elsewhere it defaults to second order central-difference.
+        for (int iX = 0; iX <= core.ubound(0); iX++) {
+            for (int iY = 0; iY <= core.ubound(1); iY++) {
+                for (int iZ = 0; iZ <= core.ubound(2); iZ++) {
+                    u = V.Vx.F(iX, iY, iZ);
                     // First compute Peclet number
                     dh = gridData.x(iX+1) - gridData.x(iX);
                     pe = std::fabs(u)*dh/diffCoeff;
@@ -389,32 +402,25 @@ void vfield::upwindNLin(const vfield &V, plainvf &H) {
                     // If Peclet number is less than given limit, use central differencing, else biased stencils
                     if (pe < gridData.inputParams.peLimit) {
                         // Central difference
-                        H.Vx(iX, iY, iZ) -= u*gridData.xi_x(iX)*(-Vx.F(iX+2, iY, iZ) + 8.0*Vx.F(iX+1, iY, iZ) - 8.0*Vx.F(iX-1, iY, iZ) + Vx.F(iX-2, iY, iZ))*i2dx/6.0;
-                        H.Vy(iX, iY, iZ) -= u*gridData.xi_x(iX)*(-Vy.F(iX+2, iY, iZ) + 8.0*Vy.F(iX+1, iY, iZ) - 8.0*Vy.F(iX-1, iY, iZ) + Vy.F(iX-2, iY, iZ))*i2dx/6.0;
-                        H.Vz(iX, iY, iZ) -= u*gridData.xi_x(iX)*(-Vz.F(iX+2, iY, iZ) + 8.0*Vz.F(iX+1, iY, iZ) - 8.0*Vz.F(iX-1, iY, iZ) + Vz.F(iX-2, iY, iZ))*i2dx/6.0;
+                        H.Vx(iX, iY, iZ) -= u*gridData.xi_x(iX)*(Vx.F(iX+1, iY, iZ) - Vx.F(iX-1, iY, iZ))*i2dx;
+                        H.Vy(iX, iY, iZ) -= u*gridData.xi_x(iX)*(Vy.F(iX+1, iY, iZ) - Vy.F(iX-1, iY, iZ))*i2dx;
+                        H.Vz(iX, iY, iZ) -= u*gridData.xi_x(iX)*(Vz.F(iX+1, iY, iZ) - Vz.F(iX-1, iY, iZ))*i2dx;
                     } else {
                         // When using biased stencils, choose the biasing according to the local advection velocity
                         if (u > 0) {
                             // Backward difference
-                            H.Vx(iX, iY, iZ) -= u*gridData.xi_x(iX)*(a*Vx.F(iX-2, iY, iZ) - b*Vx.F(iX-1, iY, iZ) + c*Vx.F(iX, iY, iZ) - d*Vx.F(iX+1, iY, iZ))*i2dx;
-                            H.Vy(iX, iY, iZ) -= u*gridData.xi_x(iX)*(a*Vy.F(iX-2, iY, iZ) - b*Vy.F(iX-1, iY, iZ) + c*Vy.F(iX, iY, iZ) - d*Vy.F(iX+1, iY, iZ))*i2dx;
-                            H.Vz(iX, iY, iZ) -= u*gridData.xi_x(iX)*(a*Vz.F(iX-2, iY, iZ) - b*Vz.F(iX-1, iY, iZ) + c*Vz.F(iX, iY, iZ) - d*Vz.F(iX+1, iY, iZ))*i2dx;
+                            H.Vx(iX, iY, iZ) -= u*gridData.xi_x(iX)*(-a*Vx.F(iX-1, iY, iZ) + b*Vx.F(iX, iY, iZ) - c*Vx.F(iX+1, iY, iZ))*i2dx;
+                            H.Vy(iX, iY, iZ) -= u*gridData.xi_x(iX)*(-a*Vy.F(iX-1, iY, iZ) + b*Vy.F(iX, iY, iZ) - c*Vy.F(iX+1, iY, iZ))*i2dx;
+                            H.Vz(iX, iY, iZ) -= u*gridData.xi_x(iX)*(-a*Vz.F(iX-1, iY, iZ) + b*Vz.F(iX, iY, iZ) - c*Vz.F(iX+1, iY, iZ))*i2dx;
                         } else {
                             // Forward difference
-                            H.Vx(iX, iY, iZ) -= u*gridData.xi_x(iX)*(-a*Vx.F(iX+2, iY, iZ) + b*Vx.F(iX+1, iY, iZ) - c*Vx.F(iX, iY, iZ) + d*Vx.F(iX-1, iY, iZ))*i2dx;
-                            H.Vy(iX, iY, iZ) -= u*gridData.xi_x(iX)*(-a*Vy.F(iX+2, iY, iZ) + b*Vy.F(iX+1, iY, iZ) - c*Vy.F(iX, iY, iZ) + d*Vy.F(iX-1, iY, iZ))*i2dx;
-                            H.Vz(iX, iY, iZ) -= u*gridData.xi_x(iX)*(-a*Vz.F(iX+2, iY, iZ) + b*Vz.F(iX+1, iY, iZ) - c*Vz.F(iX, iY, iZ) + d*Vz.F(iX-1, iY, iZ))*i2dx;
+                            H.Vx(iX, iY, iZ) -= u*gridData.xi_x(iX)*(a*Vx.F(iX+1, iY, iZ) - b*Vx.F(iX, iY, iZ) + c*Vx.F(iX-1, iY, iZ))*i2dx;
+                            H.Vy(iX, iY, iZ) -= u*gridData.xi_x(iX)*(a*Vy.F(iX+1, iY, iZ) - b*Vy.F(iX, iY, iZ) + c*Vy.F(iX-1, iY, iZ))*i2dx;
+                            H.Vz(iX, iY, iZ) -= u*gridData.xi_x(iX)*(a*Vz.F(iX+1, iY, iZ) - b*Vz.F(iX, iY, iZ) + c*Vz.F(iX-1, iY, iZ))*i2dx;
                         }
                     }
-                }
 
-                u = V.Vy.F(iX, iY, iZ);
-                if (((iY == 0) and yfr) or ((iY == core.ubound(1)) and ylr)) {
-                    // Central difference for first and last point
-                    H.Vx(iX, iY, iZ) -= u*gridData.et_y(iY)*(Vx.F(iX, iY+1, iZ) - Vx.F(iX, iY-1, iZ))*i2dy;
-                    H.Vy(iX, iY, iZ) -= u*gridData.et_y(iY)*(Vy.F(iX, iY+1, iZ) - Vy.F(iX, iY-1, iZ))*i2dy;
-                    H.Vz(iX, iY, iZ) -= u*gridData.et_y(iY)*(Vz.F(iX, iY+1, iZ) - Vz.F(iX, iY-1, iZ))*i2dy;
-                } else {
+                    u = V.Vy.F(iX, iY, iZ);
                     // First compute Peclet number
                     dh = gridData.y(iY+1) - gridData.y(iY);
                     pe = std::fabs(u)*dh/diffCoeff;
@@ -422,32 +428,25 @@ void vfield::upwindNLin(const vfield &V, plainvf &H) {
                     // If Peclet number is less than given limit, use central differencing, else biased stencils
                     if (pe < gridData.inputParams.peLimit) {
                         // Central difference
-                        H.Vx(iX, iY, iZ) -= u*gridData.et_y(iY)*(-Vx.F(iX, iY+2, iZ) + 8.0*Vx.F(iX, iY+1, iZ) - 8.0*Vx.F(iX, iY-1, iZ) + Vx.F(iX, iY-2, iZ))*i2dy/6.0;
-                        H.Vy(iX, iY, iZ) -= u*gridData.et_y(iY)*(-Vy.F(iX, iY+2, iZ) + 8.0*Vy.F(iX, iY+1, iZ) - 8.0*Vy.F(iX, iY-1, iZ) + Vy.F(iX, iY-2, iZ))*i2dy/6.0;
-                        H.Vz(iX, iY, iZ) -= u*gridData.et_y(iY)*(-Vz.F(iX, iY+2, iZ) + 8.0*Vz.F(iX, iY+1, iZ) - 8.0*Vz.F(iX, iY-1, iZ) + Vz.F(iX, iY-2, iZ))*i2dy/6.0;
+                        H.Vx(iX, iY, iZ) -= u*gridData.et_y(iY)*(Vx.F(iX, iY+1, iZ) - Vx.F(iX, iY-1, iZ))*i2dy;
+                        H.Vy(iX, iY, iZ) -= u*gridData.et_y(iY)*(Vy.F(iX, iY+1, iZ) - Vy.F(iX, iY-1, iZ))*i2dy;
+                        H.Vz(iX, iY, iZ) -= u*gridData.et_y(iY)*(Vz.F(iX, iY+1, iZ) - Vz.F(iX, iY-1, iZ))*i2dy;
                     } else {
                         // When using biased stencils, choose the biasing according to the local advection velocity
                         if (u > 0) {
                             // Backward difference
-                            H.Vx(iX, iY, iZ) -= u*gridData.et_y(iY)*(a*Vx.F(iX, iY-2, iZ) - b*Vx.F(iX, iY-1, iZ) + c*Vx.F(iX, iY, iZ) - d*Vx.F(iX, iY+1, iZ))*i2dy;
-                            H.Vy(iX, iY, iZ) -= u*gridData.et_y(iY)*(a*Vy.F(iX, iY-2, iZ) - b*Vy.F(iX, iY-1, iZ) + c*Vy.F(iX, iY, iZ) - d*Vy.F(iX, iY+1, iZ))*i2dy;
-                            H.Vz(iX, iY, iZ) -= u*gridData.et_y(iY)*(a*Vz.F(iX, iY-2, iZ) - b*Vz.F(iX, iY-1, iZ) + c*Vz.F(iX, iY, iZ) - d*Vz.F(iX, iY+1, iZ))*i2dy;
+                            H.Vx(iX, iY, iZ) -= u*gridData.et_y(iY)*(-a*Vx.F(iX, iY-1, iZ) + b*Vx.F(iX, iY, iZ) - c*Vx.F(iX, iY+1, iZ))*i2dy;
+                            H.Vy(iX, iY, iZ) -= u*gridData.et_y(iY)*(-a*Vy.F(iX, iY-1, iZ) + b*Vy.F(iX, iY, iZ) - c*Vy.F(iX, iY+1, iZ))*i2dy;
+                            H.Vz(iX, iY, iZ) -= u*gridData.et_y(iY)*(-a*Vz.F(iX, iY-1, iZ) + b*Vz.F(iX, iY, iZ) - c*Vz.F(iX, iY+1, iZ))*i2dy;
                         } else {
                             // Forward difference
-                            H.Vx(iX, iY, iZ) -= u*gridData.et_y(iY)*(-a*Vx.F(iX, iY+2, iZ) + b*Vx.F(iX, iY+1, iZ) - c*Vx.F(iX, iY, iZ) + d*Vx.F(iX, iY-1, iZ))*i2dy;
-                            H.Vy(iX, iY, iZ) -= u*gridData.et_y(iY)*(-a*Vy.F(iX, iY+2, iZ) + b*Vy.F(iX, iY+1, iZ) - c*Vy.F(iX, iY, iZ) + d*Vy.F(iX, iY-1, iZ))*i2dy;
-                            H.Vz(iX, iY, iZ) -= u*gridData.et_y(iY)*(-a*Vz.F(iX, iY+2, iZ) + b*Vz.F(iX, iY+1, iZ) - c*Vz.F(iX, iY, iZ) + d*Vz.F(iX, iY-1, iZ))*i2dy;
+                            H.Vx(iX, iY, iZ) -= u*gridData.et_y(iY)*(a*Vx.F(iX, iY+1, iZ) - b*Vx.F(iX, iY, iZ) + c*Vx.F(iX, iY-1, iZ))*i2dy;
+                            H.Vy(iX, iY, iZ) -= u*gridData.et_y(iY)*(a*Vy.F(iX, iY+1, iZ) - b*Vy.F(iX, iY, iZ) + c*Vy.F(iX, iY-1, iZ))*i2dy;
+                            H.Vz(iX, iY, iZ) -= u*gridData.et_y(iY)*(a*Vz.F(iX, iY+1, iZ) - b*Vz.F(iX, iY, iZ) + c*Vz.F(iX, iY-1, iZ))*i2dy;
                         }
                     }
-                }
 
-                u = V.Vz.F(iX, iY, iZ);
-                if (((iZ == 0) and zfr) or ((iZ == core.ubound(2)) and zlr)) {
-                    // Central difference for first and last point
-                    H.Vx(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(Vx.F(iX, iY, iZ+1) - Vx.F(iX, iY, iZ-1))*i2dz;
-                    H.Vy(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(Vy.F(iX, iY, iZ+1) - Vy.F(iX, iY, iZ-1))*i2dz;
-                    H.Vz(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(Vz.F(iX, iY, iZ+1) - Vz.F(iX, iY, iZ-1))*i2dz;
-                } else {
+                    u = V.Vz.F(iX, iY, iZ);
                     // First compute Peclet number
                     dh = gridData.z(iZ+1) - gridData.z(iZ);
                     pe = std::fabs(u)*dh/diffCoeff;
@@ -455,21 +454,130 @@ void vfield::upwindNLin(const vfield &V, plainvf &H) {
                     // If Peclet number is less than given limit, use central differencing, else biased stencils
                     if (pe < gridData.inputParams.peLimit) {
                         // Central difference
-                        H.Vx(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(-Vx.F(iX, iY, iZ+2) + 8.0*Vx.F(iX, iY, iZ+1) - 8.0*Vx.F(iX, iY, iZ-1) + Vx.F(iX, iY, iZ-2))*i2dz/6.0;
-                        H.Vy(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(-Vy.F(iX, iY, iZ+2) + 8.0*Vy.F(iX, iY, iZ+1) - 8.0*Vy.F(iX, iY, iZ-1) + Vy.F(iX, iY, iZ-2))*i2dz/6.0;
-                        H.Vz(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(-Vz.F(iX, iY, iZ+2) + 8.0*Vz.F(iX, iY, iZ+1) - 8.0*Vz.F(iX, iY, iZ-1) + Vz.F(iX, iY, iZ-2))*i2dz/6.0;
+                        H.Vx(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(Vx.F(iX, iY, iZ+1) - Vx.F(iX, iY, iZ-1))*i2dz;
+                        H.Vy(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(Vy.F(iX, iY, iZ+1) - Vy.F(iX, iY, iZ-1))*i2dz;
+                        H.Vz(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(Vz.F(iX, iY, iZ+1) - Vz.F(iX, iY, iZ-1))*i2dz;
                     } else {
                         // When using biased stencils, choose the biasing according to the local advection velocity
                         if (u > 0) {
                             // Backward difference
-                            H.Vx(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(a*Vx.F(iX, iY, iZ-2) - b*Vx.F(iX, iY, iZ-1) + c*Vx.F(iX, iY, iZ) - d*Vx.F(iX, iY, iZ+1))*i2dz;
-                            H.Vy(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(a*Vy.F(iX, iY, iZ-2) - b*Vy.F(iX, iY, iZ-1) + c*Vy.F(iX, iY, iZ) - d*Vy.F(iX, iY, iZ+1))*i2dz;
-                            H.Vz(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(a*Vz.F(iX, iY, iZ-2) - b*Vz.F(iX, iY, iZ-1) + c*Vz.F(iX, iY, iZ) - d*Vz.F(iX, iY, iZ+1))*i2dz;
+                            H.Vx(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(-a*Vx.F(iX, iY, iZ-1) + b*Vx.F(iX, iY, iZ) - c*Vx.F(iX, iY, iZ+1))*i2dz;
+                            H.Vy(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(-a*Vy.F(iX, iY, iZ-1) + b*Vy.F(iX, iY, iZ) - c*Vy.F(iX, iY, iZ+1))*i2dz;
+                            H.Vz(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(-a*Vz.F(iX, iY, iZ-1) + b*Vz.F(iX, iY, iZ) - c*Vz.F(iX, iY, iZ+1))*i2dz;
                         } else {
                             // Forward difference
-                            H.Vx(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(-a*Vx.F(iX, iY, iZ+2) + b*Vx.F(iX, iY, iZ+1) - c*Vx.F(iX, iY, iZ) + d*Vx.F(iX, iY, iZ-1))*i2dz;
-                            H.Vy(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(-a*Vy.F(iX, iY, iZ+2) + b*Vy.F(iX, iY, iZ+1) - c*Vy.F(iX, iY, iZ) + d*Vy.F(iX, iY, iZ-1))*i2dz;
-                            H.Vz(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(-a*Vz.F(iX, iY, iZ+2) + b*Vz.F(iX, iY, iZ+1) - c*Vz.F(iX, iY, iZ) + d*Vz.F(iX, iY, iZ-1))*i2dz;
+                            H.Vx(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(a*Vx.F(iX, iY, iZ+1) - b*Vx.F(iX, iY, iZ) + c*Vx.F(iX, iY, iZ-1))*i2dz;
+                            H.Vy(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(a*Vy.F(iX, iY, iZ+1) - b*Vy.F(iX, iY, iZ) + c*Vy.F(iX, iY, iZ-1))*i2dz;
+                            H.Vz(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(a*Vz.F(iX, iY, iZ+1) - b*Vz.F(iX, iY, iZ) + c*Vz.F(iX, iY, iZ-1))*i2dz;
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        // SECOND ORDER UPWINDING
+        // This uses second order forward and backward finite-difference stencils
+        // mixed with second order central difference stencils where Pe is high.
+        // Elsewhere it defaults to fourth order central-difference.
+        for (int iX = 0; iX <= core.ubound(0); iX++) {
+            for (int iY = 0; iY <= core.ubound(1); iY++) {
+                for (int iZ = 0; iZ <= core.ubound(2); iZ++) {
+                    u = V.Vx.F(iX, iY, iZ);
+                    if (((iX == 0) and xfr) or ((iX == core.ubound(0)) and xlr)) {
+                        // Central difference for first and last point
+                        H.Vx(iX, iY, iZ) -= u*gridData.xi_x(iX)*(Vx.F(iX+1, iY, iZ) - Vx.F(iX-1, iY, iZ))*i2dx;
+                        H.Vy(iX, iY, iZ) -= u*gridData.xi_x(iX)*(Vy.F(iX+1, iY, iZ) - Vy.F(iX-1, iY, iZ))*i2dx;
+                        H.Vz(iX, iY, iZ) -= u*gridData.xi_x(iX)*(Vz.F(iX+1, iY, iZ) - Vz.F(iX-1, iY, iZ))*i2dx;
+                    } else {
+                        // First compute Peclet number
+                        dh = gridData.x(iX+1) - gridData.x(iX);
+                        pe = std::fabs(u)*dh/diffCoeff;
+
+                        // If Peclet number is less than given limit, use central differencing, else biased stencils
+                        if (pe < gridData.inputParams.peLimit) {
+                            // Central difference
+                            H.Vx(iX, iY, iZ) -= u*gridData.xi_x(iX)*(-Vx.F(iX+2, iY, iZ) + 8.0*Vx.F(iX+1, iY, iZ) - 8.0*Vx.F(iX-1, iY, iZ) + Vx.F(iX-2, iY, iZ))*i2dx/6.0;
+                            H.Vy(iX, iY, iZ) -= u*gridData.xi_x(iX)*(-Vy.F(iX+2, iY, iZ) + 8.0*Vy.F(iX+1, iY, iZ) - 8.0*Vy.F(iX-1, iY, iZ) + Vy.F(iX-2, iY, iZ))*i2dx/6.0;
+                            H.Vz(iX, iY, iZ) -= u*gridData.xi_x(iX)*(-Vz.F(iX+2, iY, iZ) + 8.0*Vz.F(iX+1, iY, iZ) - 8.0*Vz.F(iX-1, iY, iZ) + Vz.F(iX-2, iY, iZ))*i2dx/6.0;
+                        } else {
+                            // When using biased stencils, choose the biasing according to the local advection velocity
+                            if (u > 0) {
+                                // Backward difference
+                                H.Vx(iX, iY, iZ) -= u*gridData.xi_x(iX)*(a*Vx.F(iX-2, iY, iZ) - b*Vx.F(iX-1, iY, iZ) + c*Vx.F(iX, iY, iZ) - d*Vx.F(iX+1, iY, iZ))*i2dx;
+                                H.Vy(iX, iY, iZ) -= u*gridData.xi_x(iX)*(a*Vy.F(iX-2, iY, iZ) - b*Vy.F(iX-1, iY, iZ) + c*Vy.F(iX, iY, iZ) - d*Vy.F(iX+1, iY, iZ))*i2dx;
+                                H.Vz(iX, iY, iZ) -= u*gridData.xi_x(iX)*(a*Vz.F(iX-2, iY, iZ) - b*Vz.F(iX-1, iY, iZ) + c*Vz.F(iX, iY, iZ) - d*Vz.F(iX+1, iY, iZ))*i2dx;
+                            } else {
+                                // Forward difference
+                                H.Vx(iX, iY, iZ) -= u*gridData.xi_x(iX)*(-a*Vx.F(iX+2, iY, iZ) + b*Vx.F(iX+1, iY, iZ) - c*Vx.F(iX, iY, iZ) + d*Vx.F(iX-1, iY, iZ))*i2dx;
+                                H.Vy(iX, iY, iZ) -= u*gridData.xi_x(iX)*(-a*Vy.F(iX+2, iY, iZ) + b*Vy.F(iX+1, iY, iZ) - c*Vy.F(iX, iY, iZ) + d*Vy.F(iX-1, iY, iZ))*i2dx;
+                                H.Vz(iX, iY, iZ) -= u*gridData.xi_x(iX)*(-a*Vz.F(iX+2, iY, iZ) + b*Vz.F(iX+1, iY, iZ) - c*Vz.F(iX, iY, iZ) + d*Vz.F(iX-1, iY, iZ))*i2dx;
+                            }
+                        }
+                    }
+
+                    u = V.Vy.F(iX, iY, iZ);
+                    if (((iY == 0) and yfr) or ((iY == core.ubound(1)) and ylr)) {
+                        // Central difference for first and last point
+                        H.Vx(iX, iY, iZ) -= u*gridData.et_y(iY)*(Vx.F(iX, iY+1, iZ) - Vx.F(iX, iY-1, iZ))*i2dy;
+                        H.Vy(iX, iY, iZ) -= u*gridData.et_y(iY)*(Vy.F(iX, iY+1, iZ) - Vy.F(iX, iY-1, iZ))*i2dy;
+                        H.Vz(iX, iY, iZ) -= u*gridData.et_y(iY)*(Vz.F(iX, iY+1, iZ) - Vz.F(iX, iY-1, iZ))*i2dy;
+                    } else {
+                        // First compute Peclet number
+                        dh = gridData.y(iY+1) - gridData.y(iY);
+                        pe = std::fabs(u)*dh/diffCoeff;
+
+                        // If Peclet number is less than given limit, use central differencing, else biased stencils
+                        if (pe < gridData.inputParams.peLimit) {
+                            // Central difference
+                            H.Vx(iX, iY, iZ) -= u*gridData.et_y(iY)*(-Vx.F(iX, iY+2, iZ) + 8.0*Vx.F(iX, iY+1, iZ) - 8.0*Vx.F(iX, iY-1, iZ) + Vx.F(iX, iY-2, iZ))*i2dy/6.0;
+                            H.Vy(iX, iY, iZ) -= u*gridData.et_y(iY)*(-Vy.F(iX, iY+2, iZ) + 8.0*Vy.F(iX, iY+1, iZ) - 8.0*Vy.F(iX, iY-1, iZ) + Vy.F(iX, iY-2, iZ))*i2dy/6.0;
+                            H.Vz(iX, iY, iZ) -= u*gridData.et_y(iY)*(-Vz.F(iX, iY+2, iZ) + 8.0*Vz.F(iX, iY+1, iZ) - 8.0*Vz.F(iX, iY-1, iZ) + Vz.F(iX, iY-2, iZ))*i2dy/6.0;
+                        } else {
+                            // When using biased stencils, choose the biasing according to the local advection velocity
+                            if (u > 0) {
+                                // Backward difference
+                                H.Vx(iX, iY, iZ) -= u*gridData.et_y(iY)*(a*Vx.F(iX, iY-2, iZ) - b*Vx.F(iX, iY-1, iZ) + c*Vx.F(iX, iY, iZ) - d*Vx.F(iX, iY+1, iZ))*i2dy;
+                                H.Vy(iX, iY, iZ) -= u*gridData.et_y(iY)*(a*Vy.F(iX, iY-2, iZ) - b*Vy.F(iX, iY-1, iZ) + c*Vy.F(iX, iY, iZ) - d*Vy.F(iX, iY+1, iZ))*i2dy;
+                                H.Vz(iX, iY, iZ) -= u*gridData.et_y(iY)*(a*Vz.F(iX, iY-2, iZ) - b*Vz.F(iX, iY-1, iZ) + c*Vz.F(iX, iY, iZ) - d*Vz.F(iX, iY+1, iZ))*i2dy;
+                            } else {
+                                // Forward difference
+                                H.Vx(iX, iY, iZ) -= u*gridData.et_y(iY)*(-a*Vx.F(iX, iY+2, iZ) + b*Vx.F(iX, iY+1, iZ) - c*Vx.F(iX, iY, iZ) + d*Vx.F(iX, iY-1, iZ))*i2dy;
+                                H.Vy(iX, iY, iZ) -= u*gridData.et_y(iY)*(-a*Vy.F(iX, iY+2, iZ) + b*Vy.F(iX, iY+1, iZ) - c*Vy.F(iX, iY, iZ) + d*Vy.F(iX, iY-1, iZ))*i2dy;
+                                H.Vz(iX, iY, iZ) -= u*gridData.et_y(iY)*(-a*Vz.F(iX, iY+2, iZ) + b*Vz.F(iX, iY+1, iZ) - c*Vz.F(iX, iY, iZ) + d*Vz.F(iX, iY-1, iZ))*i2dy;
+                            }
+                        }
+                    }
+
+                    u = V.Vz.F(iX, iY, iZ);
+                    if (((iZ == 0) and zfr) or ((iZ == core.ubound(2)) and zlr)) {
+                        // Central difference for first and last point
+                        H.Vx(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(Vx.F(iX, iY, iZ+1) - Vx.F(iX, iY, iZ-1))*i2dz;
+                        H.Vy(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(Vy.F(iX, iY, iZ+1) - Vy.F(iX, iY, iZ-1))*i2dz;
+                        H.Vz(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(Vz.F(iX, iY, iZ+1) - Vz.F(iX, iY, iZ-1))*i2dz;
+                    } else {
+                        // First compute Peclet number
+                        dh = gridData.z(iZ+1) - gridData.z(iZ);
+                        pe = std::fabs(u)*dh/diffCoeff;
+
+                        // If Peclet number is less than given limit, use central differencing, else biased stencils
+                        if (pe < gridData.inputParams.peLimit) {
+                            // Central difference
+                            H.Vx(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(-Vx.F(iX, iY, iZ+2) + 8.0*Vx.F(iX, iY, iZ+1) - 8.0*Vx.F(iX, iY, iZ-1) + Vx.F(iX, iY, iZ-2))*i2dz/6.0;
+                            H.Vy(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(-Vy.F(iX, iY, iZ+2) + 8.0*Vy.F(iX, iY, iZ+1) - 8.0*Vy.F(iX, iY, iZ-1) + Vy.F(iX, iY, iZ-2))*i2dz/6.0;
+                            H.Vz(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(-Vz.F(iX, iY, iZ+2) + 8.0*Vz.F(iX, iY, iZ+1) - 8.0*Vz.F(iX, iY, iZ-1) + Vz.F(iX, iY, iZ-2))*i2dz/6.0;
+                        } else {
+                            // When using biased stencils, choose the biasing according to the local advection velocity
+                            if (u > 0) {
+                                // Backward difference
+                                H.Vx(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(a*Vx.F(iX, iY, iZ-2) - b*Vx.F(iX, iY, iZ-1) + c*Vx.F(iX, iY, iZ) - d*Vx.F(iX, iY, iZ+1))*i2dz;
+                                H.Vy(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(a*Vy.F(iX, iY, iZ-2) - b*Vy.F(iX, iY, iZ-1) + c*Vy.F(iX, iY, iZ) - d*Vy.F(iX, iY, iZ+1))*i2dz;
+                                H.Vz(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(a*Vz.F(iX, iY, iZ-2) - b*Vz.F(iX, iY, iZ-1) + c*Vz.F(iX, iY, iZ) - d*Vz.F(iX, iY, iZ+1))*i2dz;
+                            } else {
+                                // Forward difference
+                                H.Vx(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(-a*Vx.F(iX, iY, iZ+2) + b*Vx.F(iX, iY, iZ+1) - c*Vx.F(iX, iY, iZ) + d*Vx.F(iX, iY, iZ-1))*i2dz;
+                                H.Vy(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(-a*Vy.F(iX, iY, iZ+2) + b*Vy.F(iX, iY, iZ+1) - c*Vy.F(iX, iY, iZ) + d*Vy.F(iX, iY, iZ-1))*i2dz;
+                                H.Vz(iX, iY, iZ) -= u*gridData.zt_z(iZ)*(-a*Vz.F(iX, iY, iZ+2) + b*Vz.F(iX, iY, iZ+1) - c*Vz.F(iX, iY, iZ) + d*Vz.F(iX, iY, iZ-1))*i2dz;
+                            }
                         }
                     }
                 }

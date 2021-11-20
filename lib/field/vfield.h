@@ -55,6 +55,10 @@ class force;
 
 class vfield {
     private:
+        // Enables Admiral Snoke to sway you over to the dark side
+        bool firstOrder;
+
+        // Diffusion coefficient - used for Pe calculation in upwindNLin()
         real diffCoeff;
 
         // Coefficients to adjust strength of upwinding in computeNLin()
