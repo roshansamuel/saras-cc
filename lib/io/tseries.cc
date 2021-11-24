@@ -269,6 +269,7 @@ void tseries::writeTSData(const sfield &T) {
         MPI_Finalize();
         exit(0);
     }
+    oldDiv = divVal;
 
     localKineticEnergy = 0.0;
     totalKineticEnergy = 0.0;

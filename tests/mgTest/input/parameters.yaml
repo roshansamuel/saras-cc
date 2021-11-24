@@ -116,9 +116,9 @@
     # a size that is divisible by a power of 2 (at least 4),
     # so that the multi-grid solver can coarsen the grid effectively.
     # 3. For 2D simulations, the value for Y Size must be 1
-    "X Size": 128
-    "Y Size": 128
-    "Z Size": 128
+    "X Size": 96
+    "Y Size": 96
+    "Z Size": 96
 
 
 # Parellelization parameters
@@ -126,7 +126,7 @@
     "Number of OMP threads": 1
     "X Number of Procs": 2
     "Y Number of Procs": 2
-    "Z Number of Procs": 1
+    "Z Number of Procs": 2
 
 
 # Solver parameters

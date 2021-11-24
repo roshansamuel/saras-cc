@@ -103,9 +103,9 @@ void multigrid_d3::smooth(const int smoothCount) {
         // UPDATE RED CELLS
         // 0, 0, 0 CONFIGURATION
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none)
-        for (int i = 0; i < xEnd(vLevel); i+=2) {
-            for (int j = 0; j < yEnd(vLevel); j+=2) {
-                for (int k = 0; k < zEnd(vLevel); k+=2) {
+        for (int i = 0; i <= xEnd(vLevel); i+=2) {
+            for (int j = 0; j <= yEnd(vLevel); j+=2) {
+                for (int k = 0; k <= zEnd(vLevel); k+=2) {
                     lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
                                            (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
                                             xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, j, k) - lhs(vLevel)(i - 1, j, k)) +
@@ -122,7 +122,7 @@ void multigrid_d3::smooth(const int smoothCount) {
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none)
         for (int i = 1; i <= xEnd(vLevel); i+=2) {
             for (int j = 1; j <= yEnd(vLevel); j+=2) {
-                for (int k = 0; k < zEnd(vLevel); k+=2) {
+                for (int k = 0; k <= zEnd(vLevel); k+=2) {
                     lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
                                            (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
                                             xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, j, k) - lhs(vLevel)(i - 1, j, k)) +
@@ -138,7 +138,7 @@ void multigrid_d3::smooth(const int smoothCount) {
         // 1, 0, 1 CONFIGURATION
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none)
         for (int i = 1; i <= xEnd(vLevel); i+=2) {
-            for (int j = 0; j < yEnd(vLevel); j+=2) {
+            for (int j = 0; j <= yEnd(vLevel); j+=2) {
                 for (int k = 1; k <= zEnd(vLevel); k+=2) {
                     lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
                                            (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
@@ -154,7 +154,7 @@ void multigrid_d3::smooth(const int smoothCount) {
 
         // 0, 1, 1 CONFIGURATION
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none)
-        for (int i = 0; i < xEnd(vLevel); i+=2) {
+        for (int i = 0; i <= xEnd(vLevel); i+=2) {
             for (int j = 1; j <= yEnd(vLevel); j+=2) {
                 for (int k = 1; k <= zEnd(vLevel); k+=2) {
                     lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
@@ -176,8 +176,8 @@ void multigrid_d3::smooth(const int smoothCount) {
         // 1, 0, 0 CONFIGURATION
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none)
         for (int i = 1; i <= xEnd(vLevel); i+=2) {
-            for (int j = 0; j < yEnd(vLevel); j+=2) {
-                for (int k = 0; k < zEnd(vLevel); k+=2) {
+            for (int j = 0; j <= yEnd(vLevel); j+=2) {
+                for (int k = 0; k <= zEnd(vLevel); k+=2) {
                     lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
                                            (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
                                             xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, j, k) - lhs(vLevel)(i - 1, j, k)) +
@@ -192,9 +192,9 @@ void multigrid_d3::smooth(const int smoothCount) {
 
         // 0, 1, 0 CONFIGURATION
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none)
-        for (int i = 0; i < xEnd(vLevel); i+=2) {
+        for (int i = 0; i <= xEnd(vLevel); i+=2) {
             for (int j = 1; j <= yEnd(vLevel); j+=2) {
-                for (int k = 0; k < zEnd(vLevel); k+=2) {
+                for (int k = 0; k <= zEnd(vLevel); k+=2) {
                     lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
                                            (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
                                             xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, j, k) - lhs(vLevel)(i - 1, j, k)) +
@@ -209,8 +209,8 @@ void multigrid_d3::smooth(const int smoothCount) {
 
         // 0, 0, 1 CONFIGURATION
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none)
-        for (int i = 0; i < xEnd(vLevel); i+=2) {
-            for (int j = 0; j < yEnd(vLevel); j+=2) {
+        for (int i = 0; i <= xEnd(vLevel); i+=2) {
+            for (int j = 0; j <= yEnd(vLevel); j+=2) {
                 for (int k = 1; k <= zEnd(vLevel); k+=2) {
                     lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
                                            (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
@@ -257,9 +257,9 @@ void multigrid_d3::solve() {
         // UPDATE RED CELLS
         // 0, 0, 0 CONFIGURATION
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none)
-        for (int i = 0; i < xEnd(vLevel); i+=2) {
-            for (int j = 0; j < yEnd(vLevel); j+=2) {
-                for (int k = 0; k < zEnd(vLevel); k+=2) {
+        for (int i = 0; i <= xEnd(vLevel); i+=2) {
+            for (int j = 0; j <= yEnd(vLevel); j+=2) {
+                for (int k = 0; k <= zEnd(vLevel); k+=2) {
                     lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
                                            (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
                                             xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, j, k) - lhs(vLevel)(i - 1, j, k)) +
@@ -276,7 +276,7 @@ void multigrid_d3::solve() {
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none)
         for (int i = 1; i <= xEnd(vLevel); i+=2) {
             for (int j = 1; j <= yEnd(vLevel); j+=2) {
-                for (int k = 0; k < zEnd(vLevel); k+=2) {
+                for (int k = 0; k <= zEnd(vLevel); k+=2) {
                     lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
                                            (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
                                             xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, j, k) - lhs(vLevel)(i - 1, j, k)) +
@@ -292,7 +292,7 @@ void multigrid_d3::solve() {
         // 1, 0, 1 CONFIGURATION
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none)
         for (int i = 1; i <= xEnd(vLevel); i+=2) {
-            for (int j = 0; j < yEnd(vLevel); j+=2) {
+            for (int j = 0; j <= yEnd(vLevel); j+=2) {
                 for (int k = 1; k <= zEnd(vLevel); k+=2) {
                     lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
                                            (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
@@ -308,7 +308,7 @@ void multigrid_d3::solve() {
 
         // 0, 1, 1 CONFIGURATION
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none)
-        for (int i = 0; i < xEnd(vLevel); i+=2) {
+        for (int i = 0; i <= xEnd(vLevel); i+=2) {
             for (int j = 1; j <= yEnd(vLevel); j+=2) {
                 for (int k = 1; k <= zEnd(vLevel); k+=2) {
                     lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
@@ -330,8 +330,8 @@ void multigrid_d3::solve() {
         // 1, 0, 0 CONFIGURATION
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none)
         for (int i = 1; i <= xEnd(vLevel); i+=2) {
-            for (int j = 0; j < yEnd(vLevel); j+=2) {
-                for (int k = 0; k < zEnd(vLevel); k+=2) {
+            for (int j = 0; j <= yEnd(vLevel); j+=2) {
+                for (int k = 0; k <= zEnd(vLevel); k+=2) {
                     lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
                                            (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
                                             xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, j, k) - lhs(vLevel)(i - 1, j, k)) +
@@ -346,9 +346,9 @@ void multigrid_d3::solve() {
 
         // 0, 1, 0 CONFIGURATION
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none)
-        for (int i = 0; i < xEnd(vLevel); i+=2) {
+        for (int i = 0; i <= xEnd(vLevel); i+=2) {
             for (int j = 1; j <= yEnd(vLevel); j+=2) {
-                for (int k = 0; k < zEnd(vLevel); k+=2) {
+                for (int k = 0; k <= zEnd(vLevel); k+=2) {
                     lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
                                            (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +
                                             xixx(vLevel)(i) * i2hx(vLevel) * (lhs(vLevel)(i + 1, j, k) - lhs(vLevel)(i - 1, j, k)) +
@@ -363,8 +363,8 @@ void multigrid_d3::solve() {
 
         // 0, 0, 1 CONFIGURATION
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none)
-        for (int i = 0; i < xEnd(vLevel); i+=2) {
-            for (int j = 0; j < yEnd(vLevel); j+=2) {
+        for (int i = 0; i <= xEnd(vLevel); i+=2) {
+            for (int j = 0; j <= yEnd(vLevel); j+=2) {
                 for (int k = 1; k <= zEnd(vLevel); k+=2) {
                     lhs(vLevel)(i, j, k) = (1.0 - sorParam) * lhs(vLevel)(i, j, k) +
                                            (xix2(vLevel)(i) * ihx2(vLevel) * (lhs(vLevel)(i + 1, j, k) + lhs(vLevel)(i - 1, j, k)) +

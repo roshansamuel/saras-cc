@@ -43,7 +43,7 @@
  ##
 
 # Test of Poisson library with Dirichlet BC
-PROC=4
+PROC=8
 
 # If build directory doesn't exist, create it
 if [ ! -d build ]; then
