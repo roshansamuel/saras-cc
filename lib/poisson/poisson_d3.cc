@@ -761,9 +761,15 @@ void multigrid_d3::imposeBC() {
             if (xlr) lhs(vLevel)(stagCore(vLevel).ubound(0) + 1, all, all) = 2.0*xWall(all, all) - lhs(vLevel)(stagCore(vLevel).ubound(0), all, all);
         }
 #else
-        // NEUMANN BOUNDARY CONDITION AT LEFT AND RIGHT WALLS
-        if (xfr) lhs(vLevel)(-1, all, all) = lhs(vLevel)(0, all, all);
-        if (xlr) lhs(vLevel)(stagCore(vLevel).ubound(0) + 1, all, all) = lhs(vLevel)(stagCore(vLevel).ubound(0), all, all);
+        if (allNeumann) {
+            // NEUMANN BOUNDARY CONDITION AT LEFT AND RIGHT WALLS
+            if (xfr) lhs(vLevel)(-1, all, all) = lhs(vLevel)(0, all, all);
+            if (xlr) lhs(vLevel)(stagCore(vLevel).ubound(0) + 1, all, all) = lhs(vLevel)(stagCore(vLevel).ubound(0), all, all);
+        } else {
+            // DIRICHLET BOUNDARY CONDITION AT LEFT AND RIGHT WALLS
+            if (xfr) lhs(vLevel)(-1, all, all) = -lhs(vLevel)(0, all, all);
+            if (xlr) lhs(vLevel)(stagCore(vLevel).ubound(0) + 1, all, all) = -lhs(vLevel)(stagCore(vLevel).ubound(0), all, all);
+        }
 #endif
     } // PERIODIC BOUNDARY CONDITIONS ARE AUTOMATICALLY IMPOSED BY PERIODIC DATA TRANSFER ACROSS PROCESSORS THROUGH updateFace()
 
@@ -780,9 +786,15 @@ void multigrid_d3::imposeBC() {
             if (ylr) lhs(vLevel)(all, stagCore(vLevel).ubound(1) + 1, all) = 2.0*yWall(all, all) - lhs(vLevel)(all, stagCore(vLevel).ubound(1), all);
         }
 #else
-        // NEUMANN BOUNDARY CONDITION AT FRONT AND BACK WALLS
-        if (yfr) lhs(vLevel)(all, -1, all) = lhs(vLevel)(all, 0, all);
-        if (ylr) lhs(vLevel)(all, stagCore(vLevel).ubound(1) + 1, all) = lhs(vLevel)(all, stagCore(vLevel).ubound(1), all);
+        if (allNeumann) {
+            // NEUMANN BOUNDARY CONDITION AT FRONT AND BACK WALLS
+            if (yfr) lhs(vLevel)(all, -1, all) = lhs(vLevel)(all, 0, all);
+            if (ylr) lhs(vLevel)(all, stagCore(vLevel).ubound(1) + 1, all) = lhs(vLevel)(all, stagCore(vLevel).ubound(1), all);
+        } else {
+            // DIRICHLET BOUNDARY CONDITION AT FRONT AND BACK WALLS
+            if (yfr) lhs(vLevel)(all, -1, all) = -lhs(vLevel)(all, 0, all);
+            if (ylr) lhs(vLevel)(all, stagCore(vLevel).ubound(1) + 1, all) = -lhs(vLevel)(all, stagCore(vLevel).ubound(1), all);
+        }
 #endif
     } // PERIODIC BOUNDARY CONDITIONS ARE AUTOMATICALLY IMPOSED BY PERIODIC DATA TRANSFER ACROSS PROCESSORS THROUGH updateFace()
 
@@ -798,9 +810,15 @@ void multigrid_d3::imposeBC() {
             if (zlr) lhs(vLevel)(all, all, stagCore(vLevel).ubound(2) + 1) = 2.0*zWall(all, all) - lhs(vLevel)(all, all, stagCore(vLevel).ubound(2));
         }
 #else
-        // NEUMANN BOUNDARY CONDITION AT BOTTOM AND TOP WALLS
-        if (zfr) lhs(vLevel)(all, all, -1) = lhs(vLevel)(all, all, 0);
-        if (zlr) lhs(vLevel)(all, all, stagCore(vLevel).ubound(2) + 1) = lhs(vLevel)(all, all, stagCore(vLevel).ubound(2));
+        if (allNeumann) {
+            // NEUMANN BOUNDARY CONDITION AT BOTTOM AND TOP WALLS
+            if (zfr) lhs(vLevel)(all, all, -1) = lhs(vLevel)(all, all, 0);
+            if (zlr) lhs(vLevel)(all, all, stagCore(vLevel).ubound(2) + 1) = lhs(vLevel)(all, all, stagCore(vLevel).ubound(2));
+        } else {
+            // DIRICHLET BOUNDARY CONDITION AT BOTTOM AND TOP WALLS
+            if (zfr) lhs(vLevel)(all, all, -1) = -lhs(vLevel)(all, all, 0);
+            if (zlr) lhs(vLevel)(all, all, stagCore(vLevel).ubound(2) + 1) = -lhs(vLevel)(all, all, stagCore(vLevel).ubound(2));
+        }
 #endif
     } // PERIODIC BOUNDARY CONDITIONS ARE AUTOMATICALLY IMPOSED BY PERIODIC DATA TRANSFER ACROSS PROCESSORS THROUGH updateFace()
 }

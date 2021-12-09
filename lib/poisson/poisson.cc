@@ -87,7 +87,7 @@ poisson::poisson(const grid &mesh, const parser &solParam): mesh(mesh), inputPar
     // RESIZE AND INITIALIZE ARRAYS
     initializeArrays();
 
-    // THE allNeumann FLAG IMPOSES AN ADDITIONAL COMPATIBILITY CONDITION
+    // THE allNeumann FLAG DECIDES IF Pp WILL HAVE DIRICHLET OR NEUMANN BCs
     // SINCE ALL THE BOUNDARIES ARE ASSUMED TO HAVE NEUMANN BC WHEN 
     // SOLVING THE PRESSURE CORRECTION EQUATION.
     allNeumann = true;
