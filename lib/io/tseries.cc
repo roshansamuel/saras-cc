@@ -116,6 +116,26 @@ tseries::tseries(const grid &mesh, vfield &solverV, const real &solverTime, cons
     }
 
     oldDiv = 1.0e10;
+
+    // Flags to discern ranks that contain the bottom and top walls
+    bWall = false;      tWall = false;
+    if (zGravity) {
+        if (mesh.rankData.zRank == 0) bWall = true;
+        if (mesh.rankData.zRank == mesh.rankData.npZ - 1) tWall = true;
+
+        MPI_Comm_split(MPI_COMM_WORLD, mesh.rankData.zRank, 0, &bComm);
+        MPI_Comm_split(MPI_COMM_WORLD, mesh.rankData.zRank, mesh.rankData.npZ-1, &tComm);
+    } else {
+        if (mesh.rankData.xRank == 0) bWall = true;
+        if (mesh.rankData.xRank == mesh.rankData.npX - 1) tWall = true;
+
+        MPI_Comm_split(MPI_COMM_WORLD, mesh.rankData.xRank, 0, &bComm);
+        MPI_Comm_split(MPI_COMM_WORLD, mesh.rankData.xRank, mesh.rankData.npX-1, &tComm);
+    }
+
+    if (mesh.pf) std::cout << "Reached end of tseries constructor" << std::endl;
+    MPI_Finalize();
+    exit(0);
 }
 
 
@@ -180,7 +200,7 @@ void tseries::writeTSData() {
 
     // CHECK IF DIVERGENCE IS INCREASING OR DECREASING
     divSlope = divVal - oldDiv;
-    if (divVal > 10 and divSlope > 0) {
+    if (divVal > 1e3 and divSlope > 0) {
         if (mesh.pf) std::cout << std::endl << "ERROR: Divergence exceeds permissible limits. ABORTING" << std::endl << std::endl;
         MPI_Finalize();
         exit(0);
@@ -255,8 +275,10 @@ void tseries::writeTSData() {
  */
 void tseries::writeTSData(const sfield &T) {
     real divSlope;
-    real theta = 0.0;
+    real dTdn = 0.0;
     real dVol = 0.0;
+    real theta = 0.0;
+    real dArea = 0.0;
 
     // COMPUTE ENERGY AND DIVERGENCE FOR THE INITIAL CONDITION
     V.divergence(divV);
@@ -264,7 +286,7 @@ void tseries::writeTSData(const sfield &T) {
 
     // CHECK IF DIVERGENCE IS INCREASING OR DECREASING
     divSlope = divVal - oldDiv;
-    if (divVal > 10 and divSlope > 0) {
+    if (divVal > 1e3 and divSlope > 0) {
         if (mesh.pf) std::cout << std::endl << "ERROR: Divergence exceeds permissible limits. ABORTING" << std::endl << std::endl;
         MPI_Finalize();
         exit(0);
@@ -300,6 +322,43 @@ void tseries::writeTSData(const sfield &T) {
         }
     }
 #else
+
+    if (zGravity) {
+        if (bWall) {
+            for (int iX = xLow; iX <= xTop; iX++) {
+                for (int iY = yLow; iY <= yTop; iY++) {
+                    dArea = (mesh.dXi/mesh.xi_x(iX))*(mesh.dEt/mesh.et_y(iY));
+                    dTdn = (1.0 - std::fabs(T.F.F(iX, iY, 0)))/(mesh.dZt/mesh.zt_z(0));
+                }
+            }
+        }
+        if (tWall) {
+            for (int iX = xLow; iX <= xTop; iX++) {
+                for (int iY = yLow; iY <= yTop; iY++) {
+                    dArea = (mesh.dXi/mesh.xi_x(iX))*(mesh.dEt/mesh.et_y(iY));
+                    dTdn = std::fabs(T.F.F(iX, iY, zTop))/(mesh.dZt/mesh.zt_z(zTop));
+                }
+            }
+        }
+    } else {
+        if (bWall) {
+            for (int iY = yLow; iY <= yTop; iY++) {
+                for (int iZ = zLow; iZ <= zTop; iZ++) {
+                    dArea = (mesh.dEt/mesh.et_y(iY))*(mesh.dZt/mesh.zt_z(iZ));
+                    dTdn = (1.0 - std::fabs(T.F.F(0, iY, iZ)))/(mesh.dXi/mesh.xi_x(0));
+                }
+            }
+        }
+        if (tWall) {
+            for (int iY = yLow; iY <= yTop; iY++) {
+                for (int iZ = zLow; iZ <= zTop; iZ++) {
+                    dArea = (mesh.dEt/mesh.et_y(iY))*(mesh.dZt/mesh.zt_z(iZ));
+                    dTdn = std::fabs(T.F.F(xTop, iY, iZ))/(mesh.dXi/mesh.xi_x(0));
+                }
+            }
+        }
+    }
+
     for (int iX = xLow; iX <= xTop; iX++) {
         for (int iY = yLow; iY <= yTop; iY++) {
             for (int iZ = zLow; iZ <= zTop; iZ++) {

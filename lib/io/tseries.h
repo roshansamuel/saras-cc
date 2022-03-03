@@ -60,6 +60,8 @@ class tseries {
 
         tseries(const grid &mesh, vfield &solverV, const real &solverTime, const real &timeStep);
 
+        MPI_Comm bComm, tComm;
+
         void writeTSHeader();
         void writeTSData();
         void writeTSData(const sfield &T);
@@ -69,6 +71,7 @@ class tseries {
     private:
         bool zGravity;
         bool maxSwitch;
+        bool bWall, tWall;
 
         int xLow, xTop;
         int yLow, yTop;
