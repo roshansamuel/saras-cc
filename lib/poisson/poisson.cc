@@ -185,10 +185,13 @@ void poisson::mgSolve(plainsf &outLHS, const plainsf &inpRHS) {
                 std::cout << std::endl << "Residual after V Cycle " << i << " is " << std::scientific << std::setprecision(3) << mgResidual << std::endl;
 
 #ifndef TEST_POISSON
-        if (mgResidual < inputParams.mgTolerance) break;
+        if (mgResidual < inputParams.vcTolerance) break;
 #endif
     }
 
+    // Below operation has been disabled because it is not strictly necessary,
+    // and because the calculation of mean is not accurate.
+    /*
 #ifndef TEST_POISSON
     if (allNeumann) {
         // WHEN USING NEUMANN BC ON ALL SIDES, THERE ARE INFINTELY MANY SOLUTIONS.
@@ -204,6 +207,7 @@ void poisson::mgSolve(plainsf &outLHS, const plainsf &inpRHS) {
         lhs(0) -= globalAvg;
     }
 #endif
+    */
 
     // RETURN CALCULATED PRESSURE DATA
     outLHS.F(stagFull(0)) = lhs(0)(stagFull(0));
@@ -464,27 +468,35 @@ void poisson::copyDerivs() {
     // Sub-array start and end indices (in global indexing) at different levels of multigrid
     int ss, se, ls;
 
+    x.resize(mesh.vcDepth + 1);
     xixx.resize(mesh.vcDepth + 1);
     xix2.resize(mesh.vcDepth + 1);
 #ifndef PLANAR
+    y.resize(mesh.vcDepth + 1);
     etyy.resize(mesh.vcDepth + 1);
     ety2.resize(mesh.vcDepth + 1);
 #endif
+    z.resize(mesh.vcDepth + 1);
     ztzz.resize(mesh.vcDepth + 1);
     ztz2.resize(mesh.vcDepth + 1);
 
     for(int n=0; n<=mesh.vcDepth; ++n) {
         ss = mesh.subarrayStarts(0)/int(pow(2, n)) - 1;
         se = (mesh.subarrayEnds(0) - 1)/int(pow(2, n)) + 1;
-        ls = 15*n + 3;
 
+        ls = 15*n + 1;
+        x(n).resize(stagFull(n).ubound(0) - stagFull(n).lbound(0) + 1);
+        x(n).reindexSelf(stagFull(n).lbound(0));
+        x(n) = 0.0;
+        x(n)(blitz::Range(-1, stagFull(n).ubound(0))) = mesh.globalMetrics(ls)(blitz::Range(ss, se));
+
+        ls = 15*n + 3;
         xixx(n).resize(stagFull(n).ubound(0) - stagFull(n).lbound(0) + 1);
         xixx(n).reindexSelf(stagFull(n).lbound(0));
         xixx(n) = 0.0;
         xixx(n)(blitz::Range(-1, stagFull(n).ubound(0))) = mesh.globalMetrics(ls)(blitz::Range(ss, se));
 
         ls = 15*n + 4;
-
         xix2(n).resize(stagFull(n).ubound(0) - stagFull(n).lbound(0) + 1);
         xix2(n).reindexSelf(stagFull(n).lbound(0));
         xix2(n) = 0.0;
@@ -493,15 +505,20 @@ void poisson::copyDerivs() {
 #ifndef PLANAR
         ss = mesh.subarrayStarts(1)/int(pow(2, n)) - 1;
         se = (mesh.subarrayEnds(1) - 1)/int(pow(2, n)) + 1;
-        ls = 15*n + 8;
 
+        ls = 15*n + 6;
+        y(n).resize(stagFull(n).ubound(1) - stagFull(n).lbound(1) + 1);
+        y(n).reindexSelf(stagFull(n).lbound(1));
+        y(n) = 0.0;
+        y(n)(blitz::Range(-1, stagFull(n).ubound(1))) = mesh.globalMetrics(ls)(blitz::Range(ss, se));
+
+        ls = 15*n + 8;
         etyy(n).resize(stagFull(n).ubound(1) - stagFull(n).lbound(1) + 1);
         etyy(n).reindexSelf(stagFull(n).lbound(1));
         etyy(n) = 0.0;
         etyy(n)(blitz::Range(-1, stagFull(n).ubound(1))) = mesh.globalMetrics(ls)(blitz::Range(ss, se));
 
         ls = 15*n + 9;
-
         ety2(n).resize(stagFull(n).ubound(1) - stagFull(n).lbound(1) + 1);
         ety2(n).reindexSelf(stagFull(n).lbound(1));
         ety2(n) = 0.0;
@@ -510,15 +527,20 @@ void poisson::copyDerivs() {
 
         ss = mesh.subarrayStarts(2)/int(pow(2, n)) - 1;
         se = (mesh.subarrayEnds(2) - 1)/int(pow(2, n)) + 1;
-        ls = 15*n + 13;
 
+        ls = 15*n + 11;
+        z(n).resize(stagFull(n).ubound(2) - stagFull(n).lbound(2) + 1);
+        z(n).reindexSelf(stagFull(n).lbound(2));
+        z(n) = 0.0;
+        z(n)(blitz::Range(-1, stagFull(n).ubound(2))) = mesh.globalMetrics(ls)(blitz::Range(ss, se));
+
+        ls = 15*n + 13;
         ztzz(n).resize(stagFull(n).ubound(2) - stagFull(n).lbound(2) + 1);
         ztzz(n).reindexSelf(stagFull(n).lbound(2));
         ztzz(n) = 0.0;
         ztzz(n)(blitz::Range(-1, stagFull(n).ubound(2))) = mesh.globalMetrics(ls)(blitz::Range(ss, se));
 
         ls = 15*n + 14;
-
         ztz2(n).resize(stagFull(n).ubound(2) - stagFull(n).lbound(2) + 1);
         ztz2(n).reindexSelf(stagFull(n).lbound(2));
         ztz2(n) = 0.0;

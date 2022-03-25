@@ -409,8 +409,7 @@ void multigrid_d3::solve() {
                                 ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, j, k + 1) - 2.0*lhs(vLevel)(i, j, k) + lhs(vLevel)(i, j, k - 1)) +
                                 ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, j, k + 1) - lhs(vLevel)(i, j, k - 1))));
 
-                    if (tempValue > localMax)
-                        localMax = tempValue;
+                    if (tempValue > localMax) localMax = tempValue;
                 }
             }
         }
@@ -436,21 +435,36 @@ void multigrid_d3::solve() {
 void multigrid_d3::coarsen() {
     int pLevel;
     int i2, j2, k2;
+    real v000, v001, v010, v100, v011, v101, v110, v111, vTot;
 
     pLevel = vLevel;
     vLevel += 1;
 
-#pragma omp parallel for num_threads(inputParams.nThreads) default(none) shared(pLevel) private(i2) private(j2) private(k2)
+#pragma omp parallel for num_threads(inputParams.nThreads) default(none) shared(pLevel) private(i2, j2, k2, v000, v001, v010, v100, v011, v101, v110, v111, vTot)
     for (int i = 0; i <= xEnd(vLevel); ++i) {
         i2 = i*2;
         for (int j = 0; j <= yEnd(vLevel); ++j) {
             j2 = j*2;
             for (int k = 0; k <= zEnd(vLevel); ++k) {
                 k2 = k*2;
-                rhs(vLevel)(i, j, k) = (tmp(pLevel)(i2, j2, k2) + tmp(pLevel)(i2 + 1, j2 + 1, k2 + 1) +
-                                        tmp(pLevel)(i2, j2 + 1, k2 + 1) + tmp(pLevel)(i2 + 1, j2, k2) +
-                                        tmp(pLevel)(i2 + 1, j2, k2 + 1) + tmp(pLevel)(i2, j2 + 1, k2) +
-                                        tmp(pLevel)(i2 + 1, j2 + 1, k2) + tmp(pLevel)(i2, j2, k2 + 1))/8;
+                // Volumes of the 8 cubiodal sub-sections into which the coarse grid point divides the fine grid cell.
+                // These values reduce to fractions of powers of 2 for uniform grids.
+                // The total volume of the coarse grid cell is also calculated.
+                v000 = (x(vLevel)(i) - x(pLevel)(i2))*(y(vLevel)(j) - y(pLevel)(j2))*(z(vLevel)(k) - z(pLevel)(k2));
+                v100 = (x(pLevel)(i2 + 1) - x(vLevel)(i))*(y(vLevel)(j) - y(pLevel)(j2))*(z(vLevel)(k) - z(pLevel)(k2));
+                v010 = (x(vLevel)(i) - x(pLevel)(i2))*(y(pLevel)(j2 + 1) - y(vLevel)(j))*(z(vLevel)(k) - z(pLevel)(k2));
+                v001 = (x(vLevel)(i) - x(pLevel)(i2))*(y(vLevel)(j) - y(pLevel)(j2))*(z(pLevel)(k2 + 1) - z(vLevel)(k));
+                v011 = (x(vLevel)(i) - x(pLevel)(i2))*(y(pLevel)(j2 + 1) - y(vLevel)(j))*(z(pLevel)(k2 + 1) - z(vLevel)(k));
+                v101 = (x(pLevel)(i2 + 1) - x(vLevel)(i))*(y(vLevel)(j) - y(pLevel)(j2))*(z(pLevel)(k2 + 1) - z(vLevel)(k));
+                v110 = (x(pLevel)(i2 + 1) - x(vLevel)(i))*(y(pLevel)(j2 + 1) - y(vLevel)(j))*(z(vLevel)(k) - z(pLevel)(k2));
+                v111 = (x(pLevel)(i2 + 1) - x(vLevel)(i))*(y(pLevel)(j2 + 1) - y(vLevel)(j))*(z(pLevel)(k2 + 1) - z(vLevel)(k));
+                vTot = (x(pLevel)(i2 + 1) - x(pLevel)(i2))*(y(pLevel)(j2 + 1) - y(pLevel)(j2))*(z(pLevel)(k2 + 1) - z(pLevel)(k2));
+
+                // Full-weighted restriction for non-uniform grids
+                rhs(vLevel)(i, j, k) = (v111*tmp(pLevel)(i2 + 1, j2 + 1, k2 + 1) + v000*tmp(pLevel)(i2, j2, k2) +
+                                        v110*tmp(pLevel)(i2 + 1, j2 + 1, k2) + v001*tmp(pLevel)(i2, j2, k2 + 1) +
+                                        v101*tmp(pLevel)(i2 + 1, j2, k2 + 1) + v010*tmp(pLevel)(i2, j2 + 1, k2) +
+                                        v011*tmp(pLevel)(i2, j2 + 1, k2 + 1) + v100*tmp(pLevel)(i2 + 1, j2, k2))/vTot;
             }
         }
     }

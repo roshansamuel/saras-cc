@@ -169,6 +169,7 @@ void parser::parseYAML() {
     /********** Multigrid parameters **********/
 
     yamlNode["Multigrid"]["V-Cycle Count"] >> vcCount;
+    yamlNode["Multigrid"]["Residual Tolerance"] >> vcTolerance;
 
     yamlNode["Multigrid"]["Solve Coarsest"] >> solveFlag;
     yamlNode["Multigrid"]["Solve Tolerance"] >> mgTolerance;
@@ -268,6 +269,7 @@ void parser::parseYAML() {
     /********** Multigrid parameters **********/
 
     vcCount = yamlNode["Multigrid"]["V-Cycle Count"].as<int>();
+    vcTolerance = yamlNode["Multigrid"]["Residual Tolerance"].as<real>();
 
     solveFlag = yamlNode["Multigrid"]["Solve Coarsest"].as<bool>();
     mgTolerance = yamlNode["Multigrid"]["Solve Tolerance"].as<real>();

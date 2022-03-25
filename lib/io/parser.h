@@ -107,7 +107,7 @@ class parser {
         real courantNumber;
         real peLimit, upParam;
         real betaX, betaY, betaZ;
-        real cnTolerance, mgTolerance;
+        real cnTolerance, mgTolerance, vcTolerance;
 
         blitz::TinyVector<real, 3> gAxis, rAxis;
         std::vector<blitz::TinyVector<int, 3> > probesList;

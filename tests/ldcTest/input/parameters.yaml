@@ -203,8 +203,10 @@
 
 # Poisson solver parameters
 "Multigrid":
-    # Number of V-Cycles to be performed
+    # Maximum number of V-Cycles to be performed
     "V-Cycle Count": 7
+    # The tolerance for residual for which V-Cycles can be terminated
+    "Residual Tolerance": 1.0e-6
 
     # Set the flag to true if the solver should solve at coarsest level instead of just smoothing
     "Solve Coarsest": false

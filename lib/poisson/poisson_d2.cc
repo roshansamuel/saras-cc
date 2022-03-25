@@ -233,8 +233,7 @@ void multigrid_d2::solve() {
                              ztz2(vLevel)(k) * ihz2(vLevel) * (lhs(vLevel)(i, 0, k + 1) - 2.0*lhs(vLevel)(i, 0, k) + lhs(vLevel)(i, 0, k - 1)) +
                              ztzz(vLevel)(k) * i2hz(vLevel) * (lhs(vLevel)(i, 0, k + 1) - lhs(vLevel)(i, 0, k - 1))));
 
-                if (tempValue > localMax)
-                    localMax = tempValue;
+                if (tempValue > localMax) localMax = tempValue;
             }
         }
 

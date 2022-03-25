@@ -180,7 +180,7 @@ void tseries::writeTSData() {
 
     // CHECK IF DIVERGENCE IS INCREASING OR DECREASING
     divSlope = divVal - oldDiv;
-    if (divVal > 10 and divSlope > 0) {
+    if (divVal > 1e3 and divSlope > 0) {
         if (mesh.pf) std::cout << std::endl << "ERROR: Divergence exceeds permissible limits. ABORTING" << std::endl << std::endl;
         MPI_Finalize();
         exit(0);
@@ -264,7 +264,7 @@ void tseries::writeTSData(const sfield &T) {
 
     // CHECK IF DIVERGENCE IS INCREASING OR DECREASING
     divSlope = divVal - oldDiv;
-    if (divVal > 10 and divSlope > 0) {
+    if (divVal > 1e3 and divSlope > 0) {
         if (mesh.pf) std::cout << std::endl << "ERROR: Divergence exceeds permissible limits. ABORTING" << std::endl << std::endl;
         MPI_Finalize();
         exit(0);

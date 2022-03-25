@@ -171,7 +171,7 @@
     # If above flag is true, then set the value of Courant number below
     "Courant Number": 0.1
     "Time-Step": 0.001
-    "Final Time": 1.0
+    "Final Time": 0.1
 
     # Number of iterations to display output to standard I/O
     "I/O Count": 10
@@ -200,20 +200,22 @@
 
 # Poisson solver parameters
 "Multigrid":
-    # Number of V-Cycles to be performed
+    # Maximum number of V-Cycles to be performed
     "V-Cycle Count": 20
+    # The tolerance for residual for which V-Cycles can be terminated
+    "Residual Tolerance": 1.0e-6
 
     # Set the flag to true if the solver should solve at coarsest level instead of just smoothing
     "Solve Coarsest": true
     # If the above flag is true, set the tolerance for the Red-Black Gauss-Seidel solver
-    "Solve Tolerance": 1.0e-4
+    "Solve Tolerance": 1.0e-2
     # Parameter for Successive Over-Relaxation (SOR) in iterative solver - setting to 1 disables SOR
     "SOR Parameter": 1.2
 
     # Number of smoothing iterations to be performed after restriction operations
     "Pre-Smoothing Count": 3
     # Number of smoothing iterations to be performed after prolongation operations
-    "Post-Smoothing Count": 3
+    "Post-Smoothing Count": 6
 
     # Type of residual to be computed at end of each V-Cycle of the multigrid method
     # This value can be set as below:
