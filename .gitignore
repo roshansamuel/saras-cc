@@ -5,6 +5,7 @@
 *.vtk
 *.lay
 saras
+hostfile
 compile/build/
 tests/build/
 tests/ldcTest/*.png
