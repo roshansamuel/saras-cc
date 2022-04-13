@@ -58,7 +58,12 @@ class tseries {
         /** Total volume of the domain */
         real totalVol;
 
+        /** Cross-section of area perpendicular to direction of gravity - for RBC only */
+        real csArea;
+
         tseries(const grid &mesh, vfield &solverV, const real &solverTime, const real &timeStep);
+
+        MPI_Comm wComm;
 
         void writeTSHeader();
         void writeTSData();
@@ -69,15 +74,14 @@ class tseries {
     private:
         bool zGravity;
         bool maxSwitch;
+        bool bWall, tWall;
 
         int xLow, xTop;
         int yLow, yTop;
         int zLow, zTop;
 
+        real wallDn;
         real divVal, oldDiv;
-        real totalKineticEnergy, localKineticEnergy;
-        real totalThermalEnergy, localThermalEnergy;
-        real totalUzT, localUzT, NusseltNo, ReynoldsNo;
 
         const real &time, &tStp;
 

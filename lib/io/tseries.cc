@@ -76,26 +76,11 @@ tseries::tseries(const grid &mesh, vfield &solverV, const real &solverTime, cons
 #endif
     zLow = core.lbound(2);        zTop = core.ubound(2);
 
-    // TOTAL VOLUME FOR AVERAGING THE RESULT OF VOLUMETRIC INTEGRATION
-    real localVol = 0.0;
-
-    totalVol = 0.0;
 #ifdef PLANAR
-    for (int iX = xLow; iX <= xTop; iX++) {
-        for (int iZ = zLow; iZ <= zTop; iZ++) {
-            localVol += (mesh.dXi/mesh.xi_x(iX))*(mesh.dZt/mesh.zt_z(iZ));
-        }
-    }
+    totalVol = mesh.xLen * mesh.zLen;
 #else
-    for (int iX = xLow; iX <= xTop; iX++) {
-        for (int iY = yLow; iY <= yTop; iY++) {
-            for (int iZ = zLow; iZ <= zTop; iZ++) {
-                localVol += (mesh.dXi/mesh.xi_x(iX))*(mesh.dEt/mesh.et_y(iY))*(mesh.dZt/mesh.zt_z(iZ));
-            }
-        }
-    }
+    totalVol = mesh.xLen * mesh.yLen * mesh.zLen;
 #endif
-    MPI_Allreduce(&localVol, &totalVol, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
 
     // This switch decides if mean or maximum of divergence has to be printed.
     // Ideally maximum has to be tracked, but mean is a less strict metric.
@@ -116,6 +101,49 @@ tseries::tseries(const grid &mesh, vfield &solverV, const real &solverTime, cons
     }
 
     oldDiv = 1.0e10;
+
+    // Flags to discern ranks that contain the bottom and top walls
+    bWall = false;      tWall = false;
+    int rankKey = 0;
+    if (zGravity) {
+#ifdef PLANAR
+        csArea = mesh.xLen;
+#else
+        csArea = mesh.xLen*mesh.yLen;
+#endif
+
+        if (mesh.rankData.zRank == 0) {
+            bWall = true;
+            rankKey = 1;
+            wallDn = mesh.z(0);
+        }
+        if (mesh.rankData.zRank == mesh.rankData.npZ - 1) {
+            tWall = true;
+            rankKey = 1;
+            wallDn = mesh.zLen - mesh.z(zTop);
+        }
+
+        MPI_Comm_split(MPI_COMM_WORLD, rankKey, mesh.rankData.rank, &wComm);
+    } else {
+#ifdef PLANAR
+        csArea = mesh.zLen;
+#else
+        csArea = mesh.yLen*mesh.zLen;
+#endif
+
+        if (mesh.rankData.xRank == 0) {
+            bWall = true;
+            rankKey = 1;
+            wallDn = mesh.x(0);
+        }
+        if (mesh.rankData.xRank == mesh.rankData.npX - 1) {
+            tWall = true;
+            rankKey = 1;
+            wallDn = mesh.xLen - mesh.x(xTop);
+        }
+
+        MPI_Comm_split(MPI_COMM_WORLD, rankKey, mesh.rankData.rank, &wComm);
+    }
 }
 
 
@@ -149,13 +177,13 @@ void tseries::writeTSHeader() {
         } else {
             std::cout << std::setw(9)  << "Time" <<
                          std::setw(20) << "Re (Urms)" <<
-                         std::setw(20) << "Nusselt No" <<
+                         std::setw(20) << "Nu (Wall)" <<
                          std::setw(20) << "Divergence" << std::endl;
 
             if (mesh.inputParams.lesModel) {
-                ofFile << "#VARIABLES = Time, Reynolds No., Nusselt No., Total KE, Total TE, Divergence, Subgrid KE, SG Dissipation, Turb. Viscosity, dt\n";
+                ofFile << "#VARIABLES = Time, Re, Nu (wall), Nu (vol), Total KE, Total TE, Divergence, Subgrid KE, SG Dissipation, Turb. Viscosity, dt\n";
             } else {
-                ofFile << "#VARIABLES = Time, Reynolds No., Nusselt No., Total KE, Total TE, Divergence, dt\n";
+                ofFile << "#VARIABLES = Time, Re, Nu (wall), Nu (vol), Total KE, Total TE, Divergence, dt\n";
             }
         }
     }
@@ -174,6 +202,7 @@ void tseries::writeTSHeader() {
  */
 void tseries::writeTSData() {
     real divSlope;
+    real totalKineticEnergy, localKineticEnergy;
 
     V.divergence(divV);
     divVal = maxSwitch? divV.fxMaxAbs(): divV.fxMean();
@@ -254,9 +283,14 @@ void tseries::writeTSData() {
  ********************************************************************************************************************************************
  */
 void tseries::writeTSData(const sfield &T) {
-    real divSlope;
-    real theta = 0.0;
+    real totalKineticEnergy, localKineticEnergy, ReynoldsNo;
+    real totalThermalEnergy, localThermalEnergy;
+    real totalUzT, localUzT, NuWall, NuVol;
+    real localDt, totalDt, divSlope;
+    real dTdn = 0.0;
     real dVol = 0.0;
+    real theta = 0.0;
+    real dArea = 0.0;
 
     // COMPUTE ENERGY AND DIVERGENCE FOR THE INITIAL CONDITION
     V.divergence(divV);
@@ -277,10 +311,44 @@ void tseries::writeTSData(const sfield &T) {
     localThermalEnergy = 0.0;
     totalThermalEnergy = 0.0;
 
+    localDt = 0.0;
     localUzT = 0.0;
 
 #ifdef PLANAR
     int iY = 0;
+    if (zGravity) {
+        if (bWall) {
+            for (int iX = xLow; iX <= xTop; iX++) {
+                dArea = mesh.dXi/mesh.xi_x(iX);
+                dTdn = (1.0 - std::fabs(T.F.F(iX, iY, 0)))/wallDn;
+                localDt += dTdn*dArea;
+            }
+        }
+
+        if (tWall) {
+            for (int iX = xLow; iX <= xTop; iX++) {
+                dArea = mesh.dXi/mesh.xi_x(iX);
+                dTdn = std::fabs(T.F.F(iX, iY, zTop))/wallDn;
+                localDt += dTdn*dArea;
+            }
+        }
+    } else {
+        if (bWall) {
+            for (int iZ = zLow; iZ <= zTop; iZ++) {
+                dArea = mesh.dZt/mesh.zt_z(iZ);
+                dTdn = (1.0 - std::fabs(T.F.F(0, iY, iZ)))/wallDn;
+                localDt += dTdn*dArea;
+            }
+        }
+        if (tWall) {
+            for (int iZ = zLow; iZ <= zTop; iZ++) {
+                dArea = mesh.dZt/mesh.zt_z(iZ);
+                dTdn = std::fabs(T.F.F(xTop, iY, iZ))/wallDn;
+                localDt += dTdn*dArea;
+            }
+        }
+    }
+
     for (int iX = xLow; iX <= xTop; iX++) {
         for (int iZ = zLow; iZ <= zTop; iZ++) {
             dVol = (mesh.dXi/mesh.xi_x(iX))*(mesh.dZt/mesh.zt_z(iZ));
@@ -300,6 +368,47 @@ void tseries::writeTSData(const sfield &T) {
         }
     }
 #else
+    if (zGravity) {
+        if (bWall) {
+            for (int iX = xLow; iX <= xTop; iX++) {
+                for (int iY = yLow; iY <= yTop; iY++) {
+                    dArea = (mesh.dXi/mesh.xi_x(iX))*(mesh.dEt/mesh.et_y(iY));
+                    dTdn = (1.0 - std::fabs(T.F.F(iX, iY, 0)))/wallDn;
+                    localDt += dTdn*dArea;
+                }
+            }
+        }
+
+        if (tWall) {
+            for (int iX = xLow; iX <= xTop; iX++) {
+                for (int iY = yLow; iY <= yTop; iY++) {
+                    dArea = (mesh.dXi/mesh.xi_x(iX))*(mesh.dEt/mesh.et_y(iY));
+                    dTdn = std::fabs(T.F.F(iX, iY, zTop))/wallDn;
+                    localDt += dTdn*dArea;
+                }
+            }
+        }
+    } else {
+        if (bWall) {
+            for (int iY = yLow; iY <= yTop; iY++) {
+                for (int iZ = zLow; iZ <= zTop; iZ++) {
+                    dArea = (mesh.dEt/mesh.et_y(iY))*(mesh.dZt/mesh.zt_z(iZ));
+                    dTdn = (1.0 - std::fabs(T.F.F(0, iY, iZ)))/wallDn;
+                    localDt += dTdn*dArea;
+                }
+            }
+        }
+        if (tWall) {
+            for (int iY = yLow; iY <= yTop; iY++) {
+                for (int iZ = zLow; iZ <= zTop; iZ++) {
+                    dArea = (mesh.dEt/mesh.et_y(iY))*(mesh.dZt/mesh.zt_z(iZ));
+                    dTdn = std::fabs(T.F.F(xTop, iY, iZ))/wallDn;
+                    localDt += dTdn*dArea;
+                }
+            }
+        }
+    }
+
     for (int iX = xLow; iX <= xTop; iX++) {
         for (int iY = yLow; iY <= yTop; iY++) {
             for (int iZ = zLow; iZ <= zTop; iZ++) {
@@ -325,10 +434,15 @@ void tseries::writeTSData(const sfield &T) {
     MPI_Allreduce(&localKineticEnergy, &totalKineticEnergy, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(&localThermalEnergy, &totalThermalEnergy, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(&localUzT, &totalUzT, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&localDt, &totalDt, 1, MPI_FP_REAL, MPI_SUM, wComm);
+
     totalKineticEnergy /= totalVol;
     totalThermalEnergy /= totalVol;
-    NusseltNo = 1.0 + (totalUzT/totalVol)/tDiff;
+
+    NuVol = 1.0 + (totalUzT/totalVol)/tDiff;
+    NuWall = totalDt/(2.0*csArea);
     ReynoldsNo = sqrt(2.0*totalKineticEnergy)/mDiff;
+
     if (mesh.inputParams.lesModel) {
         subgridEnergy /= totalVol;
         sgDissipation /= totalVol;
@@ -338,13 +452,14 @@ void tseries::writeTSData(const sfield &T) {
     if (mesh.pf) {
         std::cout << std::fixed << std::setprecision(4) << std::setw(9)  << time <<
                                    std::setprecision(8) << std::setw(20) << ReynoldsNo <<
-                                                           std::setw(20) << NusseltNo <<
+                                                           std::setw(20) << NuWall <<
                                                            std::setw(20) << divVal << std::endl;
 
         if (mesh.inputParams.lesModel) {
             ofFile << std::fixed << std::setprecision(4) << std::setw(9)  << time <<
                                     std::setprecision(8) << std::setw(20) << ReynoldsNo <<
-                                                            std::setw(20) << NusseltNo <<
+                                                            std::setw(20) << NuWall <<
+                                                            std::setw(20) << NuVol <<
                                                             std::setw(20) << totalKineticEnergy <<
                                                             std::setw(20) << totalThermalEnergy <<
                                                             std::setw(20) << divVal <<
@@ -355,7 +470,8 @@ void tseries::writeTSData(const sfield &T) {
         } else {
             ofFile << std::fixed << std::setprecision(4) << std::setw(9)  << time <<
                                     std::setprecision(8) << std::setw(20) << ReynoldsNo <<
-                                                            std::setw(20) << NusseltNo <<
+                                                            std::setw(20) << NuWall <<
+                                                            std::setw(20) << NuVol <<
                                                             std::setw(20) << totalKineticEnergy <<
                                                             std::setw(20) << totalThermalEnergy <<
                                                             std::setw(20) << divVal <<
