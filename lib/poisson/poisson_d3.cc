@@ -861,10 +861,10 @@ void multigrid_d3::updateFace(blitz::Array<blitz::Array<real, 3>, 1> &data) {
 
 
 void multigrid_d3::updateFull(blitz::Array<blitz::Array<real, 3>, 1> &data) {
-    recvRequest = MPI_REQUEST_NULL;
-
     // TRANSFER DATA ACROSS FACES FROM NEIGHBOURING CELLS TO IMPOSE SUB-DOMAIN BOUNDARY CONDITIONS
     updateFace(data);
+
+    recvRequest = MPI_REQUEST_NULL;
 
     // TRANSFER DATA ACROSS EDGES FROM NEIGHBOURING CELLS TO IMPOSE SUB-DOMAIN BOUNDARY CONDITIONS
     MPI_Irecv(&(data(vLevel)(recvInd(vLevel, 6))), 1, zEdge(vLevel), mesh.rankData.edgeRanks(0), 1, MPI_COMM_WORLD, &recvRequest(0));

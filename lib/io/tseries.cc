@@ -167,7 +167,7 @@ void tseries::writeTSHeader() {
         if (mesh.inputParams.probType <= 4) {
             std::cout << std::setw(9)  << "Time" <<
                          std::setw(20) << "Total KE" <<
-                         std::setw(20) << "Divergence" << std::endl;
+                         std::setw(20) << "Divergence\n";
 
             if (mesh.inputParams.lesModel) {
                 ofFile << "#VARIABLES = Time, Total KE, U_rms, Divergence, Subgrid KE, SG Dissipation, Turb. Viscosity, dt\n";
@@ -178,7 +178,7 @@ void tseries::writeTSHeader() {
             std::cout << std::setw(9)  << "Time" <<
                          std::setw(20) << "Re (Urms)" <<
                          std::setw(20) << "Nu (Wall)" <<
-                         std::setw(20) << "Divergence" << std::endl;
+                         std::setw(20) << "Divergence" << "\n";
 
             if (mesh.inputParams.lesModel) {
                 ofFile << "#VARIABLES = Time, Re, Nu (wall), Nu (vol), Total KE, Total TE, Divergence, Subgrid KE, SG Dissipation, Turb. Viscosity, dt\n";
@@ -248,7 +248,7 @@ void tseries::writeTSData() {
     if (mesh.pf) {
         std::cout << std::fixed << std::setprecision(4) << std::setw(9)  << time <<
                                    std::setprecision(8) << std::setw(20) << totalKineticEnergy <<
-                                                           std::setw(20) << divVal << std::endl;
+                                                           std::setw(20) << divVal << "\n";
 
         if (mesh.inputParams.lesModel) {
             ofFile << std::fixed << std::setprecision(4) << std::setw(9)  << time <<
@@ -258,13 +258,13 @@ void tseries::writeTSData() {
                                                             std::setw(20) << subgridEnergy <<
                                                             std::setw(20) << sgDissipation <<
                                                             std::setw(20) << nuTurbulent <<
-                                                            std::setw(20) << tStp << std::endl;
+                                                            std::setw(20) << tStp << "\n";
         } else {
             ofFile << std::fixed << std::setprecision(4) << std::setw(9)  << time <<
                                     std::setprecision(8) << std::setw(20) << totalKineticEnergy <<
                                                             std::setw(20) << sqrt(2.0*totalKineticEnergy) <<
                                                             std::setw(20) << divVal <<
-                                                            std::setw(20) << tStp << std::endl;
+                                                            std::setw(20) << tStp << "\n";
         }
     }
 }
@@ -453,7 +453,7 @@ void tseries::writeTSData(const sfield &T) {
         std::cout << std::fixed << std::setprecision(4) << std::setw(9)  << time <<
                                    std::setprecision(8) << std::setw(20) << ReynoldsNo <<
                                                            std::setw(20) << NuWall <<
-                                                           std::setw(20) << divVal << std::endl;
+                                                           std::setw(20) << divVal << "\n";
 
         if (mesh.inputParams.lesModel) {
             ofFile << std::fixed << std::setprecision(4) << std::setw(9)  << time <<
@@ -466,7 +466,7 @@ void tseries::writeTSData(const sfield &T) {
                                                             std::setw(20) << subgridEnergy <<
                                                             std::setw(20) << sgDissipation <<
                                                             std::setw(20) << nuTurbulent <<
-                                                            std::setw(20) << tStp << std::endl;
+                                                            std::setw(20) << tStp << "\n";
         } else {
             ofFile << std::fixed << std::setprecision(4) << std::setw(9)  << time <<
                                     std::setprecision(8) << std::setw(20) << ReynoldsNo <<
@@ -475,7 +475,7 @@ void tseries::writeTSData(const sfield &T) {
                                                             std::setw(20) << totalKineticEnergy <<
                                                             std::setw(20) << totalThermalEnergy <<
                                                             std::setw(20) << divVal <<
-                                                            std::setw(20) << tStp << std::endl;
+                                                            std::setw(20) << tStp << "\n";
         }
     }
 }

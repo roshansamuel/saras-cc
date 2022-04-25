@@ -251,7 +251,7 @@ void writer::writeTarang(real time) {
     for (unsigned int i=0; i < wFields.size(); i++) {
         // Below is a very dirty way to make the file names of hdf5 solution from SARAS to match those of TARANG.
         // Clearly, it is not neat. But then, the output of TARANG itself is not neat. So what is there to say?
-        fieldStr = new char[100];
+        fieldStr = new char[5];
         constFile.str(std::string());
 
         if (!std::strcmp(wFields[i].fieldName.c_str(), "Vx")) constFile << "U.V1";
@@ -337,14 +337,13 @@ void writer::writeSolution(real time) {
 
     std::ostringstream constFile;
 
-    char* fileName;
+    char fileName[25];
 
     // Create a property list for collectively opening a file by all processors
     plist_id = H5Pcreate(H5P_FILE_ACCESS);
     H5Pset_fapl_mpio(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
 
     // Generate the filename corresponding to the solution file
-    fileName = new char[100];
     constFile.str(std::string());
     constFile << "output/Soln_" << std::fixed << std::setfill('0') << std::setw(9) << std::setprecision(4) << time << ".h5";
     strcpy(fileName, constFile.str().c_str());
@@ -414,8 +413,6 @@ void writer::writeSolution(real time) {
     // CLOSE/RELEASE RESOURCES
     H5Pclose(plist_id);
     H5Fclose(fileHandle);
-
-    delete fileName;
 }
 
 /**

@@ -91,9 +91,9 @@ inline void parallel::assignRanks() {
 
 /**
  ********************************************************************************************************************************************
- * \brief   Function to get the ranks of each neighbouring sub-domain which shares a face with the given sub-domain
+ * \brief   Function to get the ranks of each neighbouring sub-domain which shares a face/edge/corner with the given sub-domain
  *
- *          Since the solver uses pencil decomposition, it locates the ranks of a maximum of 4 neighbouring sub-domains.
+ *          Since the solver uses cubic decomposition, it locates the ranks of 6 face neighbours, 12 edge neighbours, and 8 corner neighbours
  ********************************************************************************************************************************************
  */
 void parallel::getNeighbours() {
@@ -139,13 +139,13 @@ void parallel::getNeighbours() {
 
     edgeRanks(6)  = findRank(xRank, yRank + 1, zRank - 1);
     edgeRanks(7)  = findRank(xRank, yRank + 1, zRank + 1);
+#endif
 
     edgeRanks(8)  = findRank(xRank - 1, yRank, zRank - 1);
     edgeRanks(9)  = findRank(xRank + 1, yRank, zRank - 1);
 
     edgeRanks(10) = findRank(xRank - 1, yRank, zRank + 1);
     edgeRanks(11) = findRank(xRank + 1, yRank, zRank + 1);
-#endif
                                                         
     // PROCESS HAS CORNER NEIGHBOURS ONLY IN 3D SIMULATIONS
 #ifndef PLANAR
@@ -160,4 +160,3 @@ void parallel::getNeighbours() {
     cornRanks(7)  = findRank(xRank + 1, yRank + 1, zRank + 1);
 #endif
 }
-

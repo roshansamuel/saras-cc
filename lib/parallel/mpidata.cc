@@ -412,6 +412,7 @@ void mpidata::syncAll() {
 
 
     // PERFORM DATA TRANSFER ACROSS THE EIGHT CORNERS
+#ifndef PLANAR
     for (int i=0; i<8; i++)
         MPI_Irecv(dataField.dataFirst(), 1, crSubs(i), rankData.cornRanks(i), cTags(i), MPI_COMM_WORLD, &recvRequest(i));
 
@@ -419,4 +420,5 @@ void mpidata::syncAll() {
         MPI_Send(dataField.dataFirst(), 1, csSubs(i), rankData.cornRanks(i), i+1, MPI_COMM_WORLD);
 
     MPI_Waitall(8, recvRequest.dataFirst(), recvStatus.dataFirst());
+#endif
 }

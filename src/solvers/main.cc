@@ -47,10 +47,11 @@
 #include "grid.h"
 
 int main() {
+    int mpiThreadProvided;
     struct timeval runStart, runEnd;
 
     // INITIALIZE MPI
-    MPI_Init(NULL, NULL);
+    MPI_Init_thread(NULL, NULL, MPI_THREAD_MULTIPLE, &mpiThreadProvided);
 
     // ALL PROCESSES READ THE INPUT PARAMETERS
     parser inputParams;
@@ -66,12 +67,16 @@ int main() {
     // INITIALIZE GRID DATA
     grid gridData(inputParams, mpi);
 
+    if (mpiThreadProvided < MPI_THREAD_MULTIPLE)
+        if (gridData.pf)
+            std::cout << "\nWARNING: MPI does not provide desired threading level" << std::endl;
+
     gettimeofday(&runStart, NULL);
 
     if (inputParams.probType <= 4) {
         // EXIT IF THE probType PARAMETER IS 0 OR NEGATIVE
         if (inputParams.probType <= 0) {
-            if (mpi.rank == 0) std::cout << std::endl << "Invalid problem type. ABORTING" << std::endl;
+            if (mpi.rank == 0) std::cout << "\nInvalid problem type. ABORTING" << std::endl;
             MPI_Finalize();
             exit(0);
         }

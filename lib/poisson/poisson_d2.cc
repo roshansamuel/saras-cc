@@ -386,25 +386,52 @@ real multigrid_d2::computeError(const int normOrder) {
 
 
 void multigrid_d2::createMGSubArrays() {
-    int count;
+    int count, stride;
 
-    recvStatus.resize(2);
-    recvRequest.resize(2);
+    recvStatus.resize(4);
+    recvRequest.resize(4);
 
     xFace.resize(mesh.vcDepth + 1);
+    zFace.resize(mesh.vcDepth + 1);
 
-    sendInd.resize(mesh.vcDepth + 1, 2);         recvInd.resize(mesh.vcDepth + 1, 2);
+    sendInd.resize(mesh.vcDepth + 1, 8);         recvInd.resize(mesh.vcDepth + 1, 8);
 
     for(int n=0; n<=mesh.vcDepth; ++n) {
-        // MPI DATATYPE FOR TRANSFER ACROSS FACES OF SUB-DOMAINS
-        count = stagFull(n).ubound(2) + 2;
+        int xCount = stagFull(n).ubound(0) + 2;
+        int yCount = stagFull(n).ubound(1) + 2;
+        int zCount = stagFull(n).ubound(2) + 2;
+
+        /*************************** MPI DATATYPES FOR FACE TRANSFER ***************************/
+
+        ////// ALONG X-DIRECTION //////
+        count = zCount;
 
         MPI_Type_contiguous(count, MPI_FP_REAL, &xFace(n));
         MPI_Type_commit(&xFace(n));
 
+        ////// ALONG Z-DIRECTION //////
+        count = xCount*yCount;
+        stride = zCount;
+
+        MPI_Type_vector(count, 1, stride, MPI_FP_REAL, &zFace(n));
+        MPI_Type_commit(&zFace(n));
+
         // SET STARTING INDICES OF MEMORY LOCATIONS FROM WHERE TO READ (SEND) AND WRITE (RECEIVE) DATA
         sendInd(n, 0) = 0, 0, -1;           sendInd(n, 1) = stagCore(n).ubound(0), 0, -1;
+        sendInd(n, 2) = -1, 0, 0;           sendInd(n, 3) = -1, 0, stagCore(n).ubound(2);
+
+        sendInd(n, 4) = 0, 0, 0;
+        sendInd(n, 5) = stagCore(n).ubound(0), 0, 0;
+        sendInd(n, 6) = 0, 0, stagCore(n).ubound(2);
+        sendInd(n, 7) = stagCore(n).ubound(0), 0, stagCore(n).ubound(2);
+
         recvInd(n, 0) = -1, 0, -1;          recvInd(n, 1) = stagCore(n).ubound(0) + 1, 0, -1;
+        recvInd(n, 2) = -1, 0, -1;          recvInd(n, 3) = -1, 0, stagCore(n).ubound(2) + 1;
+
+        recvInd(n, 4) = -1, 0, -1;
+        recvInd(n, 5) = stagCore(n).ubound(0) + 1, 0, -1;
+        recvInd(n, 6) = -1, 0, stagCore(n).ubound(2) + 1;
+        recvInd(n, 7) = stagCore(n).ubound(0) + 1, 0, stagCore(n).ubound(2) + 1;
     }
 }
 
@@ -503,7 +530,7 @@ void multigrid_d2::imposeBC() {
             if (xlr) lhs(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = -lhs(vLevel)(stagCore(vLevel).ubound(0), 0, all);
         }
 #endif
-    } // PERIODIC BOUNDARY CONDITIONS ARE AUTOMATICALLY IMPOSED BY PERIODIC DATA TRANSFER ACROSS PROCESSORS THROUGH updateFull()
+    } // PERIODIC BOUNDARY CONDITIONS ARE AUTOMATICALLY IMPOSED BY PERIODIC DATA TRANSFER ACROSS PROCESSORS THROUGH updateFace()
 
     if (not inputParams.zPer) {
 #ifdef TEST_POISSON
@@ -543,20 +570,46 @@ void multigrid_d2::imposeBC() {
             if (zlr) lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = -lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2));
         }
 #endif
-    } // PERIODIC BOUNDARY CONDITIONS ARE AUTOMATICALLY IMPOSED BY PERIODIC DATA TRANSFER ACROSS PROCESSORS THROUGH updateFull()
+    } // PERIODIC BOUNDARY CONDITIONS ARE AUTOMATICALLY IMPOSED BY PERIODIC DATA TRANSFER ACROSS PROCESSORS THROUGH updateFace()
 }
 
 
-void multigrid_d2::updateFull(blitz::Array<blitz::Array<real, 3>, 1> &data) {
+void multigrid_d2::updateFace(blitz::Array<blitz::Array<real, 3>, 1> &data) {
     recvRequest = MPI_REQUEST_NULL;
 
     // TRANSFER DATA FROM NEIGHBOURING CELL TO IMPOSE SUB-DOMAIN BOUNDARY CONDITIONS
     MPI_Irecv(&(data(vLevel)(recvInd(vLevel, 0))), 1, xFace(vLevel), mesh.rankData.faceRanks(0), 1, MPI_COMM_WORLD, &recvRequest(0));
     MPI_Irecv(&(data(vLevel)(recvInd(vLevel, 1))), 1, xFace(vLevel), mesh.rankData.faceRanks(1), 2, MPI_COMM_WORLD, &recvRequest(1));
+    MPI_Irecv(&(data(vLevel)(recvInd(vLevel, 2))), 1, zFace(vLevel), mesh.rankData.faceRanks(4), 3, MPI_COMM_WORLD, &recvRequest(4));
+    MPI_Irecv(&(data(vLevel)(recvInd(vLevel, 3))), 1, zFace(vLevel), mesh.rankData.faceRanks(5), 4, MPI_COMM_WORLD, &recvRequest(5));
 
     MPI_Send(&(data(vLevel)(sendInd(vLevel, 0))), 1, xFace(vLevel), mesh.rankData.faceRanks(0), 2, MPI_COMM_WORLD);
     MPI_Send(&(data(vLevel)(sendInd(vLevel, 1))), 1, xFace(vLevel), mesh.rankData.faceRanks(1), 1, MPI_COMM_WORLD);
+    MPI_Send(&(data(vLevel)(sendInd(vLevel, 2))), 1, zFace(vLevel), mesh.rankData.faceRanks(4), 4, MPI_COMM_WORLD);
+    MPI_Send(&(data(vLevel)(sendInd(vLevel, 3))), 1, zFace(vLevel), mesh.rankData.faceRanks(5), 3, MPI_COMM_WORLD);
 
-    MPI_Waitall(2, recvRequest.dataFirst(), recvStatus.dataFirst());
+    MPI_Waitall(4, recvRequest.dataFirst(), recvStatus.dataFirst());
+}
+
+
+
+void multigrid_d2::updateFull(blitz::Array<blitz::Array<real, 3>, 1> &data) {
+    // TRANSFER DATA ACROSS FACES FROM NEIGHBOURING CELLS TO IMPOSE SUB-DOMAIN BOUNDARY CONDITIONS
+    updateFace(data);
+
+    recvRequest = MPI_REQUEST_NULL;
+
+    // TRANSFER DATA FROM NEIGHBOURING CELL TO IMPOSE SUB-DOMAIN BOUNDARY CONDITIONS
+    MPI_Irecv(&(data(vLevel)(recvInd(vLevel, 4))), 1, MPI_FP_REAL, mesh.rankData.edgeRanks(8),  1, MPI_COMM_WORLD, &recvRequest(0));
+    MPI_Irecv(&(data(vLevel)(recvInd(vLevel, 5))), 1, MPI_FP_REAL, mesh.rankData.edgeRanks(9),  2, MPI_COMM_WORLD, &recvRequest(1));
+    MPI_Irecv(&(data(vLevel)(recvInd(vLevel, 6))), 1, MPI_FP_REAL, mesh.rankData.edgeRanks(10), 3, MPI_COMM_WORLD, &recvRequest(2));
+    MPI_Irecv(&(data(vLevel)(recvInd(vLevel, 7))), 1, MPI_FP_REAL, mesh.rankData.edgeRanks(11), 4, MPI_COMM_WORLD, &recvRequest(3));
+
+    MPI_Send(&(data(vLevel)(sendInd(vLevel, 4))), 1, MPI_FP_REAL, mesh.rankData.edgeRanks(8),  4, MPI_COMM_WORLD);
+    MPI_Send(&(data(vLevel)(sendInd(vLevel, 5))), 1, MPI_FP_REAL, mesh.rankData.edgeRanks(9),  3, MPI_COMM_WORLD);
+    MPI_Send(&(data(vLevel)(sendInd(vLevel, 6))), 1, MPI_FP_REAL, mesh.rankData.edgeRanks(10), 2, MPI_COMM_WORLD);
+    MPI_Send(&(data(vLevel)(sendInd(vLevel, 7))), 1, MPI_FP_REAL, mesh.rankData.edgeRanks(11), 1, MPI_COMM_WORLD);
+
+    MPI_Waitall(4, recvRequest.dataFirst(), recvStatus.dataFirst());
 }
 
