@@ -247,3 +247,8 @@ void plainsf::operator = (sfield &a) {
 void plainsf::operator = (real a) {
     F = a;
 }
+
+plainsf::~plainsf() {
+    delete derS;
+    delete mpiHandle;
+}

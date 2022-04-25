@@ -246,3 +246,9 @@ void plainvf::operator = (real a) {
     Vy = a;
     Vz = a;
 }
+
+plainvf::~plainvf() {
+    delete mpiVxData;
+    delete mpiVyData;
+    delete mpiVzData;
+}

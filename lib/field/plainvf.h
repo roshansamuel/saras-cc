@@ -161,7 +161,7 @@ class plainvf {
             return globalMax;
         }
 
-        ~plainvf() { };
+        ~plainvf();
 };
 
 /**

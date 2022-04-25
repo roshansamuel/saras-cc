@@ -90,6 +90,8 @@ class spiral: public les {
         void computeSG(plainvf &nseRHS, vfield &V);
         void computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T);
 
+        ~spiral();
+
     private:
         // Kinematic viscosity
         const real &nu;

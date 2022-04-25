@@ -168,7 +168,7 @@ class plainsf {
             return globalSum/gridData.rankData.nProc;
         }
 
-        ~plainsf() { };
+        ~plainsf();
 };
 
 /**

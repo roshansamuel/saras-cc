@@ -740,3 +740,16 @@ blitz::TinyVector<real, 3> spiral::eigenvectorSymm(real eigval) {
 
     return eigvec;
 }
+
+spiral::~spiral() {
+    delete Txx;
+    delete Tyy;
+    delete Tzz;
+    delete Txy;
+    delete Tyz;
+    delete Tzx;
+
+    delete qX;
+    delete qY;
+    delete qZ;
+}

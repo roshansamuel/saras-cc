@@ -93,6 +93,8 @@ class derivative {
         void calcDerivative2xx(blitz::Array<real, 3> outArray);
         void calcDerivative2yy(blitz::Array<real, 3> outArray);
         void calcDerivative2zz(blitz::Array<real, 3> outArray);
+
+        ~derivative() { };
 };
 
 /**

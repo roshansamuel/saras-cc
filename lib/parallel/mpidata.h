@@ -80,6 +80,8 @@ class mpidata {
 
         void syncFaces();
         void syncAll();
+
+        ~mpidata() { };
 };
 
 /**
