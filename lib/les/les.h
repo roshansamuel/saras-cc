@@ -81,11 +81,53 @@ class les {
  ********************************************************************************************************************************************
  */
 
+class wallModel {
+    public:
+        wallModel(const grid &mesh, const int bcWall);
+
+        /** The const integer denotes the wall at which the wall-model is being applied. */
+        const int wallNum;
+
+        blitz::Array<real, 3> eta0, q;
+        blitz::Array<real, 3> Tii, Tjj, Tij;
+        blitz::Array<real, 3> bcU, bcV, bcW;
+        blitz::Array<real, 3> vi, vj, vii, vjj, vij;
+
+        void advanceEta0(vfield &V, sfield &P, real gamma, real zeta);
+
+    private:
+        const grid &mesh;
+
+        /** The flag is true for MPI ranks on which the wall-model has to be applied. */
+        bool rankFlag;
+
+        /** Denotes the dimension normal to the wall at which the wall-model is applied. */
+        int shiftDim;
+
+        /** Direction along which the wall slice will be shifted when applying wall-model. */
+        int shiftVal;
+
+        /** TinyVectors that denote the lower bound, upper bound and size of the virtual wall slice. */
+        blitz::TinyVector<int, 3> dlBnd, duBnd, dSize;
+
+        blitz::Array<real, 3> eta0temp;
+};
+
+/**
+ ********************************************************************************************************************************************
+ *  \class wallModel les.h "lib/les/les.h"
+ *  \brief An additional object that can be used with the spiral LES model when invoking
+ *  the wall-model for WMLES simulations.
+ *
+ ********************************************************************************************************************************************
+ */
+
 class spiral: public les {
     public:
         bool sgfFlag;
 
         spiral(const grid &mesh, const real &kDiff);
+        spiral(const grid &mesh, const real &kDiff, std::vector<wallModel*> &wmList);
 
         void computeSG(plainvf &nseRHS, vfield &V);
         void computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T);
@@ -110,6 +152,9 @@ class spiral: public les {
 
         // Sub-grid energy
         real K;
+
+        // Vector of wall-model objects to be used if wall-model is enabled
+        std::vector<wallModel*> wmList;
 
         // These 9 arrays store components of the velocity gradient tensor intially
         // Then they are reused to store the derivatives of stress tensor to calculate its divergence

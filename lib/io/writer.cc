@@ -90,32 +90,32 @@ void writer::initLimits() {
     sdStart = mesh.subarrayStarts;
 
 #ifdef PLANAR
-    gloSize(1) = 1;
-    locSize(1) = 1;
+    gloSize[1] = 1;
+    locSize[1] = 1;
 #endif
 
     // Create a dataspace representing the full limits of the local array - this is the source dataspace
 #ifdef PLANAR
-    dimsf[0] = locSize(0);
-    dimsf[1] = locSize(2);
+    dimsf[0] = locSize[0];
+    dimsf[1] = locSize[2];
     sourceDSpace = H5Screate_simple(2, dimsf, NULL);
 #else
-    dimsf[0] = locSize(0);
-    dimsf[1] = locSize(1);
-    dimsf[2] = locSize(2);
+    dimsf[0] = locSize[0];
+    dimsf[1] = locSize[1];
+    dimsf[2] = locSize[2];
     sourceDSpace = H5Screate_simple(3, dimsf, NULL);
 #endif
 
     // Modify the view of the *source* dataspace by using a hyperslab - *this view will be used to read from memory*
 #ifdef PLANAR
-    dimsf[0] = locSize(0);
-    dimsf[1] = locSize(2);
+    dimsf[0] = locSize[0];
+    dimsf[1] = locSize[2];
     offset[0] = 0;
     offset[1] = 0;
 #else
-    dimsf[0] = locSize(0);
-    dimsf[1] = locSize(1);
-    dimsf[2] = locSize(2);
+    dimsf[0] = locSize[0];
+    dimsf[1] = locSize[1];
+    dimsf[2] = locSize[2];
     offset[0] = 0;
     offset[1] = 0;
     offset[2] = 0;
@@ -129,26 +129,26 @@ void writer::initLimits() {
 
     // Create a dataspace representing the full limits of the global array - i.e. the dataspace for output file
 #ifdef PLANAR
-    dimsf[0] = gloSize(0);
-    dimsf[1] = gloSize(2);
+    dimsf[0] = gloSize[0];
+    dimsf[1] = gloSize[2];
     targetDSpace = H5Screate_simple(2, dimsf, NULL);
 #else
-    dimsf[0] = gloSize(0);
-    dimsf[1] = gloSize(1);
-    dimsf[2] = gloSize(2);
+    dimsf[0] = gloSize[0];
+    dimsf[1] = gloSize[1];
+    dimsf[2] = gloSize[2];
     targetDSpace = H5Screate_simple(3, dimsf, NULL);
 #endif
 
     // Modify the view of the *target* dataspace by using a hyperslab according to its position in the global file dataspace
 #ifdef PLANAR
-    dimsf[0] = locSize(0);
-    dimsf[1] = locSize(2);
+    dimsf[0] = locSize[0];
+    dimsf[1] = locSize[2];
     offset[0] = sdStart[0];
     offset[1] = sdStart[2];
 #else
-    dimsf[0] = locSize(0);
-    dimsf[1] = locSize(1);
-    dimsf[2] = locSize(2);
+    dimsf[0] = locSize[0];
+    dimsf[1] = locSize[1];
+    dimsf[2] = locSize[2];
     offset[0] = sdStart[0];
     offset[1] = sdStart[1];
     offset[2] = sdStart[2];

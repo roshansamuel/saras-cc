@@ -87,7 +87,23 @@ lsRK3_d3::lsRK3_d3(const grid &mesh, const real &sTime, const real &dt, tseries 
             std::cout << "LES Switch is ON. Using stretched spiral vortex LES Model\n" << std::endl;
         }
 
-        sgsLES = new spiral(mesh, nu);
+        modWalls.resize(6);
+
+        if (mesh.inputParams.wallModel) {
+            if (mesh.pf) {
+                std::cout << "Wall-model enabled along with SSV LES\n" << std::endl;
+            }
+
+            wallModel *sgsBotWall, *sgsTopWall;
+
+            sgsBotWall = new wallModel(mesh, 4);
+            sgsTopWall = new wallModel(mesh, 5);
+
+            modWalls[4] = sgsBotWall;
+            modWalls[5] = sgsTopWall;
+        }
+
+        sgsLES = new spiral(mesh, nu, modWalls);
     }
 }
 
@@ -260,7 +276,19 @@ void lsRK3_d3::timeAdvance(vfield &V, sfield &P, sfield &T) {
             tsWriter.subgridEnergy = sgsLES->totalSGKE;
             tsWriter.sgDissipation = sgsLES->totalDisp;
             tsWriter.nuTurbulent = sgsLES->totalNuSG;
+
+            std::cout << V.Vx.F(5, 5, blitz::Range::all()) << std::endl;
+            //std::cout << V.Vx.F(5, 6, blitz::Range::all()) << std::endl;
+            //std::cout << V.Vx.F(6, 5, blitz::Range::all()) << std::endl;
+            //std::cout << V.Vx.F(6, 6, blitz::Range::all()) << std::endl;
+
+            for (int i=0; i<6; i++)
+                if (modWalls[i])
+                    modWalls[i]->advanceEta0(V, P, gammRK3(rkLev), zetaRK3(rkLev));
         }
+
+        MPI_Finalize();
+        exit(0);
 
         // Add non-linear terms
         nseRHS = nseRHS.multAdd(tempVF, gammRK3(rkLev));

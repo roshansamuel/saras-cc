@@ -116,7 +116,7 @@ endif ()
 # Search for HDF5 package
 find_package(HDF5 REQUIRED)
 if (HDF5_FOUND)
-    message (STATUS "Found HDF5 ${MPI_VERSION}")
+    message (STATUS "Found HDF5 ${HDF5_VERSION}")
 else ()
     message (WARNING "Could not find HDF5")
 endif ()

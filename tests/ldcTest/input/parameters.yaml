@@ -51,6 +51,13 @@
     # 2 = Stretched Spiral Vortex LES (both velocity and scalar fields)
     "LES Model": 0
 
+    # Enable/Disable wall-model for LES - used only if LES is enabled
+    "Wall Model": false
+    # If wall-model is enabled above, set the height of the virtual wall
+    # (where the slip-velocity will be specified) from the no-slip wall,
+    # as a fraction of grid spacing. The default value is 0.18
+    "Virtual-Wall Height": 0.18
+
     # Non-dimensional parameters
     "Reynolds Number": 1000
     "Rossby Number": 12

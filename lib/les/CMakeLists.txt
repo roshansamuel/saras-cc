@@ -43,4 +43,5 @@
 add_library (les
              les.cc
              spiral.cc
+             wallModel.cc
 )

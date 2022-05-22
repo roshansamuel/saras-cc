@@ -90,6 +90,8 @@ void parser::parseYAML() {
     yamlNode["Program"]["RBC Type"] >> rbcType;
 
     yamlNode["Program"]["LES Model"] >> lesModel;
+    yamlNode["Program"]["Wall Model"] >> wallModel;
+    yamlNode["Program"]["Virtual-Wall Height"] >> vwHeight;
 
     yamlNode["Program"]["Reynolds Number"] >> Re;
     yamlNode["Program"]["Rossby Number"] >> Ro;
@@ -194,6 +196,8 @@ void parser::parseYAML() {
     rbcType = yamlNode["Program"]["RBC Type"].as<int>();
 
     lesModel = yamlNode["Program"]["LES Model"].as<int>();
+    wallModel = yamlNode["Program"]["Wall Model"].as<bool>();
+    vwHeight = yamlNode["Program"]["Virtual-Wall Height"].as<real>();
 
     Re = yamlNode["Program"]["Reynolds Number"].as<real>();
     Ro = yamlNode["Program"]["Rossby Number"].as<real>();

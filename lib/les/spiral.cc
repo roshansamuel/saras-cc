@@ -109,8 +109,26 @@ spiral::spiral(const grid &mesh, const real &kDiff): les(mesh), nu(kDiff) {
         // If false, use sub-grid momentum diffusion and Prandtl number to compute sub-grid thermal diffusion.
         sgfFlag = true;
     }
+
+    wmList.resize(6);
 }
 
+
+/**
+ ********************************************************************************************************************************************
+ * \brief   Overloaded constructor of spiral class that accepts a vector of wall-model objects
+ *
+ *          The constructor calls the base constructor, but assigns the vector of pointers to wallModel
+ *          objects based on the addditional input parameter
+ *
+ * \param   mesh is a const reference to the global data contained in the grid class.
+ * \param   kDiff is a const reference to scalar value denoting viscous dissipation
+ * \param   wallList is a reference to vector of pointers to wallModel objects
+ ********************************************************************************************************************************************
+ */
+spiral::spiral(const grid &mesh, const real &kDiff, std::vector<wallModel*> &wallList): spiral(mesh, kDiff) {
+    wmList = wallList;
+}
 
 /**
  ********************************************************************************************************************************************
@@ -268,6 +286,8 @@ void spiral::computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T) {
     real nuTurb, sgDiss;
     real localSGKE, localDisp, localNuSG;
 
+    blitz::Range allRange = blitz::Range::all();
+
     V.syncAll();
 
     // Compute the x, y and z derivatives of the interpolated velocity field and store them into
@@ -389,6 +409,83 @@ void spiral::computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T) {
     Txy->syncFaces();
     Tyz->syncFaces();
     Tzx->syncFaces();
+
+    // Pass the sub-grid stress tensor values near wall to the wall-model objects if wall-model is enabled
+    if (mesh.inputParams.wallModel) {
+        for (int i=0; i<6; i++) {
+            if (wmList[i]) {
+                switch (wmList[i]->wallNum) {
+                    case 0:
+                        wmList[i]->vi(0, allRange, allRange) = V.Vy.F(xS, allRange, allRange);
+                        wmList[i]->vj(0, allRange, allRange) = V.Vz.F(xS, allRange, allRange);
+                        wmList[i]->vii(0, allRange, allRange) = V.Vy.F(xS, allRange, allRange)*V.Vy.F(xS, allRange, allRange);
+                        wmList[i]->vjj(0, allRange, allRange) = V.Vz.F(xS, allRange, allRange)*V.Vz.F(xS, allRange, allRange);
+                        wmList[i]->vij(0, allRange, allRange) = V.Vy.F(xS, allRange, allRange)*V.Vz.F(xS, allRange, allRange);
+
+                        wmList[i]->Tii(0, allRange, allRange) = Tyy->F.F(xS, allRange, allRange);
+                        wmList[i]->Tjj(0, allRange, allRange) = Tzz->F.F(xS, allRange, allRange);
+                        wmList[i]->Tij(0, allRange, allRange) = Tyz->F.F(xS, allRange, allRange);
+                        break;
+                    case 1:
+                        wmList[i]->vi(0, allRange, allRange) = V.Vy.F(xE, allRange, allRange);
+                        wmList[i]->vj(0, allRange, allRange) = V.Vz.F(xE, allRange, allRange);
+                        wmList[i]->vii(0, allRange, allRange) = V.Vy.F(xE, allRange, allRange)*V.Vy.F(xS, allRange, allRange);
+                        wmList[i]->vjj(0, allRange, allRange) = V.Vz.F(xE, allRange, allRange)*V.Vz.F(xS, allRange, allRange);
+                        wmList[i]->vij(0, allRange, allRange) = V.Vy.F(xE, allRange, allRange)*V.Vz.F(xS, allRange, allRange);
+
+                        wmList[i]->Tii(0, allRange, allRange) = Tyy->F.F(xE, allRange, allRange);
+                        wmList[i]->Tjj(0, allRange, allRange) = Tzz->F.F(xE, allRange, allRange);
+                        wmList[i]->Tij(0, allRange, allRange) = Tyz->F.F(xE, allRange, allRange);
+                        break;
+                    case 2:
+                        wmList[i]->vi(allRange, 0, allRange) = V.Vx.F(allRange, yS, allRange);
+                        wmList[i]->vj(allRange, 0, allRange) = V.Vz.F(allRange, yS, allRange);
+                        wmList[i]->vii(allRange, 0, allRange) = V.Vx.F(allRange, yS, allRange)*V.Vx.F(allRange, yS, allRange);
+                        wmList[i]->vjj(allRange, 0, allRange) = V.Vz.F(allRange, yS, allRange)*V.Vz.F(allRange, yS, allRange);
+                        wmList[i]->vij(allRange, 0, allRange) = V.Vx.F(allRange, yS, allRange)*V.Vz.F(allRange, yS, allRange);
+
+                        wmList[i]->Tii(allRange, 0, allRange) = Txx->F.F(allRange, yS, allRange);
+                        wmList[i]->Tjj(allRange, 0, allRange) = Tzz->F.F(allRange, yS, allRange);
+                        wmList[i]->Tij(allRange, 0, allRange) = Tzx->F.F(allRange, yS, allRange);
+                        break;
+                    case 3:
+                        wmList[i]->vi(allRange, 0, allRange) = V.Vx.F(allRange, yE, allRange);
+                        wmList[i]->vj(allRange, 0, allRange) = V.Vz.F(allRange, yE, allRange);
+                        wmList[i]->vii(allRange, 0, allRange) = V.Vx.F(allRange, yE, allRange)*V.Vx.F(allRange, yE, allRange);
+                        wmList[i]->vjj(allRange, 0, allRange) = V.Vz.F(allRange, yE, allRange)*V.Vz.F(allRange, yE, allRange);
+                        wmList[i]->vij(allRange, 0, allRange) = V.Vx.F(allRange, yE, allRange)*V.Vz.F(allRange, yE, allRange);
+
+                        wmList[i]->Tii(allRange, 0, allRange) = Txx->F.F(allRange, yE, allRange);
+                        wmList[i]->Tjj(allRange, 0, allRange) = Tzz->F.F(allRange, yE, allRange);
+                        wmList[i]->Tij(allRange, 0, allRange) = Tzx->F.F(allRange, yE, allRange);
+                        break;
+                    case 4:
+                        wmList[i]->vi(allRange, allRange, 0) = V.Vx.F(allRange, allRange, zS);
+                        wmList[i]->vj(allRange, allRange, 0) = V.Vy.F(allRange, allRange, zS);
+                        wmList[i]->vii(allRange, allRange, 0) = V.Vx.F(allRange, allRange, zS)*V.Vx.F(allRange, allRange, zS);
+                        wmList[i]->vjj(allRange, allRange, 0) = V.Vy.F(allRange, allRange, zS)*V.Vy.F(allRange, allRange, zS);
+                        wmList[i]->vij(allRange, allRange, 0) = V.Vx.F(allRange, allRange, zS)*V.Vy.F(allRange, allRange, zS);
+
+                        wmList[i]->Tii(allRange, allRange, 0) = Txx->F.F(allRange, allRange, zS);
+                        wmList[i]->Tjj(allRange, allRange, 0) = Tyy->F.F(allRange, allRange, zS);
+                        wmList[i]->Tij(allRange, allRange, 0) = Txy->F.F(allRange, allRange, zS);
+                        break;
+                    case 5:
+                        wmList[i]->vi(allRange, allRange, 0) = V.Vx.F(allRange, allRange, zE);
+                        wmList[i]->vj(allRange, allRange, 0) = V.Vy.F(allRange, allRange, zE);
+                        wmList[i]->vii(allRange, allRange, 0) = V.Vx.F(allRange, allRange, zE)*V.Vx.F(allRange, allRange, zE);
+                        wmList[i]->vjj(allRange, allRange, 0) = V.Vy.F(allRange, allRange, zE)*V.Vy.F(allRange, allRange, zE);
+                        wmList[i]->vij(allRange, allRange, 0) = V.Vx.F(allRange, allRange, zE)*V.Vy.F(allRange, allRange, zE);
+                        std::cout << wmList[i]->vi(5, 5, 0) << zE << std::endl;
+
+                        wmList[i]->Tii(allRange, allRange, 0) = Txx->F.F(allRange, allRange, zE);
+                        wmList[i]->Tjj(allRange, allRange, 0) = Tyy->F.F(allRange, allRange, zE);
+                        wmList[i]->Tij(allRange, allRange, 0) = Txy->F.F(allRange, allRange, zE);
+                        break;
+                }
+            }
+        }
+    }
 
     // Compute the components of the divergence of sub-grid stress tensor field
     Txx->derS.calcDerivative1_x(A11);

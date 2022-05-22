@@ -36,7 +36,7 @@
     # If domain is periodic along X and Y, but non-periodic along Z, Domain Type = PPN
     # If periodic along all directions, Domain Type = PPP, and so on
     # For 2D runs, only X and Z direction values are considered
-    "Domain Type": "NNN"
+    "Domain Type": "PPN"
 
     # For RBC, specify the non-dimensionalization to be used:
     # 1 = small U, large Pr
@@ -49,13 +49,20 @@
     # 0 = Disable LES
     # 1 = Stretched Spiral Vortex LES (velocity field only)
     # 2 = Stretched Spiral Vortex LES (both velocity and scalar fields)
-    "LES Model": 0
+    "LES Model": 2
+
+    # Enable/Disable wall-model for LES - used only if LES is enabled
+    "Wall Model": true
+    # If wall-model is enabled above, set the height of the virtual wall
+    # (where the slip-velocity will be specified) from the no-slip wall,
+    # as a fraction of grid spacing. The default value is 0.18
+    "Virtual-Wall Height": 0.18
 
     # Non-dimensional parameters
-    "Reynolds Number": 1000
+    "Reynolds Number": 2000
     "Rossby Number": 12
-    "Rayleigh Number": 1.0e5
-    "Prandtl Number": 0.786
+    "Rayleigh Number": 1.0e7
+    "Prandtl Number": 1.0
     "Taylor Number": 0.0
 
     # Dimensions of the domain
@@ -101,13 +108,13 @@
     # D - Double sided tangent-hyperbolic stretching (finest near both edges and coarsest at the center)
     # Specify the required spacing along X, Y and Z directions by using appropriate letters from above
     # Eg. Uniform spacing in X-direction, double sided tan-hyp stretching along Y and single sided tan-hyp along Z would be "UDS"
-    "Mesh Type": "DDD"
+    "Mesh Type": "UUU"
 
     # Stretching factor to be used for tangent-hyperbolic grids.
     # This option is considered only when tangent-hyperbolic stretching is specified in the Mesh Type
-    "X Beta": 1.3
-    "Y Beta": 1.3
-    "Z Beta": 1.3
+    "X Beta": 1.2
+    "Y Beta": 1.2
+    "Z Beta": 1.2
 
     # Choose the grid sizes (number of cells)
     # 1. The size specified along any given direction must be
@@ -116,17 +123,17 @@
     # a size that is divisible by a power of 2 (at least 4),
     # so that the multi-grid solver can coarsen the grid effectively.
     # 3. For 2D simulations, the value for Y Size must be 1
-    "X Size": 64
-    "Y Size": 64
-    "Z Size": 64
+    "X Size": 32
+    "Y Size": 32
+    "Z Size": 32
 
 
 # Parellelization parameters
 "Parallel":
     "Number of OMP threads": 1
-    "X Number of Procs": 2
-    "Y Number of Procs": 2
-    "Z Number of Procs": 2
+    "X Number of Procs": 1
+    "Y Number of Procs": 1
+    "Z Number of Procs": 1
 
 
 # Solver parameters
@@ -143,7 +150,7 @@
     # Option 1 will use the same order as specified in "Differentiation Scheme"
     # Option 2 will use upwinding of half the order (first or second) specified above.
     # Option 3 will ignore "Differentiation Scheme" for non-linear term alone.
-    "Non-Linear Term": 1
+    "Non-Linear Term": 3
 
     # If upwinding is enabled above, the limiting Peclet number can be adjusted.
     "Peclet Limit": 2.0
@@ -164,17 +171,17 @@
 
     # Set below flag to true if restarting from a solution file
     # If flag is true, solver will read the last written restart file in output directory for restart
-    "Restart Run": false
+    "Restart Run": true
 
     # Set below flag to true for adaptive time-stepping based on Courant number
     "Use CFL Condition": false
     # If above flag is true, then set the value of Courant number below
     "Courant Number": 0.1
     "Time-Step": 0.001
-    "Final Time": 0.1
+    "Final Time": 948.01
 
     # Number of iterations to display output to standard I/O
-    "I/O Count": 10
+    "I/O Count": 1
 
     # Select the format in which solution data must be written at each solution write interval
     # 1 = Write a single HDF5 file inside ./output/, containing all the variables - Vx, Vy, P, etc.
@@ -201,21 +208,21 @@
 # Poisson solver parameters
 "Multigrid":
     # Maximum number of V-Cycles to be performed
-    "V-Cycle Count": 20
+    "V-Cycle Count": 25
     # The tolerance for residual for which V-Cycles can be terminated
     "Residual Tolerance": 1.0e-6
 
     # Set the flag to true if the solver should solve at coarsest level instead of just smoothing
     "Solve Coarsest": true
     # If the above flag is true, set the tolerance for the Red-Black Gauss-Seidel solver
-    "Solve Tolerance": 1.0e-2
+    "Solve Tolerance": 1.0e-4
     # Parameter for Successive Over-Relaxation (SOR) in iterative solver - setting to 1 disables SOR
     "SOR Parameter": 1.2
 
     # Number of smoothing iterations to be performed after restriction operations
-    "Pre-Smoothing Count": 3
+    "Pre-Smoothing Count": 4
     # Number of smoothing iterations to be performed after prolongation operations
-    "Post-Smoothing Count": 6
+    "Post-Smoothing Count": 4
 
     # Type of residual to be computed at end of each V-Cycle of the multigrid method
     # This value can be set as below:

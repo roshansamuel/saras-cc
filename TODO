@@ -1,7 +1,5 @@
 Measure the memory footprints of all the arrays
-The computation of non-linear terms may require some extra interpolation weights when performed on non-uniform grid. This must be rigorously checked.
-In the iterative solvers for U, V, W and T, it might be better (and faster) to compare with previous solution rather than RHS for convergence.
 The Doxygen documentation in many of the older libraries (esp field) is very outdated and mentions the use of pointers where references are being used now. The docs must be updated.
-Parallelize spiral LES code
-Update checkLDC.py script so that data is interpolated properly before plotting
-Check if periodic BC along Y is working for slab decomposition.
+Parallelize spiral LES code with OpenMP
+Replace blitz::Array with standard arrays or vectors in mpidata.cc
+Even more importantly, use separate sets of derived data-types and array limits for 2D and 3D cases in mpidata.cc - assuming that the datatypes created for 3D will work fine in 2D is very risky.

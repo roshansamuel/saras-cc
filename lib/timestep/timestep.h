@@ -216,6 +216,7 @@ class lsRK3_d3: public timestep {
         multigrid_d3 mgSolver;
 
         les *sgsLES;
+        std::vector<wallModel*> modWalls;
 
         void solveVx(vfield &V, plainvf &nseRHS, real beta);
         void solveVy(vfield &V, plainvf &nseRHS, real beta);

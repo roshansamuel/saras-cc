@@ -56,8 +56,9 @@
  */
 boundary::boundary(const grid &mesh, field &inField, const int bcWall):
                           mesh(mesh), dField(inField), wallNum(bcWall) {
+    blitz::RectDomain<3> tempSlice;
+
     // By default, rankFlag is true. i.e., the BC will be applied on all sub-domains.
-    // This works only for Z-direction (in pencil decomposition), or both Z and Y directions (in slab decomposition).
     // This has to be changed appropriately.
     rankFlag = true;
 
@@ -94,7 +95,10 @@ boundary::boundary(const grid &mesh, field &inField, const int bcWall):
 
     // Set the wall and data slices of the domain
     wallSlice = dField.fWalls(wallNum);
-    dataSlice = mesh.shift(shiftDim, dField.fWalls(wallNum), shiftVal);
+
+    // Using a copy of slice to set dataSlice. This may not be necessary and can be removed.
+    tempSlice = dField.fWalls(wallNum);
+    dataSlice = mesh.shift(shiftDim, tempSlice, shiftVal);
 }
 
 /**
