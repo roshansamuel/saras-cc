@@ -351,6 +351,9 @@ void spiral::computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T) {
                        A21(iX, iY, iZ), A22(iX, iY, iZ), A23(iX, iY, iZ),
                        A31(iX, iY, iZ), A32(iX, iY, iZ), A33(iX, iY, iZ);
 
+                // If wall model is enabled, add an if condition and change the value of e here
+                // An additional flag may be necessary to over-rule the model calculation of e
+
                 // Now the sub-grid stress can be calculated
                 sgsStress(&sTxx, &sTyy, &sTzz, &sTxy, &sTyz, &sTzx);
 
@@ -476,7 +479,6 @@ void spiral::computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T) {
                         wmList[i]->vii(allRange, allRange, 0) = V.Vx.F(allRange, allRange, zE)*V.Vx.F(allRange, allRange, zE);
                         wmList[i]->vjj(allRange, allRange, 0) = V.Vy.F(allRange, allRange, zE)*V.Vy.F(allRange, allRange, zE);
                         wmList[i]->vij(allRange, allRange, 0) = V.Vx.F(allRange, allRange, zE)*V.Vy.F(allRange, allRange, zE);
-                        std::cout << wmList[i]->vi(5, 5, 0) << zE << std::endl;
 
                         wmList[i]->Tii(allRange, allRange, 0) = Txx->F.F(allRange, allRange, zE);
                         wmList[i]->Tjj(allRange, allRange, 0) = Tyy->F.F(allRange, allRange, zE);

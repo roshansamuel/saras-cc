@@ -96,8 +96,8 @@ lsRK3_d3::lsRK3_d3(const grid &mesh, const real &sTime, const real &dt, tseries 
 
             wallModel *sgsBotWall, *sgsTopWall;
 
-            sgsBotWall = new wallModel(mesh, 4);
-            sgsTopWall = new wallModel(mesh, 5);
+            sgsBotWall = new wallModel(mesh, 4, nu);
+            sgsTopWall = new wallModel(mesh, 5, nu);
 
             modWalls[4] = sgsBotWall;
             modWalls[5] = sgsTopWall;
@@ -277,7 +277,7 @@ void lsRK3_d3::timeAdvance(vfield &V, sfield &P, sfield &T) {
             tsWriter.sgDissipation = sgsLES->totalDisp;
             tsWriter.nuTurbulent = sgsLES->totalNuSG;
 
-            std::cout << V.Vx.F(5, 5, blitz::Range::all()) << std::endl;
+            //std::cout << V.Vx.F(5, 5, blitz::Range::all()) << std::endl;
             //std::cout << V.Vx.F(5, 6, blitz::Range::all()) << std::endl;
             //std::cout << V.Vx.F(6, 5, blitz::Range::all()) << std::endl;
             //std::cout << V.Vx.F(6, 6, blitz::Range::all()) << std::endl;

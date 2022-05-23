@@ -83,10 +83,13 @@ class les {
 
 class wallModel {
     public:
-        wallModel(const grid &mesh, const int bcWall);
+        wallModel(const grid &mesh, const int bcWall, const real &kDiff);
 
         /** The const integer denotes the wall at which the wall-model is being applied. */
         const int wallNum;
+
+        /** Distance of actual no-slip wall from the virtual wall and distance of first mesh point */
+        real h0, bc_h;
 
         blitz::Array<real, 3> eta0, q;
         blitz::Array<real, 3> Tii, Tjj, Tij;
@@ -101,6 +104,12 @@ class wallModel {
         /** The flag is true for MPI ranks on which the wall-model has to be applied. */
         bool rankFlag;
 
+        // Kinematic viscosity
+        const real &nu;
+
+        /** Emprical constant denoting denoting non-dimensional thickness of viscous layer. */
+        real h_nu_plus;
+
         /** Denotes the dimension normal to the wall at which the wall-model is applied. */
         int shiftDim;
 
@@ -111,6 +120,8 @@ class wallModel {
         blitz::TinyVector<int, 3> dlBnd, duBnd, dSize;
 
         blitz::Array<real, 3> eta0temp;
+
+        inline real uTau2u(real uTau, real dynKarm);
 };
 
 /**
