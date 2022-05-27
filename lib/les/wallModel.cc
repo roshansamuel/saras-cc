@@ -59,10 +59,11 @@
  */
 wallModel::wallModel(const grid &mesh, const int bcWall, const real &kDiff): wallNum(bcWall), mesh(mesh), nu(kDiff) {
     real nwSpacing = 0;
+    blitz::TinyVector<int, 3> flBnd, fuBnd, fSize;
 
-    dSize = mesh.fullDomain.ubound() - mesh.fullDomain.lbound() + 1;
-    dlBnd = mesh.fullDomain.lbound();
-    duBnd = mesh.fullDomain.ubound();
+    fSize = mesh.fullDomain.ubound() - mesh.fullDomain.lbound() + 1;
+    flBnd = mesh.fullDomain.lbound();
+    fuBnd = mesh.fullDomain.ubound();
 
     // By default, rankFlag is true. i.e., the BC will be applied on all sub-domains.
     // This has to be changed appropriately.
@@ -72,40 +73,46 @@ wallModel::wallModel(const grid &mesh, const int bcWall, const real &kDiff): wal
     // This has to be changed appropriately for the wall on the other side.
     shiftVal = 1;
 
-    // Update rankFlag for the left wall (along X)
+    // Update variables for the left wall (along X)
     if (wallNum == 0) {
         rankFlag = mesh.rankData.xRank == 0;
         nwSpacing = mesh.xGlobal(0);
+        wInd = mesh.coreDomain.lbound(0);
     }
-    // Update rankFlag and shiftVal for the right wall (along X)
+    // Update variables for the right wall (along X)
     if (wallNum == 1) {
         rankFlag = mesh.rankData.xRank == mesh.rankData.npX - 1;
         nwSpacing = mesh.xLen - mesh.xGlobal(mesh.globalSize(0) - 1);
         shiftVal = -1;
+        wInd = mesh.coreDomain.ubound(0);
     }
 
-    // Update rankFlag for the front wall (along Y)
+    // Update variables for the front wall (along Y)
     if (wallNum == 2) {
         rankFlag = mesh.rankData.yRank == 0;
         nwSpacing = mesh.yGlobal(0);
+        wInd = mesh.coreDomain.lbound(1);
     }
-    // Update rankFlag and shiftVal for the back wall (along Y)
+    // Update variables for the back wall (along Y)
     if (wallNum == 3) {
         rankFlag = mesh.rankData.yRank == mesh.rankData.npY - 1;
         nwSpacing = mesh.yLen - mesh.yGlobal(mesh.globalSize(1) - 1);
         shiftVal = -1;
+        wInd = mesh.coreDomain.ubound(1);
     }
 
-    // Update rankFlag for the bottom wall (along Z)
+    // Update variables for the bottom wall (along Z)
     if (wallNum == 4) {
         rankFlag = mesh.rankData.zRank == 0;
         nwSpacing = mesh.zGlobal(0);
+        wInd = mesh.coreDomain.lbound(2);
     }
-    // Update rankFlag and shiftVal for the top wall (along Z)
+    // Update variables for the top wall (along Z)
     if (wallNum == 5) {
         rankFlag = mesh.rankData.zRank == mesh.rankData.npZ - 1;
         nwSpacing = mesh.zLen - mesh.zGlobal(mesh.globalSize(2) - 1);
         shiftVal = -1;
+        wInd = mesh.coreDomain.ubound(2);
     }
 
     // Calculate height of virtual wall from physical no-slip wall
@@ -125,24 +132,28 @@ wallModel::wallModel(const grid &mesh, const int bcWall, const real &kDiff): wal
     // Set size and lbounds of the wall slice according to the value of shiftDim
     switch (shiftDim) {
         case 0:
-            dSize(0) = 1;
-            dlBnd(0) = duBnd(0) = (shiftVal > 0)? 0: mesh.coreDomain.ubound(0);
+            dSize(0) = fSize(1);        dSize(1) = fSize(2);
+            dlBnd(0) = flBnd(1);        dlBnd(1) = flBnd(2);
+            duBnd(0) = fuBnd(1);        duBnd(1) = fuBnd(2);
 
             break;
         case 1:
-            dSize(1) = 1;
-            dlBnd(1) = duBnd(1) = (shiftVal > 0)? 0: mesh.coreDomain.ubound(1);
+            dSize(0) = fSize(0);        dSize(1) = fSize(2);
+            dlBnd(0) = flBnd(0);        dlBnd(1) = flBnd(2);
+            duBnd(0) = fuBnd(0);        duBnd(1) = fuBnd(2);
 
             break;
         case 2:
-            dSize(2) = 1;
-            dlBnd(2) = duBnd(2) = (shiftVal > 0)? 0: mesh.coreDomain.ubound(2);
+            dSize(0) = fSize(0);        dSize(1) = fSize(1);
+            dlBnd(0) = flBnd(0);        dlBnd(1) = flBnd(1);
+            duBnd(0) = fuBnd(0);        duBnd(1) = fuBnd(1);
 
             break;
     }
 
     // Resize all arrays using the size and lbounds of wall slice
     q.resize(dSize);            q.reindexSelf(dlBnd);
+    K0.resize(dSize);           K0.reindexSelf(dlBnd);
     eta0.resize(dSize);         eta0.reindexSelf(dlBnd);
 
     Tii.resize(dSize);          Tii.reindexSelf(dlBnd);
@@ -187,25 +198,67 @@ void wallModel::advanceEta0(vfield &V, sfield &P, real gamma, real zeta) {
     // Following indexing is applicable only for top and bottom walls (walls perpendicular to z direction)
     for (int i=dlBnd(0); i<=duBnd(0); i++) {
         for (int j=dlBnd(1); j<=duBnd(1); j++) {
+            real dp_di, dp_dj;
+            real nlTerm, prTerm;
+            real dvii_di, dvij_di, dvij_dj, dvjj_dj;
+
+            q(i, j) = sqrt(pow(vi(i, j), 2) + pow(vj(i, j), 2));
+
+            dvii_di = mesh.xi_x(i)*(vii(i+1, j) - vii(i-1, j) + Tii(i+1, j) - Tii(i-1, j))/(2*hi);
+            dvij_di = mesh.xi_x(i)*(vij(i+1, j) - vij(i-1, j) + Tij(i+1, j) - Tij(i-1, j))/(2*hi);
+            dvij_dj = mesh.et_y(j)*(vij(i, j+1) - vij(i, j-1) + Tij(i, j+1) - Tij(i, j-1))/(2*hj);
+            dvjj_dj = mesh.et_y(j)*(vjj(i, j+1) - vjj(i, j-1) + Tjj(i, j+1) - Tjj(i, j-1))/(2*hj);
+
+            nlTerm = vi(i, j)*dvii_di + vi(i, j)*dvij_dj + vj(i, j)*dvij_di + vj(i, j)*dvjj_dj;
+
+            dp_di = mesh.xi_x(i)*(P.F.F(i+1, j, wInd) - P.F.F(i-1, j, wInd))/(2*hi);
+            dp_dj = mesh.et_y(j)*(P.F.F(i, j+1, wInd) - P.F.F(i, j-1, wInd))/(2*hj);
+
+            prTerm = vi(i, j)*dp_di + vj(i, j)*dp_dj;
+        }
+    }
+}
+
+
+/**
+ ********************************************************************************************************************************************
+ * \brief   Function to calculate the Karman constant-like parameter
+ *
+ *          This function is called called by the SSV LES module at the boundaries
+ *
+ * \param   K is the subgrid energy in near wall cell
+ * \param   Tik is one component of stress tensor in wall normal direction
+ * \param   Tjk is second component of stress tensor in wall normal direction
+ ********************************************************************************************************************************************
+ */
+real wallModel::updateK0(real K, real Tik, real Tjk) {
+    return 0.45*sqrt(K)/(2*sqrt(sqrt(pow(Tik, 2) + pow(Tjk, 2))));
+}
+
+
+/**
+ ********************************************************************************************************************************************
+ * \brief   Function to compute slip velocity at wall from eta0
+ *
+ *          This function is called for each point on the modelled wall
+ *
+ * \param   uTau is the friction velocity computed from eta0
+ * \param   dynKarm is the dynamically computed Karman constant-like parameter
+ ********************************************************************************************************************************************
+ */
+void wallModel::computeBCVel() {
+    real uMag, uTau;
+
+    for (int i=dlBnd(0); i<=duBnd(0); i++) {
+        for (int j=dlBnd(1); j<=duBnd(1); j++) {
             for (int k=dlBnd(2); k<=duBnd(2); k++) {
-                real dp_di, dp_dj;
-                real nlTerm, prTerm;
-                real dvii_di, dvij_di, dvij_dj, dvjj_dj;
+                uTau = sqrt(nu*fabs(eta0(i, j, 0)));
+                uMag = uTau2u(uTau, K0(i, j, 0));
 
-                //if (i==5 and j==5) std::cout << dlBnd << V.Vx.F(i, j, k) << "\t" << Tii(i, j, 0) << "\t" << vi(i, j, 0) << "\t" << i << j << k<< std::endl;
-                q(i, j, 0) = sqrt(pow(vi(i, j, 0), 2) + pow(vj(i, j, 0), 2));
-
-                dvii_di = mesh.xi_x(i)*(vii(i+1, j, 0) - vii(i-1, j, 0) + Tii(i+1, j, 0) - Tii(i-1, j, 0))/(2*hi);
-                dvij_di = mesh.xi_x(i)*(vij(i+1, j, 0) - vij(i-1, j, 0) + Tij(i+1, j, 0) - Tij(i-1, j, 0))/(2*hi);
-                dvij_dj = mesh.et_y(j)*(vij(i, j+1, 0) - vij(i, j-1, 0) + Tij(i, j+1, 0) - Tij(i, j-1, 0))/(2*hj);
-                dvjj_dj = mesh.et_y(j)*(vjj(i, j+1, 0) - vjj(i, j-1, 0) + Tjj(i, j+1, 0) - Tjj(i, j-1, 0))/(2*hj);
-
-                nlTerm = vi(i, j, 0)*dvii_di + vi(i, j, 0)*dvij_dj + vj(i, j, 0)*dvij_di + vj(i, j, 0)*dvjj_dj;
-
-                dp_di = mesh.xi_x(i)*(P.F.F(i+1, j, k) - P.F.F(i-1, j, k))/(2*hi);
-                dp_dj = mesh.et_y(j)*(P.F.F(i, j+1, k) - P.F.F(i, j-1, k))/(2*hj);
-
-                prTerm = vi(i, j, 0)*dp_di + vj(i, j, 0)*dp_dj;
+                // Compute these values from uMag at wall
+                bcU(i, j, 0) = uMag;
+                bcV(i, j, 0) = 0.0;
+                bcW(i, j, 0) = 0.0;
             }
         }
     }

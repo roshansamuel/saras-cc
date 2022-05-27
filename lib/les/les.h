@@ -85,24 +85,28 @@ class wallModel {
     public:
         wallModel(const grid &mesh, const int bcWall, const real &kDiff);
 
+        /** The flag is true for MPI ranks on which the wall-model has to be applied. */
+        bool rankFlag;
+
         /** The const integer denotes the wall at which the wall-model is being applied. */
         const int wallNum;
+
+        /** The index of the near wall data point which is read to compute the slip velocity. */
+        int wInd;
 
         /** Distance of actual no-slip wall from the virtual wall and distance of first mesh point */
         real h0, bc_h;
 
-        blitz::Array<real, 3> eta0, q;
-        blitz::Array<real, 3> Tii, Tjj, Tij;
-        blitz::Array<real, 3> bcU, bcV, bcW;
-        blitz::Array<real, 3> vi, vj, vii, vjj, vij;
+        blitz::Array<real, 2> eta0, K0, q;
+        blitz::Array<real, 2> Tii, Tjj, Tij;
+        blitz::Array<real, 2> bcU, bcV, bcW;
+        blitz::Array<real, 2> vi, vj, vii, vjj, vij;
 
+        real updateK0(real K, real Tik, real Tjk);
         void advanceEta0(vfield &V, sfield &P, real gamma, real zeta);
 
     private:
         const grid &mesh;
-
-        /** The flag is true for MPI ranks on which the wall-model has to be applied. */
-        bool rankFlag;
 
         // Kinematic viscosity
         const real &nu;
@@ -117,9 +121,11 @@ class wallModel {
         int shiftVal;
 
         /** TinyVectors that denote the lower bound, upper bound and size of the virtual wall slice. */
-        blitz::TinyVector<int, 3> dlBnd, duBnd, dSize;
+        blitz::TinyVector<int, 2> dlBnd, duBnd, dSize;
 
-        blitz::Array<real, 3> eta0temp;
+        blitz::Array<real, 2> eta0temp;
+
+        void computeBCVel();
 
         inline real uTau2u(real uTau, real dynKarm);
 };
@@ -214,6 +220,10 @@ class spiral: public les {
         real eigenvalueSymm();
 
         blitz::TinyVector<real, 3> eigenvectorSymm(real eigval);
+
+        void updateWMArrays(vfield &V);
+
+        void updateWMk0(int iX, int iY, int iZ);
 };
 
 /**

@@ -242,6 +242,9 @@ void spiral::computeSG(plainvf &nseRHS, vfield &V) {
     Tyz->syncFaces();
     Tzx->syncFaces();
 
+    // Pass the sub-grid stress tensor values near wall to the wall-model objects if wall-model is enabled
+    if (mesh.inputParams.wallModel) updateWMArrays(V);
+
     A11 = 0.0;  A12 = 0.0;  A13 = 0.0;
     A21 = 0.0;  A22 = 0.0;  A23 = 0.0;
     A31 = 0.0;  A32 = 0.0;  A33 = 0.0;
@@ -285,8 +288,6 @@ void spiral::computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T) {
     real sQx, sQy, sQz;
     real nuTurb, sgDiss;
     real localSGKE, localDisp, localNuSG;
-
-    blitz::Range allRange = blitz::Range::all();
 
     V.syncAll();
 
@@ -365,6 +366,8 @@ void spiral::computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T) {
                 Tyz->F.F(iX, iY, iZ) = sTyz;
                 Tzx->F.F(iX, iY, iZ) = sTzx;
 
+                if (mesh.inputParams.wallModel) updateWMk0(iX, iY, iZ);
+
                 if (sgfFlag) {
                     // 5. The temperature gradient vector specified as a 3 component tiny vector
                     // To compute sub-grid scalar flux, the sgsStress calculations have already provided
@@ -414,80 +417,7 @@ void spiral::computeSG(plainvf &nseRHS, plainsf &tmpRHS, vfield &V, sfield &T) {
     Tzx->syncFaces();
 
     // Pass the sub-grid stress tensor values near wall to the wall-model objects if wall-model is enabled
-    if (mesh.inputParams.wallModel) {
-        for (int i=0; i<6; i++) {
-            if (wmList[i]) {
-                switch (wmList[i]->wallNum) {
-                    case 0:
-                        wmList[i]->vi(0, allRange, allRange) = V.Vy.F(xS, allRange, allRange);
-                        wmList[i]->vj(0, allRange, allRange) = V.Vz.F(xS, allRange, allRange);
-                        wmList[i]->vii(0, allRange, allRange) = V.Vy.F(xS, allRange, allRange)*V.Vy.F(xS, allRange, allRange);
-                        wmList[i]->vjj(0, allRange, allRange) = V.Vz.F(xS, allRange, allRange)*V.Vz.F(xS, allRange, allRange);
-                        wmList[i]->vij(0, allRange, allRange) = V.Vy.F(xS, allRange, allRange)*V.Vz.F(xS, allRange, allRange);
-
-                        wmList[i]->Tii(0, allRange, allRange) = Tyy->F.F(xS, allRange, allRange);
-                        wmList[i]->Tjj(0, allRange, allRange) = Tzz->F.F(xS, allRange, allRange);
-                        wmList[i]->Tij(0, allRange, allRange) = Tyz->F.F(xS, allRange, allRange);
-                        break;
-                    case 1:
-                        wmList[i]->vi(0, allRange, allRange) = V.Vy.F(xE, allRange, allRange);
-                        wmList[i]->vj(0, allRange, allRange) = V.Vz.F(xE, allRange, allRange);
-                        wmList[i]->vii(0, allRange, allRange) = V.Vy.F(xE, allRange, allRange)*V.Vy.F(xS, allRange, allRange);
-                        wmList[i]->vjj(0, allRange, allRange) = V.Vz.F(xE, allRange, allRange)*V.Vz.F(xS, allRange, allRange);
-                        wmList[i]->vij(0, allRange, allRange) = V.Vy.F(xE, allRange, allRange)*V.Vz.F(xS, allRange, allRange);
-
-                        wmList[i]->Tii(0, allRange, allRange) = Tyy->F.F(xE, allRange, allRange);
-                        wmList[i]->Tjj(0, allRange, allRange) = Tzz->F.F(xE, allRange, allRange);
-                        wmList[i]->Tij(0, allRange, allRange) = Tyz->F.F(xE, allRange, allRange);
-                        break;
-                    case 2:
-                        wmList[i]->vi(allRange, 0, allRange) = V.Vx.F(allRange, yS, allRange);
-                        wmList[i]->vj(allRange, 0, allRange) = V.Vz.F(allRange, yS, allRange);
-                        wmList[i]->vii(allRange, 0, allRange) = V.Vx.F(allRange, yS, allRange)*V.Vx.F(allRange, yS, allRange);
-                        wmList[i]->vjj(allRange, 0, allRange) = V.Vz.F(allRange, yS, allRange)*V.Vz.F(allRange, yS, allRange);
-                        wmList[i]->vij(allRange, 0, allRange) = V.Vx.F(allRange, yS, allRange)*V.Vz.F(allRange, yS, allRange);
-
-                        wmList[i]->Tii(allRange, 0, allRange) = Txx->F.F(allRange, yS, allRange);
-                        wmList[i]->Tjj(allRange, 0, allRange) = Tzz->F.F(allRange, yS, allRange);
-                        wmList[i]->Tij(allRange, 0, allRange) = Tzx->F.F(allRange, yS, allRange);
-                        break;
-                    case 3:
-                        wmList[i]->vi(allRange, 0, allRange) = V.Vx.F(allRange, yE, allRange);
-                        wmList[i]->vj(allRange, 0, allRange) = V.Vz.F(allRange, yE, allRange);
-                        wmList[i]->vii(allRange, 0, allRange) = V.Vx.F(allRange, yE, allRange)*V.Vx.F(allRange, yE, allRange);
-                        wmList[i]->vjj(allRange, 0, allRange) = V.Vz.F(allRange, yE, allRange)*V.Vz.F(allRange, yE, allRange);
-                        wmList[i]->vij(allRange, 0, allRange) = V.Vx.F(allRange, yE, allRange)*V.Vz.F(allRange, yE, allRange);
-
-                        wmList[i]->Tii(allRange, 0, allRange) = Txx->F.F(allRange, yE, allRange);
-                        wmList[i]->Tjj(allRange, 0, allRange) = Tzz->F.F(allRange, yE, allRange);
-                        wmList[i]->Tij(allRange, 0, allRange) = Tzx->F.F(allRange, yE, allRange);
-                        break;
-                    case 4:
-                        wmList[i]->vi(allRange, allRange, 0) = V.Vx.F(allRange, allRange, zS);
-                        wmList[i]->vj(allRange, allRange, 0) = V.Vy.F(allRange, allRange, zS);
-                        wmList[i]->vii(allRange, allRange, 0) = V.Vx.F(allRange, allRange, zS)*V.Vx.F(allRange, allRange, zS);
-                        wmList[i]->vjj(allRange, allRange, 0) = V.Vy.F(allRange, allRange, zS)*V.Vy.F(allRange, allRange, zS);
-                        wmList[i]->vij(allRange, allRange, 0) = V.Vx.F(allRange, allRange, zS)*V.Vy.F(allRange, allRange, zS);
-
-                        wmList[i]->Tii(allRange, allRange, 0) = Txx->F.F(allRange, allRange, zS);
-                        wmList[i]->Tjj(allRange, allRange, 0) = Tyy->F.F(allRange, allRange, zS);
-                        wmList[i]->Tij(allRange, allRange, 0) = Txy->F.F(allRange, allRange, zS);
-                        break;
-                    case 5:
-                        wmList[i]->vi(allRange, allRange, 0) = V.Vx.F(allRange, allRange, zE);
-                        wmList[i]->vj(allRange, allRange, 0) = V.Vy.F(allRange, allRange, zE);
-                        wmList[i]->vii(allRange, allRange, 0) = V.Vx.F(allRange, allRange, zE)*V.Vx.F(allRange, allRange, zE);
-                        wmList[i]->vjj(allRange, allRange, 0) = V.Vy.F(allRange, allRange, zE)*V.Vy.F(allRange, allRange, zE);
-                        wmList[i]->vij(allRange, allRange, 0) = V.Vx.F(allRange, allRange, zE)*V.Vy.F(allRange, allRange, zE);
-
-                        wmList[i]->Tii(allRange, allRange, 0) = Txx->F.F(allRange, allRange, zE);
-                        wmList[i]->Tjj(allRange, allRange, 0) = Tyy->F.F(allRange, allRange, zE);
-                        wmList[i]->Tij(allRange, allRange, 0) = Txy->F.F(allRange, allRange, zE);
-                        break;
-                }
-            }
-        }
-    }
+    if (mesh.inputParams.wallModel) updateWMArrays(V);
 
     // Compute the components of the divergence of sub-grid stress tensor field
     Txx->derS.calcDerivative1_x(A11);
@@ -791,7 +721,7 @@ real spiral::eigenvalueSymm() {
  ********************************************************************************************************************************************
  * \brief   Function to calculate the eigenvectors of the strain-rate tensor
  *
- *          The function claculates the eigenvector (not normalized), eigvec[3],
+ *          The function calculates the eigenvector (not normalized), eigvec[3],
  *          corresponding to the precalculated eigenvalue, eigval, of the 3 x 3 symmetric matrix,
  *          { { Sxx, Sxy, Szx }, { Sxy, Syy, Syz }, { Szx, Syz, Szz } }, assuming distinct eigenvalues.
  *          It returns the eigenvector corresponding to the eigenvalue supplied, as a blitz TinyVector.
@@ -838,6 +768,136 @@ blitz::TinyVector<real, 3> spiral::eigenvectorSymm(real eigval) {
     }
 
     return eigvec;
+}
+
+
+/**
+ ********************************************************************************************************************************************
+ * \brief   Function to update the arrays of the wall model
+ *
+ *          The function is called only if the wall-model is enabled.
+ *          The boundary values of velocity and SGS tensor used by the wall-model are set here.
+ *
+ ********************************************************************************************************************************************
+ */
+void spiral::updateWMArrays(vfield &V) {
+    blitz::Range allRange = blitz::Range::all();
+
+    for (int i=0; i<6; i++) {
+        if (wmList[i]) {
+            switch (wmList[i]->wallNum) {
+                case 0:
+                    wmList[i]->vi(allRange, allRange) = V.Vy.F(xS, allRange, allRange);
+                    wmList[i]->vj(allRange, allRange) = V.Vz.F(xS, allRange, allRange);
+                    wmList[i]->vii(allRange, allRange) = V.Vy.F(xS, allRange, allRange)*V.Vy.F(xS, allRange, allRange);
+                    wmList[i]->vjj(allRange, allRange) = V.Vz.F(xS, allRange, allRange)*V.Vz.F(xS, allRange, allRange);
+                    wmList[i]->vij(allRange, allRange) = V.Vy.F(xS, allRange, allRange)*V.Vz.F(xS, allRange, allRange);
+
+                    wmList[i]->Tii(allRange, allRange) = Tyy->F.F(xS, allRange, allRange);
+                    wmList[i]->Tjj(allRange, allRange) = Tzz->F.F(xS, allRange, allRange);
+                    wmList[i]->Tij(allRange, allRange) = Tyz->F.F(xS, allRange, allRange);
+                    break;
+                case 1:
+                    wmList[i]->vi(allRange, allRange) = V.Vy.F(xE, allRange, allRange);
+                    wmList[i]->vj(allRange, allRange) = V.Vz.F(xE, allRange, allRange);
+                    wmList[i]->vii(allRange, allRange) = V.Vy.F(xE, allRange, allRange)*V.Vy.F(xS, allRange, allRange);
+                    wmList[i]->vjj(allRange, allRange) = V.Vz.F(xE, allRange, allRange)*V.Vz.F(xS, allRange, allRange);
+                    wmList[i]->vij(allRange, allRange) = V.Vy.F(xE, allRange, allRange)*V.Vz.F(xS, allRange, allRange);
+
+                    wmList[i]->Tii(allRange, allRange) = Tyy->F.F(xE, allRange, allRange);
+                    wmList[i]->Tjj(allRange, allRange) = Tzz->F.F(xE, allRange, allRange);
+                    wmList[i]->Tij(allRange, allRange) = Tyz->F.F(xE, allRange, allRange);
+                    break;
+                case 2:
+                    wmList[i]->vi(allRange, allRange) = V.Vx.F(allRange, yS, allRange);
+                    wmList[i]->vj(allRange, allRange) = V.Vz.F(allRange, yS, allRange);
+                    wmList[i]->vii(allRange, allRange) = V.Vx.F(allRange, yS, allRange)*V.Vx.F(allRange, yS, allRange);
+                    wmList[i]->vjj(allRange, allRange) = V.Vz.F(allRange, yS, allRange)*V.Vz.F(allRange, yS, allRange);
+                    wmList[i]->vij(allRange, allRange) = V.Vx.F(allRange, yS, allRange)*V.Vz.F(allRange, yS, allRange);
+
+                    wmList[i]->Tii(allRange, allRange) = Txx->F.F(allRange, yS, allRange);
+                    wmList[i]->Tjj(allRange, allRange) = Tzz->F.F(allRange, yS, allRange);
+                    wmList[i]->Tij(allRange, allRange) = Tzx->F.F(allRange, yS, allRange);
+                    break;
+                case 3:
+                    wmList[i]->vi(allRange, allRange) = V.Vx.F(allRange, yE, allRange);
+                    wmList[i]->vj(allRange, allRange) = V.Vz.F(allRange, yE, allRange);
+                    wmList[i]->vii(allRange, allRange) = V.Vx.F(allRange, yE, allRange)*V.Vx.F(allRange, yE, allRange);
+                    wmList[i]->vjj(allRange, allRange) = V.Vz.F(allRange, yE, allRange)*V.Vz.F(allRange, yE, allRange);
+                    wmList[i]->vij(allRange, allRange) = V.Vx.F(allRange, yE, allRange)*V.Vz.F(allRange, yE, allRange);
+
+                    wmList[i]->Tii(allRange, allRange) = Txx->F.F(allRange, yE, allRange);
+                    wmList[i]->Tjj(allRange, allRange) = Tzz->F.F(allRange, yE, allRange);
+                    wmList[i]->Tij(allRange, allRange) = Tzx->F.F(allRange, yE, allRange);
+                    break;
+                case 4:
+                    wmList[i]->vi(allRange, allRange) = V.Vx.F(allRange, allRange, zS);
+                    wmList[i]->vj(allRange, allRange) = V.Vy.F(allRange, allRange, zS);
+                    wmList[i]->vii(allRange, allRange) = V.Vx.F(allRange, allRange, zS)*V.Vx.F(allRange, allRange, zS);
+                    wmList[i]->vjj(allRange, allRange) = V.Vy.F(allRange, allRange, zS)*V.Vy.F(allRange, allRange, zS);
+                    wmList[i]->vij(allRange, allRange) = V.Vx.F(allRange, allRange, zS)*V.Vy.F(allRange, allRange, zS);
+
+                    wmList[i]->Tii(allRange, allRange) = Txx->F.F(allRange, allRange, zS);
+                    wmList[i]->Tjj(allRange, allRange) = Tyy->F.F(allRange, allRange, zS);
+                    wmList[i]->Tij(allRange, allRange) = Txy->F.F(allRange, allRange, zS);
+                    break;
+                case 5:
+                    wmList[i]->vi(allRange, allRange) = V.Vx.F(allRange, allRange, zE);
+                    wmList[i]->vj(allRange, allRange) = V.Vy.F(allRange, allRange, zE);
+                    wmList[i]->vii(allRange, allRange) = V.Vx.F(allRange, allRange, zE)*V.Vx.F(allRange, allRange, zE);
+                    wmList[i]->vjj(allRange, allRange) = V.Vy.F(allRange, allRange, zE)*V.Vy.F(allRange, allRange, zE);
+                    wmList[i]->vij(allRange, allRange) = V.Vx.F(allRange, allRange, zE)*V.Vy.F(allRange, allRange, zE);
+
+                    wmList[i]->Tii(allRange, allRange) = Txx->F.F(allRange, allRange, zE);
+                    wmList[i]->Tjj(allRange, allRange) = Tyy->F.F(allRange, allRange, zE);
+                    wmList[i]->Tij(allRange, allRange) = Txy->F.F(allRange, allRange, zE);
+                    break;
+            }
+        }
+    }
+}
+
+
+/**
+ ********************************************************************************************************************************************
+ * \brief   Function to update the Karman constant-like parameter in wallModel
+ *
+ *          The function is called only if the wall-model is enabled.
+ *          It uses the indices passed to it to update the values appropriately.
+ *
+ ********************************************************************************************************************************************
+ */
+void spiral::updateWMk0(int iX, int iY, int iZ) {
+    xS = core.lbound(0);       xE = core.ubound(0);
+    yS = core.lbound(1);       yE = core.ubound(1);
+    zS = core.lbound(2);       zE = core.ubound(2);
+
+    for (int i=0; i<6; i++) {
+        if (wmList[i]) {
+            if (wmList[i]->rankFlag) {
+                switch (wmList[i]->wallNum) {
+                    case 0:
+                        if (iX == xS) wmList[i]->K0(iY, iZ) = wmList[i]->updateK0(K, sTxy, sTzx);
+                        break;
+                    case 1:
+                        if (iX == xE) wmList[i]->K0(iY, iZ) = wmList[i]->updateK0(K, sTxy, sTzx);
+                        break;
+                    case 2:
+                        if (iY == yS) wmList[i]->K0(iX, iZ) = wmList[i]->updateK0(K, sTxy, sTyz);
+                        break;
+                    case 3:
+                        if (iY == yE) wmList[i]->K0(iX, iZ) = wmList[i]->updateK0(K, sTxy, sTyz);
+                        break;
+                    case 4:
+                        if (iZ == zS) wmList[i]->K0(iX, iY) = wmList[i]->updateK0(K, sTyz, sTzx);
+                        break;
+                    case 5:
+                        if (iZ == zE) wmList[i]->K0(iX, iY) = wmList[i]->updateK0(K, sTyz, sTzx);
+                        break;
+                }
+            }
+        }
+    }
 }
 
 spiral::~spiral() {
