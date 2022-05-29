@@ -6,6 +6,7 @@
 *.lay
 saras
 hostfile
+saras_post
 compile/build/
 tests/build/
 tests/ldcTest/*.png

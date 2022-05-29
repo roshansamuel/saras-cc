@@ -31,7 +31,7 @@
  ##
  ##! \file CMakeLists.txt
  #
- #   \brief CMakeLists file to include either the tests sub-directory or the solvers sub-directory according to the TEST_RUN compile flag.
+ #   \brief CMakeLists file to include either the analysis sub-directory or the solvers sub-directory according to the POST_RUN compile flag.
  #
  #   \author Roshan Samuel
  #   \date Nov 2019
@@ -40,8 +40,8 @@
  ############################################################################################################################################
  ##
 
-if (TEST_RUN)
-    add_subdirectory (tests)
+if (POST_RUN)
+    add_subdirectory (analysis)
 else ()
     add_subdirectory (solvers)
 endif ()

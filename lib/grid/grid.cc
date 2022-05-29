@@ -396,7 +396,7 @@ void grid::createTanHypGrid(int dim, blitz::Array<real, 1> xGlo, blitz::Array<re
     // Product of beta and length
     real btl = thBeta(dim)*dLen(dim);
 
-#ifndef TEST_RUN
+#ifndef POST_RUN
     if (pf) {
         switch (dim) {
             case 0: std::cout << "Generating tangent hyperbolic grid along X direction" << std::endl;
@@ -691,10 +691,12 @@ void grid::checkAnisotropy() {
     MPI_Allreduce(&localMax, &globalMax, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);
 
     MPI_Barrier(MPI_COMM_WORLD);
+#ifndef POST_RUN
     if (globalMax > 7.0) {
         if (pf) std::cout << "\nWARNING: Grid anisotropy exceeds limits. Finite-difference calculations will be inaccurate" << std::endl;
     } else {
         if (pf) std::cout << "\nMaximum grid anisotropy is " << globalMax << std::endl;
     }
+#endif
 }
 

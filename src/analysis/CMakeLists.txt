@@ -1,5 +1,3 @@
-#!/bin/bash
-
 #############################################################################################################################################
  # Saras
  # 
@@ -31,75 +29,27 @@
  #
  ############################################################################################################################################
  ##
- ##! \file compileSaras.sh
+ ##! \file CMakeLists.txt
  #
- #   \brief Shell script to automatically compile and run SARAS
+ #   \brief CMakeLists file where the executable is linked for the post-processing runs of Saras solver.
  #
  #   \author Roshan Samuel
- #   \date Jan 2020
+ #   \date Nov 2019
  #   \copyright New BSD License
  #
  ############################################################################################################################################
  ##
 
-# USER SET PARAMETERS - COMMENT/UNCOMMENT AS NECESSARY
+include_directories (
+    ${PARENT_DIR}/src/analysis/postprocessors
+)
 
-PROC=8
-REAL_TYPE="DOUBLE"
-#PLANAR="PLANAR"
-POST_RUN="POST_RUN"
-EXECUTE_AFTER_COMPILE="EXECUTE"
+set (EXECUTABLE_OUTPUT_PATH ${PARENT_DIR})
 
-# NO USER MODIFICATIONS NECESSARY BELOW THIS LINE
+set (POST_SOURCE postprocessors/dissipation.cc postprocessors/nse_terms.cc)
 
-# REMOVE PRE-EXISTING EXECUTATBLES
-rm -f ../saras
-rm -f ../saras_post
+set (SOURCES main.cc ${POST_SOURCE})
 
-# IF build DIRECTORY DOESN'T EXIST, CREATE IT
-if [ ! -d build ]; then
-    mkdir build
-fi
+add_executable(saras_post ${SOURCES})
 
-# SWITCH TO build DIRECTORY
-cd build
-
-# RUN Cmake WITH NECESSARY FLAGS AS SET BY USER
-if [ -z $PLANAR ]; then
-    if [ -z $POST_RUN ]; then
-        if [ "$REAL_TYPE" == "DOUBLE" ]; then
-            CC=mpicc CXX=mpicxx cmake ../../
-        else
-            CC=mpicc CXX=mpicxx cmake ../../ -DREAL_SINGLE=ON
-        fi
-    else
-        CC=mpicc CXX=mpicxx cmake ../../ -DPOST_RUN=ON
-    fi
-else
-    if [ -z $POST_RUN ]; then
-        if [ "$REAL_TYPE" == "DOUBLE" ]; then
-            CC=mpicc CXX=mpicxx cmake ../../ -DPLANAR=ON
-        else
-            CC=mpicc CXX=mpicxx cmake ../../ -DPLANAR=ON -DREAL_SINGLE=ON
-        fi
-    else
-        CC=mpicc CXX=mpicxx cmake ../../ -DPOST_RUN=ON -DPLANAR=ON
-    fi
-fi
-
-# COMPILE
-make -j16
-
-# SWITCH TO PARENT DIRECTORY
-cd ../../
-
-# RUN CODE IF REQUESTED BY USER
-if ! [ -z $EXECUTE_AFTER_COMPILE ]; then
-    if [ -z $POST_RUN ]; then
-        echo "localhost slots="$PROC > hostfile
-        mpirun --hostfile hostfile -np $PROC ./saras
-        rm hostfile
-    else
-        mpirun -np $PROC ./saras_post
-    fi
-fi
+target_link_libraries(saras_post field grid parser reader writer parallel yaml-cpp hdf5 debug /usr/local/lib/libblitz.a)
