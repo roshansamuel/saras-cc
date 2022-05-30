@@ -160,13 +160,15 @@ void reader::initLimits() {
 
 /**
  ********************************************************************************************************************************************
- * \brief   Function to read files in HDF5 format in parallel
+ * \brief   Function to read restart file in HDF5 format in parallel
  *
- *          It opens a file in the output folder and all the processors read in parallel from the file
+ *          It opens the restart file from the output folder when restart flag is enabled.
+ *          All the processors read in parallel from the file.
  *
+ * \return  The real value specifying the solution time from the restart file that is opened
  ********************************************************************************************************************************************
  */
-real reader::readData() {
+real reader::readRestart() {
     hid_t plist_id;
     hid_t fileHandle;
     hid_t dataSet;
@@ -195,7 +197,7 @@ real reader::readData() {
     H5Pclose(plist_id);
 
     // Check the restart file for consistency with input parameters
-    restartCheck(fileHandle);
+    fileCheck(fileHandle);
 
     // Read the scalar value containing the time from the restart file
     hid_t timeDSpace = H5Screate(H5S_SCALAR);
@@ -250,6 +252,93 @@ real reader::readData() {
 
 /**
  ********************************************************************************************************************************************
+ * \brief   Function to read solution file in HDF5 format in parallel
+ *
+ *          It opens the solution file specified by the input parameter solTime from the output folder.
+ *          All the processors read in parallel from the file.
+ *
+ * \param   solTime is the real value specifying the solution time of the file to be opened
+ ********************************************************************************************************************************************
+ */
+void reader::readSolution(real solTime) {
+    hid_t plist_id;
+    hid_t fileHandle;
+    hid_t dataSet;
+
+    herr_t status;
+
+    char fileName[25];
+    std::ostringstream constFile;
+
+    // Create a property list for collectively opening a file by all processors
+    plist_id = H5Pcreate(H5P_FILE_ACCESS);
+    H5Pset_fapl_mpio(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+
+    // Generate the filename corresponding to the solution file
+    constFile.str(std::string());
+    constFile << "output/Soln_" << std::fixed << std::setfill('0') << std::setw(9) << std::setprecision(4) << solTime << ".h5";
+    strcpy(fileName, constFile.str().c_str());
+
+    // First create a file handle with the path to the input file
+    H5E_BEGIN_TRY {
+        fileHandle = H5Fopen(fileName, H5F_ACC_RDONLY, plist_id);
+    } H5E_END_TRY;
+
+    // Abort if file doesn't exist
+    if (fileHandle < 0) {
+        if (pf) std::cout << "ERROR: Could not open solution file " << fileName << ". Aborting" << std::endl;
+        MPI_Finalize();
+        exit(0);
+    }
+
+    // Close the property list for later reuse
+    H5Pclose(plist_id);
+
+    // Check the solution file for consistency with input parameters
+    fileCheck(fileHandle);
+
+    // Create a property list to use collective data read
+    plist_id = H5Pcreate(H5P_DATASET_XFER);
+    H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
+
+    for (unsigned int i=0; i < rFields.size(); i++) {
+#ifdef PLANAR
+        fieldData.resize(blitz::TinyVector<int, 2>(locSize(0), locSize(2)));
+#else
+        fieldData.resize(locSize);
+#endif
+
+        // Create the dataset *for the array in memory*, linking it to the file handle.
+        // Correspondingly, it will use the *core* dataspace, as only the core has to be written excluding the pads
+        dataSet = H5Dopen2(fileHandle, rFields[i].fieldName.c_str(), H5P_DEFAULT);
+
+        // Write the dataset. Most important thing to note is that the 3rd and 4th arguments represent the *source* and *destination* dataspaces.
+        // The source here is the sourceDSpace pointing to the file. Note that its view has been adjusted using hyperslab.
+        // The destination is the targetDSpace. Though the targetDSpace is smaller than the sourceDSpace,
+        // only the appropriate hyperslab within the sourceDSpace is transferred to the destination.
+
+        // Note that the targetDSpace and sourceDSpace have switched positions
+        // This is another point where the reader differs from the writer
+        status = H5Dread(dataSet, H5T_NATIVE_REAL, targetDSpace, sourceDSpace, plist_id, fieldData.dataFirst());
+        if (status) {
+            if (pf) std::cout << "Error in reading input from HDF file. Aborting" << std::endl;
+            MPI_Finalize();
+            exit(0);
+        }
+
+        //Read data
+        copyData(rFields[i]);
+
+        H5Dclose(dataSet);
+    }
+
+    // CLOSE/RELEASE RESOURCES
+    H5Pclose(plist_id);
+    H5Fclose(fileHandle);
+}
+
+/**
+ ********************************************************************************************************************************************
  * \brief   Function to copy data from blitz array without pads into solver variables
  *
  *          In order to simplify the file views while reading from disk to memory,
@@ -273,27 +362,36 @@ void reader::copyData(field &outField) {
 
 /**
  ********************************************************************************************************************************************
- * \brief   Function to check compatibility of restart file with input parameters
+ * \brief   Function to check compatibility of restart/solution file with input parameters
  *
- *          Firstly, the dimensions of arrays in restart file must match with those in the parameters.
+ *          Firstly, the dimensions of arrays in restart/solution file must match with those in the parameters.
  *          Secondly, the array limits of the data are verified with the sizes specified in the input parameters.
  *
+ * \param   fHandle is the HDF5 file handle of the file to be checked.
  ********************************************************************************************************************************************
  */
-void reader::restartCheck(hid_t fHandle) {
+void reader::fileCheck(hid_t fHandle) {
+    std::string readMode;
+
+#ifdef POST_RUN
+    readMode = "solution";
+#else
+    readMode = "restart";
+#endif
+
     // Use the pressure data to get size of dataset
     hid_t pData = H5Dopen2(fHandle, "P", H5P_DEFAULT);
     hid_t pSpace = H5Dget_space(pData);
     const int ndims = H5Sget_simple_extent_ndims(pSpace);
 #ifdef PLANAR
     if (ndims != 2) {
-        if (pf) std::cout << "ERROR: Dimensionality of restart file conflicts with solver parameters. Aborting" << std::endl;
+        if (pf) std::cout << "ERROR: Dimensionality of " << readMode << " file conflicts with solver parameters. Aborting" << std::endl;
         MPI_Finalize();
         exit(0);
     }
 #else
     if (ndims != 3) {
-        if (pf) std::cout << "ERROR: Dimensionality of restart file conflicts with solver parameters. Aborting" << std::endl;
+        if (pf) std::cout << "ERROR: Dimensionality of " << readMode << " file conflicts with solver parameters. Aborting" << std::endl;
         MPI_Finalize();
         exit(0);
     }
@@ -303,25 +401,25 @@ void reader::restartCheck(hid_t fHandle) {
 
     // Abort if size of dataset doesn't match input parameters
     if (int(dims[0]) != mesh.globalSize(0)) {
-        if (pf) std::cout << "ERROR: Array limits in restart file conflicts with solver parameters. Aborting" << std::endl;
+        if (pf) std::cout << "ERROR: Array limits in " << readMode << " file conflicts with solver parameters. Aborting" << std::endl;
         MPI_Finalize();
         exit(0);
     }
 #ifdef PLANAR
     if (int(dims[1]) != mesh.globalSize(2)) {
-        if (pf) std::cout << "ERROR: Array limits in restart file conflicts with solver parameters. Aborting" << std::endl;
+        if (pf) std::cout << "ERROR: Array limits in " << readMode << " file conflicts with solver parameters. Aborting" << std::endl;
         MPI_Finalize();
         exit(0);
     }
 #else
     if (int(dims[1]) != mesh.globalSize(1)) {
-        if (pf) std::cout << "ERROR: Array limits in restart file conflicts with solver parameters. Aborting" << std::endl;
+        if (pf) std::cout << "ERROR: Array limits in " << readMode << " file conflicts with solver parameters. Aborting" << std::endl;
         MPI_Finalize();
         exit(0);
     }
 
     if (int(dims[2]) != mesh.globalSize(2)) {
-        if (pf) std::cout << "ERROR: Array limits in restart file conflicts with solver parameters. Aborting" << std::endl;
+        if (pf) std::cout << "ERROR: Array limits in " << readMode << " file conflicts with solver parameters. Aborting" << std::endl;
         MPI_Finalize();
         exit(0);
     }

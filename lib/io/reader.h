@@ -57,7 +57,8 @@ class reader {
     public:
         reader(const grid &mesh, std::vector<field> &rFields);
 
-        real readData();
+        real readRestart();
+        void readSolution(real solTime);
 
         ~reader();
 
@@ -79,7 +80,7 @@ class reader {
 
         blitz::TinyVector<int, 3> locSize;
 
-        void restartCheck(hid_t fHandle);
+        void fileCheck(hid_t fHandle);
 
         void initLimits();
 

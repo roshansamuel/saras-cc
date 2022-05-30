@@ -42,16 +42,31 @@
 
 #include <iostream>
 #include "postprocess.h"
-#include "sfield.h"
 
 static void taylorGreen(sfield &F, sfield &dF, grid &mesh);
 
 void dissipation(grid &gridData, std::vector<real> tList) {
-    sfield F(gridData, "F");
-    sfield dF(gridData, "dF");
+    vfield V(gridData, "V");
+    sfield P(gridData, "P");
+    sfield T(gridData, "T");
 
-    if (gridData.pf) std::cout << tList.size() << std::endl;
-    taylorGreen(F, dF, gridData);
+    // Fields to be read from HDF5 file are passed to reader class as a vector
+    std::vector<field> readFields;
+
+    // Populate the vector with required fields
+    readFields.push_back(V.Vx);
+    readFields.push_back(V.Vy);
+    readFields.push_back(V.Vz);
+    readFields.push_back(P.F);
+    readFields.push_back(T.F);
+
+    reader dataReader(gridData, readFields);
+
+    for (unsigned int i=0; i<tList.size(); i++) {
+        dataReader.readSolution(tList[i]);
+        if (gridData.pf) std::cout << std::setprecision(16) << T.F.F(10, 10, 10) << std::endl;
+    }
+    taylorGreen(P, T, gridData);
 }
 
 static void taylorGreen(sfield &F, sfield &dF, grid &mesh) {

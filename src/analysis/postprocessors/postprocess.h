@@ -47,6 +47,9 @@
 
 #include "grid.h"
 #include "parser.h"
+#include "reader.h"
+#include "sfield.h"
+#include "vfield.h"
 #include "parallel.h"
 
 void dissipation(grid &gridData, std::vector<real> tList);

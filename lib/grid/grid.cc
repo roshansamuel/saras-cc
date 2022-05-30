@@ -410,9 +410,9 @@ void grid::createTanHypGrid(int dim, blitz::Array<real, 1> xGlo, blitz::Array<re
 #endif
 
     // GENERATE X-GRID POINTS FROM UNIFORM XI-GRID POINTS AND THEIR METRICS
-    df_x.resize(blitz::Range(-padWidths(dim), globalSize(dim)));
-    dfxx.resize(blitz::Range(-padWidths(dim), globalSize(dim)));
-    dfx2.resize(blitz::Range(-padWidths(dim), globalSize(dim)));
+    df_x.resize(blitz::Range(-padWidths(dim), globalSize(dim) + padWidths(dim) - 1));
+    dfxx.resize(blitz::Range(-padWidths(dim), globalSize(dim) + padWidths(dim) - 1));
+    dfx2.resize(blitz::Range(-padWidths(dim), globalSize(dim) + padWidths(dim) - 1));
 
     for (int i = 0; i < globalSize(dim); i++) {
         xGlo(i) = dLen(dim)*(1.0 - tanh(thBeta[dim]*(1.0 - 2.0*xiGl(i)))/thb)/2.0;
