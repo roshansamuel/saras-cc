@@ -43,12 +43,18 @@
 #include <iostream>
 #include "postprocess.h"
 
-static void taylorGreen(sfield &F, sfield &dF, grid &mesh);
+static void getBLLimits(grid &mesh, std::vector<real> tList);
 
 void dissipation(grid &gridData, std::vector<real> tList) {
-    vfield V(gridData, "V");
-    sfield P(gridData, "P");
-    sfield T(gridData, "T");
+    getBLLimits(gridData, tList);
+}
+
+static void getBLLimits(grid &mesh, std::vector<real> tList) {
+    int ePts = 5;
+    real xLim, yLim, zLim;
+
+    vfield V(mesh, "V");
+    sfield T(mesh, "T");
 
     // Fields to be read from HDF5 file are passed to reader class as a vector
     std::vector<field> readFields;
@@ -57,29 +63,20 @@ void dissipation(grid &gridData, std::vector<real> tList) {
     readFields.push_back(V.Vx);
     readFields.push_back(V.Vy);
     readFields.push_back(V.Vz);
-    readFields.push_back(P.F);
     readFields.push_back(T.F);
 
-    reader dataReader(gridData, readFields);
+    reader dataReader(mesh, readFields);
+
+    // WARNING: These values are temporarily hard-coded.
+    // They need to be calculated appropriately to be made general.
+    xLim = 0.025;
+    yLim = 0.025;
+    zLim = 0.05;
 
     for (unsigned int i=0; i<tList.size(); i++) {
         dataReader.readSolution(tList[i]);
-        if (gridData.pf) std::cout << std::setprecision(16) << T.F.F(10, 10, 10) << std::endl;
-    }
-    taylorGreen(P, T, gridData);
-}
-
-static void taylorGreen(sfield &F, sfield &dF, grid &mesh) {
-    for (int i=F.F.F.lbound(0); i <= F.F.F.ubound(0); i++) {
-        for (int j=F.F.F.lbound(1); j <= F.F.F.ubound(1); j++) {
-            for (int k=F.F.F.lbound(2); k <= F.F.F.ubound(2); k++) {
-                F.F.F(i, j, k) = sin(2.0*M_PI*mesh.x(i)/mesh.xLen)*
-                                 cos(2.0*M_PI*mesh.y(j)/mesh.yLen)*
-                                 cos(2.0*M_PI*mesh.z(k)/mesh.zLen);
-                dF.F.F(i, j, k) = 2.0*M_PI*cos(2.0*M_PI*mesh.x(i)/mesh.xLen)*
-                                           cos(2.0*M_PI*mesh.y(j)/mesh.yLen)*
-                                           cos(2.0*M_PI*mesh.z(k)/mesh.zLen);
-            }
-        }
+        std::cout << mesh.coreDomain.ubound() << std::endl;
+        MPI_Finalize();
+        exit(0);
     }
 }

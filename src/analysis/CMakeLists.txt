@@ -42,13 +42,16 @@
 
 include_directories (
     ${PARENT_DIR}/src/analysis/postprocessors
+    ${PARENT_DIR}/src/analysis/global
 )
 
 set (EXECUTABLE_OUTPUT_PATH ${PARENT_DIR})
 
 set (POST_SOURCE postprocessors/dissipation.cc postprocessors/nse_terms.cc)
 
-set (SOURCES main.cc ${POST_SOURCE})
+set (GLOBAL_SOURCE global/global.cc)
+
+set (SOURCES main.cc ${POST_SOURCE} ${GLOBAL_SOURCE})
 
 add_executable(saras_post ${SOURCES})
 

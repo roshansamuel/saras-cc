@@ -29,32 +29,24 @@
  *
  ********************************************************************************************************************************************
  */
-/*! \file postprocess.h
+/*! \file global.h
  *
- *  \brief Declarations of all the functions for post-processing.
+ *  \brief Declarations of global functions and variables for post-processing
  *
  *  \author Roshan Samuel
- *  \date Nov 2022
+ *  \date May 2022
  *  \copyright New BSD License
  *
  ********************************************************************************************************************************************
  */
 
-#ifndef POSTPROC_H
-#define POSTPROC_H
+#ifndef POSTGLOBAL_H
+#define POSTGLOBAL_H
 
-#include <sys/time.h>
-
-#include "grid.h"
+#include <blitz/array.h>
+#include <iostream>
 #include "parser.h"
-#include "reader.h"
-#include "sfield.h"
-#include "vfield.h"
-#include "global.h"
-#include "parallel.h"
 
-void dissipation(grid &gridData, std::vector<real> tList);
-
-void nse_terms(grid &gridData);
+void testError(blitz::Array<real, 3> A, blitz::Array<real, 3> B, int errorMom, real errorTol);
 
 #endif

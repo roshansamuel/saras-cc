@@ -29,32 +29,50 @@
  *
  ********************************************************************************************************************************************
  */
-/*! \file postprocess.h
+/*! \file global.cc
  *
- *  \brief Declarations of all the functions for post-processing.
- *
+ *  \brief Definitions for global functions/variables for post-processing
+ *  \sa unittest.h
  *  \author Roshan Samuel
- *  \date Nov 2022
+ *  \date May 2022
  *  \copyright New BSD License
  *
  ********************************************************************************************************************************************
  */
 
-#ifndef POSTPROC_H
-#define POSTPROC_H
-
-#include <sys/time.h>
-
-#include "grid.h"
-#include "parser.h"
-#include "reader.h"
-#include "sfield.h"
-#include "vfield.h"
 #include "global.h"
-#include "parallel.h"
 
-void dissipation(grid &gridData, std::vector<real> tList);
+void testError(blitz::Array<real, 3> A, blitz::Array<real, 3> B, int errorMom, real errorTol) {
+    int errorCnt;
+    real errorVal;
 
-void nse_terms(grid &gridData);
+    errorCnt = 0;
+    errorVal = 0.0;
 
-#endif
+    if (errorMom == 1) {
+        for (int i=A.lbound(0)+1; i <= A.ubound(0)-1; i++) {
+            for (int j=A.lbound(1)+1; j <= A.ubound(1)-1; j++) {
+                for (int k=A.lbound(2)+1; k <= A.ubound(2)-1; k++) {
+                    errorCnt += 1;
+                    errorVal += fabs(A(i, j, k) - B(i, j, k));
+                }
+            }
+        }
+
+        errorVal /= errorCnt;
+
+    } else if (errorMom == 2) {
+        for (int i=A.lbound(0)+1; i <= A.ubound(0)-1; i++) {
+            for (int j=A.lbound(1)+1; j <= A.ubound(1)-1; j++) {
+                for (int k=A.lbound(2)+1; k <= A.ubound(2)-1; k++) {
+                    errorCnt += 1;
+                    errorVal += pow((A(i, j, k) - B(i, j, k)), 2.0);
+                }
+            }
+        }
+
+        errorVal /= errorCnt;
+        errorVal = sqrt(errorVal);
+    }
+}
+
