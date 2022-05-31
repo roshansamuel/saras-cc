@@ -42,37 +42,145 @@
 
 #include "global.h"
 
-void testError(blitz::Array<real, 3> A, blitz::Array<real, 3> B, int errorMom, real errorTol) {
-    int errorCnt;
-    real errorVal;
+void initVBCs(const grid &mesh, vfield &V) {
+    if (mesh.inputParams.probType == 3) {
+        // INFLOW AND OUTFLOW BCS
+        V.uLft = new dirichlet(mesh, V.Vx, 0, 1.0);
+        V.uRgt = new neumann(mesh, V.Vx, 1, 0.0);
+    } else {
+        // NO-PENETRATION BCS
+        V.uLft = new dirichlet(mesh, V.Vx, 0, 0.0);
+        V.uRgt = new dirichlet(mesh, V.Vx, 1, 0.0);
+    }
 
-    errorCnt = 0;
-    errorVal = 0.0;
+#ifndef PLANAR
+    // NO-SLIP BCS
+    V.uFrn = new dirichlet(mesh, V.Vx, 2, 0.0);
+    V.uBak = new dirichlet(mesh, V.Vx, 3, 0.0);
+#endif
 
-    if (errorMom == 1) {
-        for (int i=A.lbound(0)+1; i <= A.ubound(0)-1; i++) {
-            for (int j=A.lbound(1)+1; j <= A.ubound(1)-1; j++) {
-                for (int k=A.lbound(2)+1; k <= A.ubound(2)-1; k++) {
-                    errorCnt += 1;
-                    errorVal += fabs(A(i, j, k) - B(i, j, k));
-                }
-            }
-        }
+    if (mesh.inputParams.probType == 1) {
+        // NO-SLIP BCS FOR LDC
+        V.uBot = new dirichlet(mesh, V.Vx, 4, 0.0);
+        V.uTop = new dirichlet(mesh, V.Vx, 5, 1.0);
+    } else {
+        // NO-SLIP BCS
+        V.uBot = new dirichlet(mesh, V.Vx, 4, 0.0);
+        V.uTop = new dirichlet(mesh, V.Vx, 5, 0.0);
+    }
 
-        errorVal /= errorCnt;
+#ifndef PLANAR
+    if (mesh.inputParams.probType == 3) {
+        // INFLOW AND OUTFLOW BCS
+        V.vLft = new dirichlet(mesh, V.Vy, 0, 0.0);
+        V.vRgt = new neumann(mesh, V.Vy, 1, 0.0);
+    } else {
+        // NO-SLIP BCS
+        V.vLft = new dirichlet(mesh, V.Vy, 0, 0.0);
+        V.vRgt = new dirichlet(mesh, V.Vy, 1, 0.0);
+    }
 
-    } else if (errorMom == 2) {
-        for (int i=A.lbound(0)+1; i <= A.ubound(0)-1; i++) {
-            for (int j=A.lbound(1)+1; j <= A.ubound(1)-1; j++) {
-                for (int k=A.lbound(2)+1; k <= A.ubound(2)-1; k++) {
-                    errorCnt += 1;
-                    errorVal += pow((A(i, j, k) - B(i, j, k)), 2.0);
-                }
-            }
-        }
+    // NO-PENETRATION BCS
+    V.vFrn = new dirichlet(mesh, V.Vy, 2, 0.0);
+    V.vBak = new dirichlet(mesh, V.Vy, 3, 0.0);
 
-        errorVal /= errorCnt;
-        errorVal = sqrt(errorVal);
+    // NO-SLIP BCS
+    V.vBot = new dirichlet(mesh, V.Vy, 4, 0.0);
+    V.vTop = new dirichlet(mesh, V.Vy, 5, 0.0);
+#endif
+
+    if (mesh.inputParams.probType == 3) {
+        // INFLOW AND OUTFLOW BCS
+        V.wLft = new dirichlet(mesh, V.Vz, 0, 0.0);
+        V.wRgt = new neumann(mesh, V.Vz, 1, 0.0);
+    } else {
+        // NO-SLIP BCS
+        V.wLft = new dirichlet(mesh, V.Vz, 0, 0.0);
+        V.wRgt = new dirichlet(mesh, V.Vz, 1, 0.0);
+    }
+
+#ifndef PLANAR
+    // NO-SLIP BCS
+    V.wFrn = new dirichlet(mesh, V.Vz, 2, 0.0);
+    V.wBak = new dirichlet(mesh, V.Vz, 3, 0.0);
+#endif
+
+    // NO-SLIP BCS
+    V.wBot = new dirichlet(mesh, V.Vz, 4, 0.0);
+    V.wTop = new dirichlet(mesh, V.Vz, 5, 0.0);
+}
+
+
+void initTBCs(const grid &mesh, sfield &T) {
+    // ADIABATIC BC FOR RBC, SST AND RRBC
+    if (mesh.inputParams.probType == 5 || mesh.inputParams.probType == 6 || mesh.inputParams.probType == 8) {
+        T.tLft = new neumann(mesh, T.F, 0, 0.0);
+        T.tRgt = new neumann(mesh, T.F, 1, 0.0);
+
+    // CONDUCTING BC FOR VERTICAL CONVECTION
+    } else if (mesh.inputParams.probType == 7) {
+        T.tLft = new dirichlet(mesh, T.F, 0, 1.0);
+        T.tRgt = new dirichlet(mesh, T.F, 1, 0.0);
+    }
+
+#ifndef PLANAR
+    T.tFrn = new neumann(mesh, T.F, 2, 0.0);
+    T.tBak = new neumann(mesh, T.F, 3, 0.0);
+#endif
+
+    // HOT PLATE AT BOTTOM AND COLD PLATE AT TOP FOR RBC AND RRBC
+    if (mesh.inputParams.probType == 5 || mesh.inputParams.probType == 8) {
+        T.tBot = new dirichlet(mesh, T.F, 4, 1.0);
+        T.tTop = new dirichlet(mesh, T.F, 5, 0.0);
+
+    // COLD PLATE AT BOTTOM AND HOT PLATE AT TOP FOR SST
+    } else if (mesh.inputParams.probType == 6) {
+        T.tBot = new dirichlet(mesh, T.F, 4, 0.0);
+        T.tTop = new dirichlet(mesh, T.F, 5, 1.0);
     }
 }
 
+
+real simpson(blitz::Array<real, 3> F, blitz::Array<real, 1> Z, blitz::Array<real, 1> Y, blitz::Array<real, 1> X) {
+    return 0;
+}
+
+
+real simpson(blitz::Array<real, 2> F, blitz::Array<real, 1> Y, blitz::Array<real, 1> X) {
+    return 0;
+}
+
+
+real simpson(blitz::Array<real, 1> F, blitz::Array<real, 1> X) {
+    int xL = F.lbound(0);
+    int xU = F.ubound(0);
+
+    real intVal = 0;
+    for (int i=xL; i<=xU; i++) {
+        intVal += 1;
+    }
+
+    return 0;
+}
+
+
+real volAvg(const grid &mesh, blitz::Array<real, 3> F) {
+    real dVol;
+    real globalVal;
+    real localVal = 0.0;
+    real totalVol = mesh.xLen * mesh.yLen * mesh.zLen;
+
+    for (int iX = mesh.coreDomain.lbound(0); iX <= mesh.coreDomain.ubound(0); iX++) {
+        for (int iY = mesh.coreDomain.lbound(1); iY <= mesh.coreDomain.ubound(1); iY++) {
+            for (int iZ = mesh.coreDomain.lbound(2); iZ <= mesh.coreDomain.ubound(2); iZ++) {
+                dVol = (mesh.dXi/mesh.xi_x(iX))*(mesh.dEt/mesh.et_y(iY))*(mesh.dZt/mesh.zt_z(iZ));
+                localVal += F(iX, iY, iZ)*dVol;
+            }
+        }
+    }
+
+    MPI_Allreduce(&localVal, &globalVal, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
+    globalVal /= totalVol;
+
+    return globalVal;
+}

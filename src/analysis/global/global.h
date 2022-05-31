@@ -45,8 +45,21 @@
 
 #include <blitz/array.h>
 #include <iostream>
-#include "parser.h"
 
-void testError(blitz::Array<real, 3> A, blitz::Array<real, 3> B, int errorMom, real errorTol);
+#include "vfield.h"
+#include "sfield.h"
+
+// These are copies of the same functions in the hydro/scalar classes.
+// A better method of using the same function without repeating code
+// needs to be implemented in future.
+void initVBCs(const grid &mesh, vfield &V);
+void initTBCs(const grid &mesh, sfield &T);
+
+// Integration by Simpson's rule for 3D, 2D and 1D arrays - implementation incomplete
+real simpson(blitz::Array<real, 3> F, blitz::Array<real, 1> Z, blitz::Array<real, 1> Y, blitz::Array<real, 1> X);
+real simpson(blitz::Array<real, 2> F, blitz::Array<real, 1> Y, blitz::Array<real, 1> X);
+real simpson(blitz::Array<real, 1> F, blitz::Array<real, 1> X);
+
+real volAvg(const grid &mesh, blitz::Array<real, 3> F);
 
 #endif

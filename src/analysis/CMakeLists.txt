@@ -55,4 +55,4 @@ set (SOURCES main.cc ${POST_SOURCE} ${GLOBAL_SOURCE})
 
 add_executable(saras_post ${SOURCES})
 
-target_link_libraries(saras_post field grid parser reader writer parallel yaml-cpp hdf5 debug /usr/local/lib/libblitz.a)
+target_link_libraries(saras_post field grid parser reader writer boundary parallel yaml-cpp hdf5 debug /usr/local/lib/libblitz.a)
