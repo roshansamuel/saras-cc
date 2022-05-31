@@ -279,6 +279,10 @@ void reader::readSolution(real solTime) {
     constFile << "output/Soln_" << std::fixed << std::setfill('0') << std::setw(9) << std::setprecision(4) << solTime << ".h5";
     strcpy(fileName, constFile.str().c_str());
 
+#ifdef POST_RUN
+    if (pf) std::cout << "Reading from " << fileName << "\n";
+#endif
+
     // First create a file handle with the path to the input file
     H5E_BEGIN_TRY {
         fileHandle = H5Fopen(fileName, H5F_ACC_RDONLY, plist_id);

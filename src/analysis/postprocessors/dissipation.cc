@@ -49,7 +49,7 @@ static void computeDiss(grid &mesh, std::vector<real> tList);
 
 
 void dissipation(grid &gridData, std::vector<real> tList) {
-    std::vector<int> blLims = getBLLimits(gridData, tList);
+    //std::vector<int> blLims = getBLLimits(gridData, tList);
 
     computeDiss(gridData, tList);
 }
