@@ -42,7 +42,98 @@
 
 #include "global.h"
 
-void initVBCs(const grid &mesh, vfield &V) {
+global::global(const grid &mesh): mesh(mesh) {
+    // Loop limits of arrays for mid-point method of integration
+    xlMP = mesh.coreDomain.lbound(0);
+    xuMP = mesh.coreDomain.ubound(0);
+
+    ylMP = mesh.coreDomain.lbound(1);
+    yuMP = mesh.coreDomain.ubound(1);
+
+    zlMP = mesh.coreDomain.lbound(2);
+    zuMP = mesh.coreDomain.ubound(2);
+
+    xfr = (mesh.rankData.xRank == 0)? true: false;
+    yfr = (mesh.rankData.yRank == 0)? true: false;
+    zfr = (mesh.rankData.zRank == 0)? true: false;
+
+    xlr = (mesh.rankData.xRank == mesh.rankData.npX - 1)? true: false;
+    ylr = (mesh.rankData.yRank == mesh.rankData.npY - 1)? true: false;
+    zlr = (mesh.rankData.zRank == mesh.rankData.npZ - 1)? true: false;
+
+    setWallRectDomains();
+}
+
+
+void global::setWallRectDomains() {
+    blitz::RectDomain<3> core, full, wall;
+    blitz::TinyVector<int, 3> lb, ub;
+
+    core = mesh.coreDomain;
+    full = mesh.fullDomain;
+
+    lb = full.lbound();         lb(0) = 0;
+    ub = full.ubound();         ub(0) = 0;
+    wall = blitz::RectDomain<3>(lb, ub);
+    x0Lft = wall;       x0Lft.lbound()(0) -= 1;         x0Lft.ubound()(0) -= 1;
+    x0Rgt = wall;
+
+    lb = full.lbound();         lb(0) = core.ubound(0);
+    ub = full.ubound();         ub(0) = core.ubound(0);
+    wall = blitz::RectDomain<3>(lb, ub);
+    x1Lft = wall;
+    x1Rgt = wall;       x1Rgt.lbound()(0) += 1;         x1Rgt.ubound()(0) += 1;
+
+
+    lb = full.lbound();         lb(1) = 0;
+    ub = full.ubound();         ub(1) = 0;
+    wall = blitz::RectDomain<3>(lb, ub);
+    y0Lft = wall;       y0Lft.lbound()(1) -= 1;         y0Lft.ubound()(1) -= 1;
+    y0Rgt = wall;
+
+    lb = full.lbound();         lb(1) = core.ubound(1);
+    ub = full.ubound();         ub(1) = core.ubound(1);
+    wall = blitz::RectDomain<3>(lb, ub);
+    y1Lft = wall;
+    y1Rgt = wall;       y1Rgt.lbound()(1) += 1;         y1Rgt.ubound()(1) += 1;
+
+
+    lb = full.lbound();         lb(2) = 0;
+    ub = full.ubound();         ub(2) = 0;
+    wall = blitz::RectDomain<3>(lb, ub);
+    z0Lft = wall;       z0Lft.lbound()(2) -= 1;         z0Lft.ubound()(2) -= 1;
+    z0Rgt = wall;
+
+    lb = full.lbound();         lb(2) = core.ubound(2);
+    ub = full.ubound();         ub(2) = core.ubound(2);
+    wall = blitz::RectDomain<3>(lb, ub);
+    z1Lft = wall;
+    z1Rgt = wall;       z1Rgt.lbound()(2) += 1;         z1Rgt.ubound()(2) += 1;
+}
+
+
+blitz::Array<real, 3> global::shift2Wall(blitz::Array<real, 3> F) {
+    blitz::Array<real, 3> retMat;
+
+    retMat.resize(F.extent());
+    retMat.reindexSelf(F.lbound());
+
+    retMat = F;
+
+    if (xfr) retMat(x0Lft) = 0.5*(F(x0Rgt) + F(x0Lft));
+    if (xlr) retMat(x1Rgt) = 0.5*(F(x1Rgt) + F(x1Lft));
+
+    if (yfr) retMat(y0Lft) = 0.5*(F(y0Rgt) + F(y0Lft));
+    if (ylr) retMat(y1Rgt) = 0.5*(F(y1Rgt) + F(y1Lft));
+
+    if (zfr) retMat(z0Lft) = 0.5*(F(z0Rgt) + F(z0Lft));
+    if (zlr) retMat(z1Rgt) = 0.5*(F(z1Rgt) + F(z1Lft));
+
+    return retMat;
+}
+
+
+void global::initVBCs(vfield &V) {
     if (mesh.inputParams.probType == 3) {
         // INFLOW AND OUTFLOW BCS
         V.uLft = new dirichlet(mesh, V.Vx, 0, 1.0);
@@ -111,7 +202,7 @@ void initVBCs(const grid &mesh, vfield &V) {
 }
 
 
-void initTBCs(const grid &mesh, sfield &T) {
+void global::initTBCs(sfield &T) {
     // ADIABATIC BC FOR RBC, SST AND RRBC
     if (mesh.inputParams.probType == 5 || mesh.inputParams.probType == 6 || mesh.inputParams.probType == 8) {
         T.tLft = new neumann(mesh, T.F, 0, 0.0);
@@ -141,17 +232,153 @@ void initTBCs(const grid &mesh, sfield &T) {
 }
 
 
-real simpson(blitz::Array<real, 3> F, blitz::Array<real, 1> Z, blitz::Array<real, 1> Y, blitz::Array<real, 1> X) {
+void global::checkPeriodic(const parser &inputParams, parallel &rankData) {
+    // Disable periodic data transfer by setting neighbouring ranks of boundary sub-domains to NULL
+    // Left and right walls
+    if (not inputParams.xPer) {
+        if (rankData.xRank == 0) {
+            rankData.faceRanks(0) = MPI_PROC_NULL;
+
+            rankData.edgeRanks(0) = MPI_PROC_NULL;
+            rankData.edgeRanks(1) = MPI_PROC_NULL;
+            rankData.edgeRanks(8) = MPI_PROC_NULL;
+            rankData.edgeRanks(10) = MPI_PROC_NULL;
+
+            rankData.cornRanks(0) = MPI_PROC_NULL;
+            rankData.cornRanks(1) = MPI_PROC_NULL;
+            rankData.cornRanks(4) = MPI_PROC_NULL;
+            rankData.cornRanks(5) = MPI_PROC_NULL;
+        }
+
+        if (rankData.xRank == rankData.npX-1) {
+            rankData.faceRanks(1) = MPI_PROC_NULL;
+
+            rankData.edgeRanks(2) = MPI_PROC_NULL;
+            rankData.edgeRanks(3) = MPI_PROC_NULL;
+            rankData.edgeRanks(9) = MPI_PROC_NULL;
+            rankData.edgeRanks(11) = MPI_PROC_NULL;
+
+            rankData.cornRanks(2) = MPI_PROC_NULL;
+            rankData.cornRanks(3) = MPI_PROC_NULL;
+            rankData.cornRanks(6) = MPI_PROC_NULL;
+            rankData.cornRanks(7) = MPI_PROC_NULL;
+        }
+    }
+
+    // Front and rear walls
+#ifdef PLANAR
+    // Front and rear walls are by default non-periodic for 2D simulations
+    if (rankData.yRank == 0)                rankData.faceRanks(2) = MPI_PROC_NULL;
+    if (rankData.yRank == rankData.npY-1)   rankData.faceRanks(3) = MPI_PROC_NULL;
+
+#else
+    if (not inputParams.yPer) {
+        if (rankData.yRank == 0) {
+            rankData.faceRanks(2) = MPI_PROC_NULL;
+
+            rankData.edgeRanks(0) = MPI_PROC_NULL;
+            rankData.edgeRanks(2) = MPI_PROC_NULL;
+            rankData.edgeRanks(4) = MPI_PROC_NULL;
+            rankData.edgeRanks(5) = MPI_PROC_NULL;
+
+            rankData.cornRanks(0) = MPI_PROC_NULL;
+            rankData.cornRanks(2) = MPI_PROC_NULL;
+            rankData.cornRanks(4) = MPI_PROC_NULL;
+            rankData.cornRanks(6) = MPI_PROC_NULL;
+        }
+
+        if (rankData.yRank == rankData.npY-1) {
+            rankData.faceRanks(3) = MPI_PROC_NULL;
+
+            rankData.edgeRanks(1) = MPI_PROC_NULL;
+            rankData.edgeRanks(3) = MPI_PROC_NULL;
+            rankData.edgeRanks(6) = MPI_PROC_NULL;
+            rankData.edgeRanks(7) = MPI_PROC_NULL;
+
+            rankData.cornRanks(1) = MPI_PROC_NULL;
+            rankData.cornRanks(3) = MPI_PROC_NULL;
+            rankData.cornRanks(5) = MPI_PROC_NULL;
+            rankData.cornRanks(7) = MPI_PROC_NULL;
+        }
+    }
+#endif
+
+    // Top and bottom walls
+    if (not inputParams.zPer) {
+        if (rankData.zRank == 0) {
+            rankData.faceRanks(4) = MPI_PROC_NULL;
+
+            rankData.edgeRanks(4) = MPI_PROC_NULL;
+            rankData.edgeRanks(6) = MPI_PROC_NULL;
+            rankData.edgeRanks(8) = MPI_PROC_NULL;
+            rankData.edgeRanks(9) = MPI_PROC_NULL;
+
+            rankData.cornRanks(0) = MPI_PROC_NULL;
+            rankData.cornRanks(1) = MPI_PROC_NULL;
+            rankData.cornRanks(2) = MPI_PROC_NULL;
+            rankData.cornRanks(3) = MPI_PROC_NULL;
+        }
+
+        if (rankData.zRank == rankData.npZ-1) {
+            rankData.faceRanks(5) = MPI_PROC_NULL;
+
+            rankData.edgeRanks(5) = MPI_PROC_NULL;
+            rankData.edgeRanks(7) = MPI_PROC_NULL;
+            rankData.edgeRanks(10) = MPI_PROC_NULL;
+            rankData.edgeRanks(11) = MPI_PROC_NULL;
+
+            rankData.cornRanks(4) = MPI_PROC_NULL;
+            rankData.cornRanks(5) = MPI_PROC_NULL;
+            rankData.cornRanks(6) = MPI_PROC_NULL;
+            rankData.cornRanks(7) = MPI_PROC_NULL;
+        }
+    }
+};
+
+
+real global::simpsonBase(blitz::Array<real, 3> F, blitz::Array<real, 1> Z, blitz::Array<real, 1> Y, blitz::Array<real, 1> X) {
+    blitz::Array<real, 1> h, hsum, hmul, hdiv;
+
+    int N = Z.extent(0);
+    h.resize(N-1);
+    std::cout << F(0, 0, 0) << std::endl;
+    //F.reindexSelf(blitz::TinyVector<int, 3>(-1, -1, -1));
+    //std::cout << F(0, 0, 0) << std::endl;
+    //MPI_Finalize();
+    //exit(0);
+
+    std::cout << Z.lbound() << Z.ubound() << std::endl;
+    h = Z(blitz::Range(0, N, 1)) - Z(blitz::Range(-1, N-1, 1));
+    //std::cout << h << std::endl;
     return 0;
 }
 
 
-real simpson(blitz::Array<real, 2> F, blitz::Array<real, 1> Y, blitz::Array<real, 1> X) {
+real global::simpsonRule(blitz::Array<real, 3> F, blitz::Array<real, 1> Z, blitz::Array<real, 1> Y, blitz::Array<real, 1> X) {
+    return simpsonBase(F, Z, Y, X);
+}
+
+
+real global::simpsonBase(blitz::Array<real, 2> F, blitz::Array<real, 1> Y, blitz::Array<real, 1> X) {
     return 0;
 }
 
 
-real simpson(blitz::Array<real, 1> F, blitz::Array<real, 1> X) {
+real global::simpsonRule(blitz::Array<real, 2> F, blitz::Array<real, 1> Y, blitz::Array<real, 1> X) {
+    return simpsonBase(F, Y, X);
+}
+
+
+real global::simpsonBase(blitz::Array<real, 1> F, blitz::Array<real, 1> X) {
+    blitz::Array<real, 1> h, hsum, hmul, hdiv;
+
+    //N = 
+    //h = 
+    return 0;
+}
+
+
+real global::simpsonRule(blitz::Array<real, 1> F, blitz::Array<real, 1> X) {
     int xL = F.lbound(0);
     int xU = F.ubound(0);
 
@@ -164,15 +391,15 @@ real simpson(blitz::Array<real, 1> F, blitz::Array<real, 1> X) {
 }
 
 
-real volAvg(const grid &mesh, blitz::Array<real, 3> F) {
+real global::volAvgMidPt(blitz::Array<real, 3> F) {
     real dVol;
     real globalVal;
     real localVal = 0.0;
     real totalVol = mesh.xLen * mesh.yLen * mesh.zLen;
 
-    for (int iX = mesh.coreDomain.lbound(0); iX <= mesh.coreDomain.ubound(0); iX++) {
-        for (int iY = mesh.coreDomain.lbound(1); iY <= mesh.coreDomain.ubound(1); iY++) {
-            for (int iZ = mesh.coreDomain.lbound(2); iZ <= mesh.coreDomain.ubound(2); iZ++) {
+    for (int iX = xlMP; iX <= xuMP; iX++) {
+        for (int iY = ylMP; iY <= yuMP; iY++) {
+            for (int iZ = zlMP; iZ <= zuMP; iZ++) {
                 dVol = (mesh.dXi/mesh.xi_x(iX))*(mesh.dEt/mesh.et_y(iY))*(mesh.dZt/mesh.zt_z(iZ));
                 localVal += F(iX, iY, iZ)*dVol;
             }

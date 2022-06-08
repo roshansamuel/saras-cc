@@ -53,7 +53,7 @@
 #include "global.h"
 #include "parallel.h"
 
-void dissipation(grid &gridData, std::vector<real> tList);
+void dissipation(global &gloData, std::vector<real> tList);
 
 void nse_terms(grid &gridData);
 

@@ -136,11 +136,28 @@ grid::grid(const parser &solParam, parallel &parallelData): inputParams(solParam
         gridCheck = true;
     }
 
+#ifndef POST_RUN
     x = xGlobal(blitz::Range(subarrayStarts(0) - padWidths(0), subarrayEnds(0) + padWidths(0)));
     y = yGlobal(blitz::Range(subarrayStarts(1) - padWidths(1), subarrayEnds(1) + padWidths(1)));
     z = zGlobal(blitz::Range(subarrayStarts(2) - padWidths(2), subarrayEnds(2) + padWidths(2)));
 
     if (gridCheck) checkAnisotropy();
+#else
+    // For post-processing, X, Y and Z are defined differently to perform
+    // volume integrations correctly. This doesn't affect derivative calculation.
+    x = xGlobal(blitz::Range(subarrayStarts(0) - 1, subarrayEnds(0) + 1));
+    y = yGlobal(blitz::Range(subarrayStarts(1) - 1, subarrayEnds(1) + 1));
+    z = zGlobal(blitz::Range(subarrayStarts(2) - 1, subarrayEnds(2) + 1));
+
+    if (rankData.xRank == 0) x(-1) = 0;
+    if (rankData.xRank == rankData.npX - 1) x(coreDomain.ubound(0) + 1) = xLen;
+
+    if (rankData.yRank == 0) y(-1) = 0;
+    if (rankData.yRank == rankData.npY - 1) y(coreDomain.ubound(1) + 1) = yLen;
+
+    if (rankData.zRank == 0) z(-1) = 0;
+    if (rankData.zRank == rankData.npZ - 1) z(coreDomain.ubound(2) + 1) = zLen;
+#endif
 }
 
 
@@ -269,15 +286,25 @@ void grid::resizeGrid() {
     et.resize(yRange);
     zt.resize(zRange);
 
-    // LOCAL GRID POINTS
-    x.resize(xRange);
-    y.resize(yRange);
-    z.resize(zRange);
-
     // LOCAL GRID METRICS
     xi_x.resize(xRange);        xixx.resize(xRange);        xix2.resize(xRange);
     et_y.resize(yRange);        etyy.resize(yRange);        ety2.resize(yRange);
     zt_z.resize(zRange);        ztzz.resize(zRange);        ztz2.resize(zRange);
+
+    // LOCAL GRID POINTS
+#ifndef POST_RUN
+    x.resize(xRange);
+    y.resize(yRange);
+    z.resize(zRange);
+#else
+    xRange = blitz::Range(coreDomain.lbound(0)-1, coreDomain.ubound(0)+1);
+    yRange = blitz::Range(coreDomain.lbound(1)-1, coreDomain.ubound(1)+1);
+    zRange = blitz::Range(coreDomain.lbound(2)-1, coreDomain.ubound(2)+1);
+
+    x.resize(xRange);
+    y.resize(yRange);
+    z.resize(zRange);
+#endif
 }
 
 
@@ -691,12 +718,10 @@ void grid::checkAnisotropy() {
     MPI_Allreduce(&localMax, &globalMax, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);
 
     MPI_Barrier(MPI_COMM_WORLD);
-#ifndef POST_RUN
     if (globalMax > 7.0) {
         if (pf) std::cout << "\nWARNING: Grid anisotropy exceeds limits. Finite-difference calculations will be inaccurate" << std::endl;
     } else {
         if (pf) std::cout << "\nMaximum grid anisotropy is " << globalMax << std::endl;
     }
-#endif
 }
 

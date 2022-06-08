@@ -55,10 +55,10 @@
 
 class reader {
     public:
-        reader(const grid &mesh, std::vector<field> &rFields);
+        reader(const grid &mesh);
 
-        real readRestart();
-        void readSolution(real solTime);
+        real readRestart(std::vector<field> &rFields);
+        void readSolution(real solTime, std::vector<field> &rFields);
 
         ~reader();
 
@@ -67,8 +67,6 @@ class reader {
 
         // Print flag - basically flag to ease printing to I/O. It is true for root rank (0)
         bool pf;
-
-        std::vector<field> &rFields;
 
 #ifdef PLANAR
         blitz::Array<real, 2> fieldData;

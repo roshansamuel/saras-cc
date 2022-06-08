@@ -49,17 +49,49 @@
 #include "vfield.h"
 #include "sfield.h"
 
-// These are copies of the same functions in the hydro/scalar classes.
-// A better method of using the same function without repeating code
-// needs to be implemented in future.
-void initVBCs(const grid &mesh, vfield &V);
-void initTBCs(const grid &mesh, sfield &T);
+class global {
+    private:
+        // Loop limits for mid-point method of integration
+        int xlMP, xuMP, ylMP, yuMP, zlMP, zuMP;
 
-// Integration by Simpson's rule for 3D, 2D and 1D arrays - implementation incomplete
-real simpson(blitz::Array<real, 3> F, blitz::Array<real, 1> Z, blitz::Array<real, 1> Y, blitz::Array<real, 1> X);
-real simpson(blitz::Array<real, 2> F, blitz::Array<real, 1> Y, blitz::Array<real, 1> X);
-real simpson(blitz::Array<real, 1> F, blitz::Array<real, 1> X);
+        /** Flags for first rank (fr) and last rank (lr) along X, Y and Z directions */
+        bool xfr, xlr, yfr, ylr, zfr, zlr;
 
-real volAvg(const grid &mesh, blitz::Array<real, 3> F);
+        blitz::RectDomain<3> x0Lft, x0Rgt, x1Lft, x1Rgt;
+        blitz::RectDomain<3> y0Lft, y0Rgt, y1Lft, y1Rgt;
+        blitz::RectDomain<3> z0Lft, z0Rgt, z1Lft, z1Rgt;
+
+        real simpsonBase(blitz::Array<real, 3> F, blitz::Array<real, 1> Z, blitz::Array<real, 1> Y, blitz::Array<real, 1> X);
+        real simpsonBase(blitz::Array<real, 2> F, blitz::Array<real, 1> Y, blitz::Array<real, 1> X);
+        real simpsonBase(blitz::Array<real, 1> F, blitz::Array<real, 1> X);
+    public:
+        /** A const reference to the global variables stored in the grid class */
+        const grid &mesh;
+
+        global(const grid &mesh);
+
+        void setWallRectDomains();
+        blitz::Array<real, 3> shift2Wall(blitz::Array<real, 3> F);
+
+        // These are copies of the same functions in the hydro/scalar classes.
+        // A better method of using the same function without repeating code
+        // needs to be implemented in future.
+        void initVBCs(vfield &V);
+        void initTBCs(sfield &T);
+        void checkPeriodic(const parser &inputParams, parallel &rankData);
+
+        real simpsonRule(blitz::Array<real, 3> F, blitz::Array<real, 1> Z, blitz::Array<real, 1> Y, blitz::Array<real, 1> X);
+        real simpsonRule(blitz::Array<real, 2> F, blitz::Array<real, 1> Y, blitz::Array<real, 1> X);
+        real simpsonRule(blitz::Array<real, 1> F, blitz::Array<real, 1> X);
+
+        real volAvgMidPt(blitz::Array<real, 3> F);
+};
+
+/**
+ ********************************************************************************************************************************************
+ *  \class global global.h "src/analysis/global/global.h"
+ *  \brief  Contains all the global variables related to post-processing.
+ ********************************************************************************************************************************************
+ */
 
 #endif

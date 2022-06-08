@@ -40,6 +40,7 @@
  ********************************************************************************************************************************************
  */
 
+#include "global.h"
 #include "postprocess.h"
 
 int main() {
@@ -56,12 +57,18 @@ int main() {
     parallel mpi(inputParams);
 
     // WRITE CONTENTS OF THE INPUT YAML FILE TO THE STANDARD I/O
-    if (mpi.rank == 0) {
-        inputParams.writeParams();
-    }
+    //if (mpi.rank == 0) {
+    //    inputParams.writeParams();
+    //}
 
     // INITIALIZE GRID DATA
     grid gridData(inputParams, mpi);
+
+    // INITIALIZE POST-PROCESSING GLOBALS
+    global gloData(gridData);
+
+    // ENABLE-DISABLE PERIODIC DATA TRANSFER IN GLOBALS
+    gloData.checkPeriodic(inputParams, mpi);
 
     if (mpiThreadProvided < MPI_THREAD_MULTIPLE)
         if (gridData.pf)
@@ -71,7 +78,7 @@ int main() {
 
     std::vector<real> timeList = inputParams.readTimes();
 
-    dissipation(gridData, timeList);
+    dissipation(gloData, timeList);
 
     gettimeofday(&runEnd, NULL);
     real run_time = ((runEnd.tv_sec - runStart.tv_sec)*1000000u + runEnd.tv_usec - runStart.tv_usec)/1.e6;

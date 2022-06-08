@@ -74,9 +74,9 @@ scalar_d3::scalar_d3(const grid &mesh, const parser &solParam, parallel &mpiPara
         readFields.push_back(T.F);
 
         // Initialize reader object
-        reader dataReader(mesh, readFields);
+        reader dataReader(mesh);
 
-        time = dataReader.readRestart();
+        time = dataReader.readRestart(readFields);
 
         // Abort if this time is greater than the final time specified by the user
         if (time >= inputParams.tMax) {

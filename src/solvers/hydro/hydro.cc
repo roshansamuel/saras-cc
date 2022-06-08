@@ -58,7 +58,7 @@ hydro::hydro(const grid &mesh, const parser &solParam, parallel &mpiParam):
             P(mesh, "P"),
             mesh(mesh),
             inputParams(solParam),
-            mpiData(mpiParam) {
+            rankData(mpiParam) {
     // For reasons I don't fully understand, an instance of plainvf
     // has to exist in the solver for the plainvf class to be
     // found by the compiler when linking the project.
@@ -126,116 +126,116 @@ void hydro::checkPeriodic() {
     // Disable periodic data transfer by setting neighbouring ranks of boundary sub-domains to NULL
     // Left and right walls
     if (not inputParams.xPer) {
-        if (mpiData.rank == 0) {
+        if (rankData.rank == 0) {
             std::cout << "Using non-periodic boundary conditions along X Direction" << std::endl;
             std::cout << std::endl;
         }
 
-        if (mpiData.xRank == 0) {
-            mpiData.faceRanks(0) = MPI_PROC_NULL;
+        if (rankData.xRank == 0) {
+            rankData.faceRanks(0) = MPI_PROC_NULL;
 
-            mpiData.edgeRanks(0) = MPI_PROC_NULL;
-            mpiData.edgeRanks(1) = MPI_PROC_NULL;
-            mpiData.edgeRanks(8) = MPI_PROC_NULL;
-            mpiData.edgeRanks(10) = MPI_PROC_NULL;
+            rankData.edgeRanks(0) = MPI_PROC_NULL;
+            rankData.edgeRanks(1) = MPI_PROC_NULL;
+            rankData.edgeRanks(8) = MPI_PROC_NULL;
+            rankData.edgeRanks(10) = MPI_PROC_NULL;
 
-            mpiData.cornRanks(0) = MPI_PROC_NULL;
-            mpiData.cornRanks(1) = MPI_PROC_NULL;
-            mpiData.cornRanks(4) = MPI_PROC_NULL;
-            mpiData.cornRanks(5) = MPI_PROC_NULL;
+            rankData.cornRanks(0) = MPI_PROC_NULL;
+            rankData.cornRanks(1) = MPI_PROC_NULL;
+            rankData.cornRanks(4) = MPI_PROC_NULL;
+            rankData.cornRanks(5) = MPI_PROC_NULL;
         }
 
-        if (mpiData.xRank == mpiData.npX-1) {
-            mpiData.faceRanks(1) = MPI_PROC_NULL;
+        if (rankData.xRank == rankData.npX-1) {
+            rankData.faceRanks(1) = MPI_PROC_NULL;
 
-            mpiData.edgeRanks(2) = MPI_PROC_NULL;
-            mpiData.edgeRanks(3) = MPI_PROC_NULL;
-            mpiData.edgeRanks(9) = MPI_PROC_NULL;
-            mpiData.edgeRanks(11) = MPI_PROC_NULL;
+            rankData.edgeRanks(2) = MPI_PROC_NULL;
+            rankData.edgeRanks(3) = MPI_PROC_NULL;
+            rankData.edgeRanks(9) = MPI_PROC_NULL;
+            rankData.edgeRanks(11) = MPI_PROC_NULL;
 
-            mpiData.cornRanks(2) = MPI_PROC_NULL;
-            mpiData.cornRanks(3) = MPI_PROC_NULL;
-            mpiData.cornRanks(6) = MPI_PROC_NULL;
-            mpiData.cornRanks(7) = MPI_PROC_NULL;
+            rankData.cornRanks(2) = MPI_PROC_NULL;
+            rankData.cornRanks(3) = MPI_PROC_NULL;
+            rankData.cornRanks(6) = MPI_PROC_NULL;
+            rankData.cornRanks(7) = MPI_PROC_NULL;
         }
     }
 
     // Front and rear walls
 #ifdef PLANAR
     // Front and rear walls are by default non-periodic for 2D simulations
-    if (mpiData.yRank == 0)             mpiData.faceRanks(2) = MPI_PROC_NULL;
-    if (mpiData.yRank == mpiData.npY-1) mpiData.faceRanks(3) = MPI_PROC_NULL;
+    if (rankData.yRank == 0)                rankData.faceRanks(2) = MPI_PROC_NULL;
+    if (rankData.yRank == rankData.npY-1)   rankData.faceRanks(3) = MPI_PROC_NULL;
 
 #else
     if (not inputParams.yPer) {
-        if (mpiData.rank == 0) {
+        if (rankData.rank == 0) {
             std::cout << "Using non-periodic boundary conditions along Y Direction" << std::endl;
             std::cout << std::endl;
         }
 
-        if (mpiData.yRank == 0) {
-            mpiData.faceRanks(2) = MPI_PROC_NULL;
+        if (rankData.yRank == 0) {
+            rankData.faceRanks(2) = MPI_PROC_NULL;
 
-            mpiData.edgeRanks(0) = MPI_PROC_NULL;
-            mpiData.edgeRanks(2) = MPI_PROC_NULL;
-            mpiData.edgeRanks(4) = MPI_PROC_NULL;
-            mpiData.edgeRanks(5) = MPI_PROC_NULL;
+            rankData.edgeRanks(0) = MPI_PROC_NULL;
+            rankData.edgeRanks(2) = MPI_PROC_NULL;
+            rankData.edgeRanks(4) = MPI_PROC_NULL;
+            rankData.edgeRanks(5) = MPI_PROC_NULL;
 
-            mpiData.cornRanks(0) = MPI_PROC_NULL;
-            mpiData.cornRanks(2) = MPI_PROC_NULL;
-            mpiData.cornRanks(4) = MPI_PROC_NULL;
-            mpiData.cornRanks(6) = MPI_PROC_NULL;
+            rankData.cornRanks(0) = MPI_PROC_NULL;
+            rankData.cornRanks(2) = MPI_PROC_NULL;
+            rankData.cornRanks(4) = MPI_PROC_NULL;
+            rankData.cornRanks(6) = MPI_PROC_NULL;
         }
 
-        if (mpiData.yRank == mpiData.npY-1) {
-            mpiData.faceRanks(3) = MPI_PROC_NULL;
+        if (rankData.yRank == rankData.npY-1) {
+            rankData.faceRanks(3) = MPI_PROC_NULL;
 
-            mpiData.edgeRanks(1) = MPI_PROC_NULL;
-            mpiData.edgeRanks(3) = MPI_PROC_NULL;
-            mpiData.edgeRanks(6) = MPI_PROC_NULL;
-            mpiData.edgeRanks(7) = MPI_PROC_NULL;
+            rankData.edgeRanks(1) = MPI_PROC_NULL;
+            rankData.edgeRanks(3) = MPI_PROC_NULL;
+            rankData.edgeRanks(6) = MPI_PROC_NULL;
+            rankData.edgeRanks(7) = MPI_PROC_NULL;
 
-            mpiData.cornRanks(1) = MPI_PROC_NULL;
-            mpiData.cornRanks(3) = MPI_PROC_NULL;
-            mpiData.cornRanks(5) = MPI_PROC_NULL;
-            mpiData.cornRanks(7) = MPI_PROC_NULL;
+            rankData.cornRanks(1) = MPI_PROC_NULL;
+            rankData.cornRanks(3) = MPI_PROC_NULL;
+            rankData.cornRanks(5) = MPI_PROC_NULL;
+            rankData.cornRanks(7) = MPI_PROC_NULL;
         }
     }
 #endif
 
     // Top and bottom walls
     if (not inputParams.zPer) {
-        if (mpiData.rank == 0) {
+        if (rankData.rank == 0) {
             std::cout << "Using non-periodic boundary conditions along Z Direction" << std::endl;
             std::cout << std::endl;
         }
 
-        if (mpiData.zRank == 0) {
-            mpiData.faceRanks(4) = MPI_PROC_NULL;
+        if (rankData.zRank == 0) {
+            rankData.faceRanks(4) = MPI_PROC_NULL;
 
-            mpiData.edgeRanks(4) = MPI_PROC_NULL;
-            mpiData.edgeRanks(6) = MPI_PROC_NULL;
-            mpiData.edgeRanks(8) = MPI_PROC_NULL;
-            mpiData.edgeRanks(9) = MPI_PROC_NULL;
+            rankData.edgeRanks(4) = MPI_PROC_NULL;
+            rankData.edgeRanks(6) = MPI_PROC_NULL;
+            rankData.edgeRanks(8) = MPI_PROC_NULL;
+            rankData.edgeRanks(9) = MPI_PROC_NULL;
 
-            mpiData.cornRanks(0) = MPI_PROC_NULL;
-            mpiData.cornRanks(1) = MPI_PROC_NULL;
-            mpiData.cornRanks(2) = MPI_PROC_NULL;
-            mpiData.cornRanks(3) = MPI_PROC_NULL;
+            rankData.cornRanks(0) = MPI_PROC_NULL;
+            rankData.cornRanks(1) = MPI_PROC_NULL;
+            rankData.cornRanks(2) = MPI_PROC_NULL;
+            rankData.cornRanks(3) = MPI_PROC_NULL;
         }
 
-        if (mpiData.zRank == mpiData.npZ-1) {
-            mpiData.faceRanks(5) = MPI_PROC_NULL;
+        if (rankData.zRank == rankData.npZ-1) {
+            rankData.faceRanks(5) = MPI_PROC_NULL;
 
-            mpiData.edgeRanks(5) = MPI_PROC_NULL;
-            mpiData.edgeRanks(7) = MPI_PROC_NULL;
-            mpiData.edgeRanks(10) = MPI_PROC_NULL;
-            mpiData.edgeRanks(11) = MPI_PROC_NULL;
+            rankData.edgeRanks(5) = MPI_PROC_NULL;
+            rankData.edgeRanks(7) = MPI_PROC_NULL;
+            rankData.edgeRanks(10) = MPI_PROC_NULL;
+            rankData.edgeRanks(11) = MPI_PROC_NULL;
 
-            mpiData.cornRanks(4) = MPI_PROC_NULL;
-            mpiData.cornRanks(5) = MPI_PROC_NULL;
-            mpiData.cornRanks(6) = MPI_PROC_NULL;
-            mpiData.cornRanks(7) = MPI_PROC_NULL;
+            rankData.cornRanks(4) = MPI_PROC_NULL;
+            rankData.cornRanks(5) = MPI_PROC_NULL;
+            rankData.cornRanks(6) = MPI_PROC_NULL;
+            rankData.cornRanks(7) = MPI_PROC_NULL;
         }
     }
 };
@@ -253,23 +253,23 @@ void hydro::checkPeriodic() {
 void hydro::initVForcing() {
     switch (inputParams.forceType) {
         case 0:
-            if (mpiData.rank == 0) std::cout << "Running hydrodynamics simulation with zero velocity forcing" << std::endl << std::endl;
+            if (rankData.rank == 0) std::cout << "Running hydrodynamics simulation with zero velocity forcing" << std::endl << std::endl;
             V.vForcing = new zeroForcing(mesh, V);
             break;
         case 1:
-            if (mpiData.rank == 0) std::cout << "Running hydrodynamics simulation with random velocity forcing" << std::endl << std::endl;
+            if (rankData.rank == 0) std::cout << "Running hydrodynamics simulation with random velocity forcing" << std::endl << std::endl;
             V.vForcing = new randomForcing(mesh, V);
             break;
         case 2:
-            if (mpiData.rank == 0) std::cout << "Running hydrodynamics simulation with rotation" << std::endl << std::endl;
+            if (rankData.rank == 0) std::cout << "Running hydrodynamics simulation with rotation" << std::endl << std::endl;
             V.vForcing = new coriolisForce(mesh, V);
             break;
         case 5:
-            if (mpiData.rank == 0) std::cout << "Running hydrodynamics simulation with constant pressure gradient along X-direction" << std::endl << std::endl;
+            if (rankData.rank == 0) std::cout << "Running hydrodynamics simulation with constant pressure gradient along X-direction" << std::endl << std::endl;
             V.vForcing = new constantPGrad(mesh, V);
             break;
         default:
-            if (mpiData.rank == 0) std::cout << "WARNING: Chosen velocity forcing is incompatible with hydrodynamics runs. Defaulting to zero forcing" << std::endl << std::endl;
+            if (rankData.rank == 0) std::cout << "WARNING: Chosen velocity forcing is incompatible with hydrodynamics runs. Defaulting to zero forcing" << std::endl << std::endl;
             V.vForcing = new zeroForcing(mesh, V);
     }
 }

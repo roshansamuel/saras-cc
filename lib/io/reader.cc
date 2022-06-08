@@ -52,7 +52,7 @@
  * \param   wField is a vector of fields to be read into
  ********************************************************************************************************************************************
  */
-reader::reader(const grid &mesh, std::vector<field> &rFields): mesh(mesh), rFields(rFields) {
+reader::reader(const grid &mesh): mesh(mesh) {
     // Flag to enable printing to I/O only by 0 rank
     pf = false;
     if (mesh.rankData.rank == 0) pf = true;
@@ -168,7 +168,7 @@ void reader::initLimits() {
  * \return  The real value specifying the solution time from the restart file that is opened
  ********************************************************************************************************************************************
  */
-real reader::readRestart() {
+real reader::readRestart(std::vector<field> &rFields) {
     hid_t plist_id;
     hid_t fileHandle;
     hid_t dataSet;
@@ -260,7 +260,7 @@ real reader::readRestart() {
  * \param   solTime is the real value specifying the solution time of the file to be opened
  ********************************************************************************************************************************************
  */
-void reader::readSolution(real solTime) {
+void reader::readSolution(real solTime, std::vector<field> &rFields) {
     hid_t plist_id;
     hid_t fileHandle;
     hid_t dataSet;
