@@ -349,6 +349,9 @@ real global::simpsonInt(blitz::Array<real, 3> F, blitz::Array<real, 1> Z, blitz:
     real gloVal = 0.0;
 
     MPI_Allreduce(&locVal, &gloVal, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
+    //std::cout << mesh.rankData.rank << "\t" << std::setprecision(16) << locVal << "\t" << gloVal << std::endl;
+    //MPI_Finalize();
+    //exit(0);
     gloVal /= totVol;
 
     return gloVal;
@@ -356,19 +359,21 @@ real global::simpsonInt(blitz::Array<real, 3> F, blitz::Array<real, 1> Z, blitz:
 
 
 real global::simpsonRule(blitz::Array<real, 3> F, blitz::Array<real, 1> Z, blitz::Array<real, 1> Y, blitz::Array<real, 1> X) {
-    real retVal = 0;
-    int N = Z.extent(0);
     int uBnd = Z.ubound(0);
-    blitz::Range all = blitz::Range::all();
+    int lBnd = Z.lbound(0);
 
+    if (mesh.rankData.zRank > 0) lBnd += 1;
+    int N = uBnd - lBnd + 1;
+
+    real retVal = 0;
     if (N%2 == 0) {
-        retVal  = simpsonBase(F, Z, Y, X, -1, uBnd-1);
-        retVal += simpsonBase(F, Z, Y, X, 0, uBnd);
-        retVal += (Z(0) - Z(-1))*(simpsonRule(F(all, all, -1), Y, X) + simpsonRule(F(all, all, 0), Y, X))/2 +
+        retVal  = simpsonBase(F, Z, Y, X, lBnd, uBnd-1);
+        retVal += simpsonBase(F, Z, Y, X, lBnd+1, uBnd);
+        retVal += (Z(lBnd+1) - Z(lBnd))*(simpsonRule(F(all, all, lBnd), Y, X) + simpsonRule(F(all, all, lBnd+1), Y, X))/2 +
                   (Z(uBnd) - Z(uBnd-1))*(simpsonRule(F(all, all, uBnd-1), Y, X) + simpsonRule(F(all, all, uBnd), Y, X))/2;
         retVal /= 2;
     } else {
-        retVal = simpsonBase(F, Z, Y, X, -1, uBnd);
+        retVal = simpsonBase(F, Z, Y, X, lBnd, uBnd);
     }
 
     return retVal;
@@ -379,7 +384,6 @@ real global::simpsonBase(blitz::Array<real, 3> F, blitz::Array<real, 1> Z, blitz
     real retVal = 0;
     int N = eIndex - sIndex + 1;
     int n = int((N - 1)/2);
-    blitz::Range all = blitz::Range::all();
     blitz::Array<real, 1> h, h0, h1, hsum, hmul, hdiv;
 
     h.resize(N - 1);
@@ -395,7 +399,6 @@ real global::simpsonBase(blitz::Array<real, 3> F, blitz::Array<real, 1> Z, blitz
     hdiv = h0 / h1;
 
     for (int i=0; i<n; i++) {
-    //for (int i=3; i<4; i++) {
         real a = simpsonRule(F(all, all, 2*i + sIndex), Y, X);
         real b = simpsonRule(F(all, all, 2*i + sIndex + 1), Y, X);
         real c = simpsonRule(F(all, all, 2*i + sIndex + 2), Y, X);
@@ -434,27 +437,22 @@ real global::simpsonInt(blitz::Array<real, 2> F, blitz::Array<real, 1> Y, blitz:
 
 
 real global::simpsonRule(blitz::Array<real, 2> F, blitz::Array<real, 1> Y, blitz::Array<real, 1> X) {
-    real retVal = 0;
-    int N = Y.extent(0);
     int uBnd = Y.ubound(0);
-    blitz::Range all = blitz::Range::all();
+    int lBnd = Y.lbound(0);
 
-    //if (mesh.pf) std::cout << std::setprecision(16) << F << std::endl;
-    //if (mesh.pf) std::cout << Y << X << std::endl;
+    if (mesh.rankData.yRank > 0) lBnd += 1;
+    int N = uBnd - lBnd + 1;
 
+    real retVal = 0;
     if (N%2 == 0) {
-        retVal  = simpsonBase(F, Y, X, -1, uBnd-1);
-        retVal += simpsonBase(F, Y, X, 0, uBnd);
-        retVal += (Y(0) - Y(-1))*(simpsonRule(F(all, -1), X) + simpsonRule(F(all, 0), X))/2 +
+        retVal  = simpsonBase(F, Y, X, lBnd, uBnd-1);
+        retVal += simpsonBase(F, Y, X, lBnd+1, uBnd);
+        retVal += (Y(lBnd+1) - Y(lBnd))*(simpsonRule(F(all, lBnd), X) + simpsonRule(F(all, lBnd+1), X))/2 +
                   (Y(uBnd) - Y(uBnd-1))*(simpsonRule(F(all, uBnd-1), X) + simpsonRule(F(all, uBnd), X))/2;
         retVal /= 2;
     } else {
-        retVal = simpsonBase(F, Y, X, -1, uBnd);
+        retVal = simpsonBase(F, Y, X, lBnd, uBnd);
     }
-
-    //std::cout << std::setprecision(16) << retVal << std::endl;
-    //MPI_Finalize();
-    //exit(0);
 
     return retVal;
 }
@@ -464,7 +462,6 @@ real global::simpsonBase(blitz::Array<real, 2> F, blitz::Array<real, 1> Y, blitz
     real retVal = 0;
     int N = eIndex - sIndex + 1;
     int n = int((N - 1)/2);
-    blitz::Range all = blitz::Range::all();
     blitz::Array<real, 1> h, h0, h1, hsum, hmul, hdiv;
 
     h.resize(N - 1);
@@ -503,17 +500,21 @@ real global::simpsonInt(blitz::Array<real, 1> F, blitz::Array<real, 1> X) {
 
 
 real global::simpsonRule(blitz::Array<real, 1> F, blitz::Array<real, 1> X) {
-    real retVal = 0;
-    int N = X.extent(0);
     int uBnd = X.ubound(0);
+    int lBnd = X.lbound(0);
 
+    if (mesh.rankData.xRank > 0) lBnd += 1;
+    int N = uBnd - lBnd + 1;
+
+    real retVal = 0;
     if (N%2 == 0) {
-        retVal  = simpsonBase(F, X, -1, uBnd-1);
-        retVal += simpsonBase(F, X,  0, uBnd);
-        retVal += (X(0) - X(-1))*(F(-1) + F(0))/2 + (X(uBnd) - X(uBnd-1))*(F(uBnd-1) + F(uBnd))/2;
+        retVal  = simpsonBase(F, X, lBnd, uBnd-1);
+        retVal += simpsonBase(F, X, lBnd+1, uBnd);
+        retVal += (X(lBnd+1) - X(lBnd))*(F(lBnd) + F(lBnd+1))/2 +
+                  (X(uBnd) - X(uBnd-1))*(F(uBnd-1) + F(uBnd))/2;
         retVal /= 2;
     } else {
-        retVal = simpsonBase(F, X, -1, uBnd);
+        retVal = simpsonBase(F, X, lBnd, uBnd);
     }
 
     return retVal;

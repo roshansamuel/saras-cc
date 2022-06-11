@@ -165,7 +165,7 @@ static void computeDiss(global &gloData, std::vector<real> tList) {
 
         //real uRMS = sqrt(gloData.volAvgMidPt(dataArr));
         real uRMS = gloData.simpsonInt(dataArr, gloData.mesh.z, gloData.mesh.y, gloData.mesh.x);
-        std::cout << std::setprecision(16) << uRMS << std::endl;
+        if (gloData.mesh.rankData.rank == 0) std::cout << std::setprecision(16) << uRMS << std::endl;
         MPI_Finalize();
         exit(0);
 

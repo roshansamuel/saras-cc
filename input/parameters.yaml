@@ -126,7 +126,7 @@
     "Number of OMP threads": 1
     "X Number of Procs": 1
     "Y Number of Procs": 1
-    "Z Number of Procs": 1
+    "Z Number of Procs": 8
 
 
 # Solver parameters

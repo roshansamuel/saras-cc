@@ -57,6 +57,8 @@ class global {
         /** Flags for first rank (fr) and last rank (lr) along X, Y and Z directions */
         bool xfr, xlr, yfr, ylr, zfr, zlr;
 
+        blitz::Range all = blitz::Range::all();
+
         blitz::RectDomain<3> x0Lft, x0Rgt, x1Lft, x1Rgt;
         blitz::RectDomain<3> y0Lft, y0Rgt, y1Lft, y1Rgt;
         blitz::RectDomain<3> z0Lft, z0Rgt, z1Lft, z1Rgt;
