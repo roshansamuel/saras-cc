@@ -61,9 +61,14 @@ class global {
         blitz::RectDomain<3> y0Lft, y0Rgt, y1Lft, y1Rgt;
         blitz::RectDomain<3> z0Lft, z0Rgt, z1Lft, z1Rgt;
 
-        real simpsonBase(blitz::Array<real, 3> F, blitz::Array<real, 1> Z, blitz::Array<real, 1> Y, blitz::Array<real, 1> X);
-        real simpsonBase(blitz::Array<real, 2> F, blitz::Array<real, 1> Y, blitz::Array<real, 1> X);
-        real simpsonBase(blitz::Array<real, 1> F, blitz::Array<real, 1> X);
+        real simpsonBase(blitz::Array<real, 3> F, blitz::Array<real, 1> Z, blitz::Array<real, 1> Y, blitz::Array<real, 1> X, int sIndex, int eIndex);
+        real simpsonRule(blitz::Array<real, 3> F, blitz::Array<real, 1> Z, blitz::Array<real, 1> Y, blitz::Array<real, 1> X);
+
+        real simpsonBase(blitz::Array<real, 2> F, blitz::Array<real, 1> Y, blitz::Array<real, 1> X, int sIndex, int eIndex);
+        real simpsonRule(blitz::Array<real, 2> F, blitz::Array<real, 1> Y, blitz::Array<real, 1> X);
+
+        real simpsonBase(blitz::Array<real, 1> F, blitz::Array<real, 1> X, int sIndex, int eIndex);
+        real simpsonRule(blitz::Array<real, 1> F, blitz::Array<real, 1> X);
     public:
         /** A const reference to the global variables stored in the grid class */
         const grid &mesh;
@@ -80,9 +85,9 @@ class global {
         void initTBCs(sfield &T);
         void checkPeriodic(const parser &inputParams, parallel &rankData);
 
-        real simpsonRule(blitz::Array<real, 3> F, blitz::Array<real, 1> Z, blitz::Array<real, 1> Y, blitz::Array<real, 1> X);
-        real simpsonRule(blitz::Array<real, 2> F, blitz::Array<real, 1> Y, blitz::Array<real, 1> X);
-        real simpsonRule(blitz::Array<real, 1> F, blitz::Array<real, 1> X);
+        real simpsonInt(blitz::Array<real, 3> F, blitz::Array<real, 1> Z, blitz::Array<real, 1> Y, blitz::Array<real, 1> X);
+        real simpsonInt(blitz::Array<real, 2> F, blitz::Array<real, 1> Y, blitz::Array<real, 1> X);
+        real simpsonInt(blitz::Array<real, 1> F, blitz::Array<real, 1> X);
 
         real volAvgMidPt(blitz::Array<real, 3> F);
 };

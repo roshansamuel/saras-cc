@@ -153,13 +153,19 @@ static void computeDiss(global &gloData, std::vector<real> tList) {
         V.imposeBCs();
         T.imposeBCs();
 
+        //dataArr = blitz::sqr(gloData.shift2Wall(V.Vx.F));
+        //real uRMS = gloData.simpsonInt(dataArr, gloData.mesh.z, gloData.mesh.y, gloData.mesh.x);
+        //uRMS = gloData.volAvgMidPt(dataArr);
+        //std::cout << uRMS << std::endl;
+
         // U_RMS Calculation
         dataArr = blitz::sqr(gloData.shift2Wall(V.Vx.F)) +
                   blitz::sqr(gloData.shift2Wall(V.Vy.F)) +
                   blitz::sqr(gloData.shift2Wall(V.Vz.F));
 
         //real uRMS = sqrt(gloData.volAvgMidPt(dataArr));
-        real uRMS = gloData.simpsonRule(dataArr, gloData.mesh.z, gloData.mesh.y, gloData.mesh.x);
+        real uRMS = gloData.simpsonInt(dataArr, gloData.mesh.z, gloData.mesh.y, gloData.mesh.x);
+        std::cout << std::setprecision(16) << uRMS << std::endl;
         MPI_Finalize();
         exit(0);
 

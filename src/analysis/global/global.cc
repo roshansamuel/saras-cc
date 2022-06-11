@@ -120,6 +120,13 @@ blitz::Array<real, 3> global::shift2Wall(blitz::Array<real, 3> F) {
 
     retMat = F;
 
+    //std::cout << retMat(5, 5, blitz::Range::all()) << std::endl;
+    //retMat.reindexSelf(blitz::TinyVector<int, 3> (-2, -2, 0));
+    //std::cout << retMat(5, 5, blitz::Range::all()) << std::endl;
+    //MPI_Finalize();
+    //exit(0);
+
+
     if (xfr) retMat(x0Lft) = 0.5*(F(x0Rgt) + F(x0Lft));
     if (xlr) retMat(x1Rgt) = 0.5*(F(x1Rgt) + F(x1Lft));
 
@@ -336,58 +343,214 @@ void global::checkPeriodic(const parser &inputParams, parallel &rankData) {
 };
 
 
-real global::simpsonBase(blitz::Array<real, 3> F, blitz::Array<real, 1> Z, blitz::Array<real, 1> Y, blitz::Array<real, 1> X) {
-    blitz::Array<real, 1> h, hsum, hmul, hdiv;
+real global::simpsonInt(blitz::Array<real, 3> F, blitz::Array<real, 1> Z, blitz::Array<real, 1> Y, blitz::Array<real, 1> X) {
+    real totVol = mesh.xLen * mesh.yLen * mesh.zLen;
+    real locVal = simpsonRule(F, Z, Y, X);
+    real gloVal = 0.0;
 
+    MPI_Allreduce(&locVal, &gloVal, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
+    gloVal /= totVol;
+
+    return gloVal;
+}
+
+
+real global::simpsonRule(blitz::Array<real, 3> F, blitz::Array<real, 1> Z, blitz::Array<real, 1> Y, blitz::Array<real, 1> X) {
+    real retVal = 0;
     int N = Z.extent(0);
-    h.resize(N-1);
-    std::cout << F(0, 0, 0) << std::endl;
+    int uBnd = Z.ubound(0);
+    blitz::Range all = blitz::Range::all();
+
+    if (N%2 == 0) {
+        retVal  = simpsonBase(F, Z, Y, X, -1, uBnd-1);
+        retVal += simpsonBase(F, Z, Y, X, 0, uBnd);
+        retVal += (Z(0) - Z(-1))*(simpsonRule(F(all, all, -1), Y, X) + simpsonRule(F(all, all, 0), Y, X))/2 +
+                  (Z(uBnd) - Z(uBnd-1))*(simpsonRule(F(all, all, uBnd-1), Y, X) + simpsonRule(F(all, all, uBnd), Y, X))/2;
+        retVal /= 2;
+    } else {
+        retVal = simpsonBase(F, Z, Y, X, -1, uBnd);
+    }
+
+    return retVal;
+}
+
+
+real global::simpsonBase(blitz::Array<real, 3> F, blitz::Array<real, 1> Z, blitz::Array<real, 1> Y, blitz::Array<real, 1> X, int sIndex, int eIndex) {
+    real retVal = 0;
+    int N = eIndex - sIndex + 1;
+    int n = int((N - 1)/2);
+    blitz::Range all = blitz::Range::all();
+    blitz::Array<real, 1> h, h0, h1, hsum, hmul, hdiv;
+
+    h.resize(N - 1);
+    h0.resize(n);       h1.resize(n);
+    hsum.resize(n);     hmul.resize(n);     hdiv.resize(n);
+
+    h = Z(blitz::Range(sIndex+1, eIndex, 1)) - Z(blitz::Range(sIndex, eIndex-1, 1));
+    h0 = h(blitz::Range(0, N-1, 2));
+    h1 = h(blitz::Range(1, N, 2));
+
+    hsum = h0 + h1;
+    hmul = h0 * h1;
+    hdiv = h0 / h1;
+
+    for (int i=0; i<n; i++) {
+    //for (int i=3; i<4; i++) {
+        real a = simpsonRule(F(all, all, 2*i + sIndex), Y, X);
+        real b = simpsonRule(F(all, all, 2*i + sIndex + 1), Y, X);
+        real c = simpsonRule(F(all, all, 2*i + sIndex + 2), Y, X);
+        retVal += hsum(i)/6.0 *(a*(2 - 1/hdiv(i)) + b*(hsum(i)*hsum(i)/hmul(i)) + c*(2 - hdiv(i)));
+    }
+    /*
+    if (mesh.pf) std::cout << h << std::endl;
+    if (mesh.pf) std::cout << h1 << std::endl;
+    MPI_Finalize();
+    exit(0);
+
+    if (mesh.pf) std::cout << h << std::endl;
+    if (mesh.rankData.rank == 1) std::cout << h << std::endl;
     //F.reindexSelf(blitz::TinyVector<int, 3>(-1, -1, -1));
     //std::cout << F(0, 0, 0) << std::endl;
     //MPI_Finalize();
     //exit(0);
 
     std::cout << Z.lbound() << Z.ubound() << std::endl;
-    h = Z(blitz::Range(0, N, 1)) - Z(blitz::Range(-1, N-1, 1));
     //std::cout << h << std::endl;
-    return 0;
+    */
+    return retVal;
 }
 
 
-real global::simpsonRule(blitz::Array<real, 3> F, blitz::Array<real, 1> Z, blitz::Array<real, 1> Y, blitz::Array<real, 1> X) {
-    return simpsonBase(F, Z, Y, X);
-}
+real global::simpsonInt(blitz::Array<real, 2> F, blitz::Array<real, 1> Y, blitz::Array<real, 1> X) {
+    real totVol = mesh.xLen * mesh.yLen * mesh.zLen;
+    real locVal = simpsonRule(F, Y, X);
+    real gloVal = 0.0;
 
+    MPI_Allreduce(&locVal, &gloVal, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
+    gloVal /= totVol;
 
-real global::simpsonBase(blitz::Array<real, 2> F, blitz::Array<real, 1> Y, blitz::Array<real, 1> X) {
-    return 0;
+    return gloVal;
 }
 
 
 real global::simpsonRule(blitz::Array<real, 2> F, blitz::Array<real, 1> Y, blitz::Array<real, 1> X) {
-    return simpsonBase(F, Y, X);
+    real retVal = 0;
+    int N = Y.extent(0);
+    int uBnd = Y.ubound(0);
+    blitz::Range all = blitz::Range::all();
+
+    //if (mesh.pf) std::cout << std::setprecision(16) << F << std::endl;
+    //if (mesh.pf) std::cout << Y << X << std::endl;
+
+    if (N%2 == 0) {
+        retVal  = simpsonBase(F, Y, X, -1, uBnd-1);
+        retVal += simpsonBase(F, Y, X, 0, uBnd);
+        retVal += (Y(0) - Y(-1))*(simpsonRule(F(all, -1), X) + simpsonRule(F(all, 0), X))/2 +
+                  (Y(uBnd) - Y(uBnd-1))*(simpsonRule(F(all, uBnd-1), X) + simpsonRule(F(all, uBnd), X))/2;
+        retVal /= 2;
+    } else {
+        retVal = simpsonBase(F, Y, X, -1, uBnd);
+    }
+
+    //std::cout << std::setprecision(16) << retVal << std::endl;
+    //MPI_Finalize();
+    //exit(0);
+
+    return retVal;
 }
 
 
-real global::simpsonBase(blitz::Array<real, 1> F, blitz::Array<real, 1> X) {
-    blitz::Array<real, 1> h, hsum, hmul, hdiv;
+real global::simpsonBase(blitz::Array<real, 2> F, blitz::Array<real, 1> Y, blitz::Array<real, 1> X, int sIndex, int eIndex) {
+    real retVal = 0;
+    int N = eIndex - sIndex + 1;
+    int n = int((N - 1)/2);
+    blitz::Range all = blitz::Range::all();
+    blitz::Array<real, 1> h, h0, h1, hsum, hmul, hdiv;
 
-    //N = 
-    //h = 
-    return 0;
+    h.resize(N - 1);
+    h0.resize(n);       h1.resize(n);
+    hsum.resize(n);     hmul.resize(n);     hdiv.resize(n);
+
+    h = Y(blitz::Range(sIndex+1, eIndex, 1)) - Y(blitz::Range(sIndex, eIndex-1, 1));
+    h0 = h(blitz::Range(0, N-1, 2));
+    h1 = h(blitz::Range(1, N, 2));
+
+    hsum = h0 + h1;
+    hmul = h0 * h1;
+    hdiv = h0 / h1;
+
+    for (int i=0; i<n; i++) {
+        real a = simpsonRule(F(all, 2*i + sIndex), X);
+        real b = simpsonRule(F(all, 2*i + sIndex + 1), X);
+        real c = simpsonRule(F(all, 2*i + sIndex + 2), X);
+        retVal += hsum(i)/6.0 *(a*(2 - 1/hdiv(i)) + b*(hsum(i)*hsum(i)/hmul(i)) + c*(2 - hdiv(i)));
+    }
+
+    return retVal;
+}
+
+
+real global::simpsonInt(blitz::Array<real, 1> F, blitz::Array<real, 1> X) {
+    real totVol = mesh.xLen * mesh.yLen * mesh.zLen;
+    real locVal = simpsonRule(F, X);
+    real gloVal = 0.0;
+
+    MPI_Allreduce(&locVal, &gloVal, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
+    gloVal /= totVol;
+
+    return gloVal;
 }
 
 
 real global::simpsonRule(blitz::Array<real, 1> F, blitz::Array<real, 1> X) {
-    int xL = F.lbound(0);
-    int xU = F.ubound(0);
+    real retVal = 0;
+    int N = X.extent(0);
+    int uBnd = X.ubound(0);
 
-    real intVal = 0;
-    for (int i=xL; i<=xU; i++) {
-        intVal += 1;
+    if (N%2 == 0) {
+        retVal  = simpsonBase(F, X, -1, uBnd-1);
+        retVal += simpsonBase(F, X,  0, uBnd);
+        retVal += (X(0) - X(-1))*(F(-1) + F(0))/2 + (X(uBnd) - X(uBnd-1))*(F(uBnd-1) + F(uBnd))/2;
+        retVal /= 2;
+    } else {
+        retVal = simpsonBase(F, X, -1, uBnd);
     }
 
-    return 0;
+    return retVal;
+}
+
+
+real global::simpsonBase(blitz::Array<real, 1> F, blitz::Array<real, 1> X, int sIndex, int eIndex) {
+    real retVal = 0;
+    int N = eIndex - sIndex + 1;
+    int n = int((N - 1)/2);
+    blitz::Array<real, 1> h, h0, h1, hsum, hmul, hdiv;
+
+    h.resize(N - 1);
+    h0.resize(n);       h1.resize(n);
+    hsum.resize(n);     hmul.resize(n);     hdiv.resize(n);
+
+    h = X(blitz::Range(sIndex+1, eIndex, 1)) - X(blitz::Range(sIndex, eIndex-1, 1));
+    h0 = h(blitz::Range(0, N-1, 2));
+    h1 = h(blitz::Range(1, N, 2));
+
+    //if (mesh.pf) std::cout << sIndex << eIndex << std::endl;
+    //if (mesh.pf) std::cout << X << h << h0 << h1 << std::endl;
+    //if (mesh.pf) std::cout << n << "\t" << h0.lbound() << h0.ubound() << F.lbound() << F.ubound() << std::endl;
+
+    hsum = h0 + h1;
+    hmul = h0 * h1;
+    hdiv = h0 / h1;
+
+    for (int i=0; i<n; i++) {
+        real a = F(2*i + sIndex);       //F((i - sIndex)*2 - 1);
+        real b = F(2*i + sIndex + 1);   //F((i - sIndex)*2);
+        real c = F(2*i + sIndex + 2);   //F((i - sIndex)*2 + 1);
+        retVal += hsum(i)/6.0 *(a*(2 - 1/hdiv(i)) + b*(hsum(i)*hsum(i)/hmul(i)) + c*(2 - hdiv(i)));
+        //if (mesh.pf) std::cout << retVal << "\t" << i << "\t" << 2*i + sIndex << "\t" << a << "\t" << b << "\t" << c << "\t" << hsum(i) << "\t" << hmul(i) << "\t" << hdiv(i) << "\t" << d << std::endl;
+    }
+
+    return retVal;
 }
 
 
@@ -407,6 +570,7 @@ real global::volAvgMidPt(blitz::Array<real, 3> F) {
     }
 
     MPI_Allreduce(&localVal, &globalVal, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
+    std::cout << mesh.rankData.rank << "\t" << localVal << "\t" << globalVal << std::endl;
     globalVal /= totalVol;
 
     return globalVal;
