@@ -158,9 +158,6 @@ grid::grid(const parser &solParam, parallel &parallelData): inputParams(solParam
     if (rankData.zRank == 0) z(-1) = 0;
     if (rankData.zRank == rankData.npZ - 1) z(coreDomain.ubound(2) + 1) = zLen;
 #endif
-    //std::cout << rankData.rank << zt_z << std::endl;
-    //MPI_Finalize();
-    //exit(0);
 }
 
 

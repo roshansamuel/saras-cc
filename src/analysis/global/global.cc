@@ -120,13 +120,6 @@ blitz::Array<real, 3> global::shift2Wall(blitz::Array<real, 3> F) {
 
     retMat = F;
 
-    //std::cout << retMat(5, 5, blitz::Range::all()) << std::endl;
-    //retMat.reindexSelf(blitz::TinyVector<int, 3> (-2, -2, 0));
-    //std::cout << retMat(5, 5, blitz::Range::all()) << std::endl;
-    //MPI_Finalize();
-    //exit(0);
-
-
     if (xfr) retMat(x0Lft) = 0.5*(F(x0Rgt) + F(x0Lft));
     if (xlr) retMat(x1Rgt) = 0.5*(F(x1Rgt) + F(x1Lft));
 
@@ -348,7 +341,6 @@ real global::simpsonInt(blitz::Array<real, 3> F, blitz::Array<real, 1> Z, blitz:
     real gloVal = 0.0;
 
     MPI_Allreduce(&locVal, &gloVal, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
-    //std::cout << mesh.rankData.rank << "\t" << locVal << "\t" << gloVal << std::endl;
 
     return gloVal;
 }
@@ -543,7 +535,6 @@ real global::volAvgMidPt(blitz::Array<real, 3> F) {
     }
 
     MPI_Allreduce(&localVal, &globalVal, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
-    std::cout << mesh.rankData.rank << "\t" << localVal << "\t" << globalVal << std::endl;
     globalVal /= totalVol;
 
     return globalVal;

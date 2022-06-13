@@ -44,7 +44,7 @@
 #include "postprocess.h"
 
 
-//static std::vector<int> getBLLimits(grid &mesh, std::vector<real> tList);
+//static std::vector<int> getBLLimits(global &gloData, std::vector<real> tList);
 static void computeDiss(global &gloData, std::vector<real> tList);
 
 
@@ -56,13 +56,13 @@ void dissipation(global &gloData, std::vector<real> tList) {
 
 
 /*
-static std::vector<int> getBLLimits(grid &mesh, std::vector<real> tList) {
+static std::vector<int> getBLLimits(global &gloData, std::vector<real> tList) {
     int ePts = 5;
     real xLim, yLim, zLim;
     std::vector<int> blLims(6, 0);
 
-    vfield V(mesh, "V");
-    sfield T(mesh, "T");
+    vfield V(gloData.mesh, "V");
+    sfield T(gloData.mesh, "T");
 
     // Fields to be read from HDF5 file are passed to reader class as a vector
     std::vector<field> readFields;
@@ -73,11 +73,11 @@ static std::vector<int> getBLLimits(grid &mesh, std::vector<real> tList) {
     readFields.push_back(V.Vz);
     readFields.push_back(T.F);
 
-    reader dataReader(mesh);
+    reader dataReader(gloData.mesh);
 
     // Initialize velocity and temperature boundary conditions
-    initVBCs(mesh, V);
-    initTBCs(mesh, T);
+    gloData.initVBCs(V);
+    gloData.initTBCs(T);
 
     // WARNING: These values are temporarily hard-coded.
     // They need to be calculated appropriately to be made general.
@@ -178,20 +178,7 @@ static void computeDiss(global &gloData, std::vector<real> tList) {
         dataArr += blitz::sqr(gloData.shift2Wall(tmpArr1) + gloData.shift2Wall(tmpArr2));
 
         dataArr *= nu;
-        //std::cout << gloData.mesh.rankData.rank << dataArr(-1, 4, blitz::Range::all()) << std::endl;
-        /*
-        int foo[8] = {4, 5, 6, 7, 0, 1, 2, 3};
-        for (int i=0; i<8; i++) {
-            int sIndex = foo[i]*32;
-            int eIndex = sIndex + 31;
-            std::cout << foo[i] << dataArr(-1, 4, blitz::Range(sIndex-2, eIndex+2, 1)) << std::endl;
-        }
-        MPI_Finalize();
-        exit(0);
-        */
-
         real epsU = gloData.simpsonInt(dataArr, gloData.mesh.z, gloData.mesh.y, gloData.mesh.x)/totalVol;
-        epsU /= epsUNorm;
 
         // Thermal dissipation
         T.derS.calcDerivative1_x(tmpArr1);     mpiHandle.syncAll(tmpArr1);
@@ -202,25 +189,7 @@ static void computeDiss(global &gloData, std::vector<real> tList) {
                          blitz::sqr(gloData.shift2Wall(tmpArr2)) +
                          blitz::sqr(gloData.shift2Wall(tmpArr3)));
         real epsT = gloData.simpsonInt(dataArr, gloData.mesh.z, gloData.mesh.y, gloData.mesh.x)/totalVol;
-        epsT /= epsTNorm;
 
-        if (gloData.mesh.pf) std::cout << std::setprecision(16) << epsU << "\t" << epsT << "\n";
-
-        MPI_Finalize();
-        exit(0);
-
-        //if (gloData.mesh.rankData.rank == 0) std::cout << std::setprecision(16) << uRMS << std::endl;
-
-        //if (gloData.mesh.rankData.rank == 0) std::cout << dataArr(5, 5, blitz::Range(-2, 1, 1)) << std::endl;
-        //if (gloData.mesh.rankData.rank == 7) std::cout << dataArr(5, 5, blitz::Range(30, 33, 1)) << std::endl;
-
-        //if (gloData.mesh.rankData.rank == 0) std::cout << dataArr(5, 5, blitz::Range(30, 33, 1)) << std::endl;
-        //if (gloData.mesh.rankData.rank == 1) std::cout << dataArr(5, 5, blitz::Range(-2, 1, 1)) << std::endl;
-
-        //if (gloData.mesh.rankData.rank == 0) std::cout << dataArr(5, 5, blitz::Range(-2, 1, 1)) << std::endl;
-        //if (gloData.mesh.rankData.rank == 7) std::cout << dataArr(5, 5, blitz::Range(30, 33, 1)) << std::endl;
-
-        //if (gloData.mesh.rankData.rank == 0) std::cout << dataArr(5, 5, blitz::Range(30, 33, 1)) << std::endl;
-        //if (gloData.mesh.rankData.rank == 1) std::cout << dataArr(5, 5, blitz::Range(-2, 1, 1)) << std::endl;
+        if (gloData.mesh.pf) std::cout << std::setprecision(16) << epsU << "\t" << epsT << "\t" << epsU/epsUNorm << "\t" << epsT/epsTNorm << "\n";
     }
 }
