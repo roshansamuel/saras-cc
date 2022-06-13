@@ -344,15 +344,11 @@ void global::checkPeriodic(const parser &inputParams, parallel &rankData) {
 
 
 real global::simpsonInt(blitz::Array<real, 3> F, blitz::Array<real, 1> Z, blitz::Array<real, 1> Y, blitz::Array<real, 1> X) {
-    real totVol = mesh.xLen * mesh.yLen * mesh.zLen;
     real locVal = simpsonRule(F, Z, Y, X);
     real gloVal = 0.0;
 
     MPI_Allreduce(&locVal, &gloVal, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
-    //std::cout << mesh.rankData.rank << "\t" << std::setprecision(16) << locVal << "\t" << gloVal << std::endl;
-    //MPI_Finalize();
-    //exit(0);
-    gloVal /= totVol;
+    //std::cout << mesh.rankData.rank << "\t" << locVal << "\t" << gloVal << std::endl;
 
     return gloVal;
 }
@@ -404,33 +400,16 @@ real global::simpsonBase(blitz::Array<real, 3> F, blitz::Array<real, 1> Z, blitz
         real c = simpsonRule(F(all, all, 2*i + sIndex + 2), Y, X);
         retVal += hsum(i)/6.0 *(a*(2 - 1/hdiv(i)) + b*(hsum(i)*hsum(i)/hmul(i)) + c*(2 - hdiv(i)));
     }
-    /*
-    if (mesh.pf) std::cout << h << std::endl;
-    if (mesh.pf) std::cout << h1 << std::endl;
-    MPI_Finalize();
-    exit(0);
 
-    if (mesh.pf) std::cout << h << std::endl;
-    if (mesh.rankData.rank == 1) std::cout << h << std::endl;
-    //F.reindexSelf(blitz::TinyVector<int, 3>(-1, -1, -1));
-    //std::cout << F(0, 0, 0) << std::endl;
-    //MPI_Finalize();
-    //exit(0);
-
-    std::cout << Z.lbound() << Z.ubound() << std::endl;
-    //std::cout << h << std::endl;
-    */
     return retVal;
 }
 
 
 real global::simpsonInt(blitz::Array<real, 2> F, blitz::Array<real, 1> Y, blitz::Array<real, 1> X) {
-    real totVol = mesh.xLen * mesh.yLen * mesh.zLen;
     real locVal = simpsonRule(F, Y, X);
     real gloVal = 0.0;
 
     MPI_Allreduce(&locVal, &gloVal, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
-    gloVal /= totVol;
 
     return gloVal;
 }
@@ -488,12 +467,10 @@ real global::simpsonBase(blitz::Array<real, 2> F, blitz::Array<real, 1> Y, blitz
 
 
 real global::simpsonInt(blitz::Array<real, 1> F, blitz::Array<real, 1> X) {
-    real totVol = mesh.xLen * mesh.yLen * mesh.zLen;
     real locVal = simpsonRule(F, X);
     real gloVal = 0.0;
 
     MPI_Allreduce(&locVal, &gloVal, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
-    gloVal /= totVol;
 
     return gloVal;
 }
@@ -535,20 +512,15 @@ real global::simpsonBase(blitz::Array<real, 1> F, blitz::Array<real, 1> X, int s
     h0 = h(blitz::Range(0, N-1, 2));
     h1 = h(blitz::Range(1, N, 2));
 
-    //if (mesh.pf) std::cout << sIndex << eIndex << std::endl;
-    //if (mesh.pf) std::cout << X << h << h0 << h1 << std::endl;
-    //if (mesh.pf) std::cout << n << "\t" << h0.lbound() << h0.ubound() << F.lbound() << F.ubound() << std::endl;
-
     hsum = h0 + h1;
     hmul = h0 * h1;
     hdiv = h0 / h1;
 
     for (int i=0; i<n; i++) {
-        real a = F(2*i + sIndex);       //F((i - sIndex)*2 - 1);
-        real b = F(2*i + sIndex + 1);   //F((i - sIndex)*2);
-        real c = F(2*i + sIndex + 2);   //F((i - sIndex)*2 + 1);
+        real a = F(2*i + sIndex);
+        real b = F(2*i + sIndex + 1);
+        real c = F(2*i + sIndex + 2);
         retVal += hsum(i)/6.0 *(a*(2 - 1/hdiv(i)) + b*(hsum(i)*hsum(i)/hmul(i)) + c*(2 - hdiv(i)));
-        //if (mesh.pf) std::cout << retVal << "\t" << i << "\t" << 2*i + sIndex << "\t" << a << "\t" << b << "\t" << c << "\t" << hsum(i) << "\t" << hmul(i) << "\t" << hdiv(i) << "\t" << d << std::endl;
     }
 
     return retVal;

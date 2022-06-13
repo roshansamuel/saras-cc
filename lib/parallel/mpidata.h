@@ -65,21 +65,18 @@ class mpidata {
         /** An array of MPI_Status data-types necessary for obtaining output from the non-blocking receive MPI_Irecv in the synchronizing functions. */
         blitz::Array<MPI_Status, 1> recvStatus;
 
-        /** Blitz array of the data field which needs to be synchronised across processors. */
-        blitz::Array<real, 3> dataField;
-
     public:
         /** A const reference to the global variables stored in the parallel class to access rank data */
         const parallel &rankData;
 
-        mpidata(blitz::Array<real, 3> inputArray, const parallel &parallelData);
+        mpidata(const parallel &parallelData);
 
         void createSubarrays(const blitz::TinyVector<int, 3> globSize,
                              const blitz::TinyVector<int, 3> coreSize,
                              const blitz::TinyVector<int, 3> padWidth);
 
-        void syncFaces();
-        void syncAll();
+        void syncFaces(blitz::Array<real, 3> dataField);
+        void syncAll(blitz::Array<real, 3> dataField);
 
         ~mpidata() { };
 };

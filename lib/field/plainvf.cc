@@ -61,22 +61,16 @@ plainvf::plainvf(const grid &gridData): gridData(gridData) {
     Vx.reindexSelf(dlBnd);
     Vx = 0.0;
 
-    mpiVxData = new mpidata(Vx, gridData.rankData);
-    mpiVxData->createSubarrays(dSize, core.ubound() + 1, gridData.padWidths);
-
     Vy.resize(dSize);
     Vy.reindexSelf(dlBnd);
     Vy = 0.0;
-
-    mpiVyData = new mpidata(Vy, gridData.rankData);
-    mpiVyData->createSubarrays(dSize, core.ubound() + 1, gridData.padWidths);
 
     Vz.resize(dSize);
     Vz.reindexSelf(dlBnd);
     Vz = 0.0;
 
-    mpiVzData = new mpidata(Vz, gridData.rankData);
-    mpiVzData->createSubarrays(dSize, core.ubound() + 1, gridData.padWidths);
+    mpiHandle = new mpidata(gridData.rankData);
+    mpiHandle->createSubarrays(dSize, core.ubound() + 1, gridData.padWidths);
 }
 
 /**
@@ -248,7 +242,5 @@ void plainvf::operator = (real a) {
 }
 
 plainvf::~plainvf() {
-    delete mpiVxData;
-    delete mpiVyData;
-    delete mpiVzData;
+    delete mpiHandle;
 }

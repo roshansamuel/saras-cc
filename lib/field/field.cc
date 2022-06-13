@@ -72,7 +72,7 @@ field::field(const grid &gridData, std::string fieldName): gridData(gridData)
     F.resize(fSize);
     F.reindexSelf(flBound);
 
-    mpiHandle = new mpidata(F, gridData.rankData);
+    mpiHandle = new mpidata(gridData.rankData);
 
     core = gridData.coreDomain;
     cuBound = core.ubound();
@@ -159,7 +159,7 @@ void field::setWallSlices() {
  ********************************************************************************************************************************************
  */
 void field::syncFaces() {
-    mpiHandle->syncFaces();
+    mpiHandle->syncFaces(F);
 }
 
 
@@ -174,7 +174,7 @@ void field::syncFaces() {
  ********************************************************************************************************************************************
  */
 void field::syncAll() {
-    mpiHandle->syncAll();
+    mpiHandle->syncAll(F);
 }
 
 

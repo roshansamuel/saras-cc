@@ -105,6 +105,7 @@ static void computeDiss(global &gloData, std::vector<real> tList) {
     real delta = 1.0;
     real Ra, Pr, nu, kappa;
     real epsUNorm, epsTNorm;
+    real totalVol = gloData.mesh.xLen * gloData.mesh.yLen * gloData.mesh.zLen;
 
     vfield V(gloData.mesh, "V");
     sfield T(gloData.mesh, "T");
@@ -114,16 +115,8 @@ static void computeDiss(global &gloData, std::vector<real> tList) {
     blitz::Array<real, 3> tmpArr3(V.Vx.F.lbound(), V.Vx.F.extent());
     blitz::Array<real, 3> dataArr(V.Vx.F.lbound(), V.Vx.F.extent());
 
-    mpidata dataSync(dataArr, gloData.mesh.rankData);
-    dataSync.createSubarrays(dataArr.extent(), gloData.mesh.coreDomain.ubound() + 1, gloData.mesh.padWidths);
-
-    //int intX0 = -1;
-    //int intY0 = -1;
-    //int intZ0 = -1;
-
-    //int intX1 = gloData.mesh.coreDomain.ubound(0) + 1;
-    //int intY1 = gloData.mesh.coreDomain.ubound(1) + 1;
-    //int intZ1 = gloData.mesh.coreDomain.ubound(2) + 1;
+    mpidata mpiHandle(gloData.mesh.rankData);
+    mpiHandle.createSubarrays(dataArr.extent(), gloData.mesh.coreDomain.ubound() + 1, gloData.mesh.padWidths);
 
     // Fields to be read from HDF5 file are passed to reader class as a vector
     std::vector<field> readFields;
@@ -153,84 +146,81 @@ static void computeDiss(global &gloData, std::vector<real> tList) {
         V.imposeBCs();
         T.imposeBCs();
 
-        //dataArr = blitz::sqr(gloData.shift2Wall(V.Vx.F));
-        //real uRMS = gloData.simpsonInt(dataArr, gloData.mesh.z, gloData.mesh.y, gloData.mesh.x);
-        //uRMS = gloData.volAvgMidPt(dataArr);
-        //std::cout << uRMS << std::endl;
-
         // U_RMS Calculation
         dataArr = blitz::sqr(gloData.shift2Wall(V.Vx.F)) +
                   blitz::sqr(gloData.shift2Wall(V.Vy.F)) +
                   blitz::sqr(gloData.shift2Wall(V.Vz.F));
 
-        //real uRMS = sqrt(gloData.volAvgMidPt(dataArr));
-        real uRMS = gloData.simpsonInt(dataArr, gloData.mesh.z, gloData.mesh.y, gloData.mesh.x);
-        if (gloData.mesh.rankData.rank == 0) std::cout << std::setprecision(16) << uRMS << std::endl;
-        MPI_Finalize();
-        exit(0);
-
-        //if (gloData.mesh.rankData.rank == 0) std::cout << gloData.mesh.z << std::endl;
-        //if (gloData.mesh.rankData.rank == 1) std::cout << gloData.mesh.z << std::endl;
-        //if (gloData.mesh.rankData.rank == 6) std::cout << gloData.mesh.z << std::endl;
-        //if (gloData.mesh.rankData.rank == 7) std::cout << gloData.mesh.z << std::endl;
-        //std::cout << dataArr(0, 0, 0) << std::endl;
+        real uRMS = std::sqrt(gloData.simpsonInt(dataArr, gloData.mesh.z, gloData.mesh.y, gloData.mesh.x)/totalVol);
 
         // Dissipation normalization factors
         epsUNorm = std::pow(uRMS, 3)/d;
         epsTNorm = uRMS*std::pow(delta, 2)/d;
 
         // Viscous dissipation
-        //if (gloData.mesh.pf) std::cout << gloData.mesh.dXi << std::endl;
-        //if (gloData.mesh.pf) std::cout << V.Vx.F(blitz::Range(29, 33, 1), 5, 5) << std::endl;
-        //if (gloData.mesh.pf) std::cout << gloData.mesh.x(blitz::Range(29, 33, 1)) << std::endl;
-        //if (gloData.mesh.pf) std::cout << dataArr(blitz::Range(-2, 2, 1), 5, 5) << std::endl;
-        V.derVx.calcDerivative1_x(tmpArr1);
+        V.derVx.calcDerivative1_x(tmpArr1);     mpiHandle.syncAll(tmpArr1);
+        V.derVy.calcDerivative1_y(tmpArr2);     mpiHandle.syncAll(tmpArr2);
+        V.derVz.calcDerivative1_z(tmpArr3);     mpiHandle.syncAll(tmpArr3);
+        dataArr = 2.0*(blitz::sqr(gloData.shift2Wall(tmpArr1)) +
+                       blitz::sqr(gloData.shift2Wall(tmpArr2)) +
+                       blitz::sqr(gloData.shift2Wall(tmpArr3)));
 
-        V.derVy.calcDerivative1_y(tmpArr2);
-        V.derVz.calcDerivative1_z(tmpArr3);
-        dataArr = 2.0*(blitz::sqr(tmpArr1) + blitz::sqr(tmpArr2) + blitz::sqr(tmpArr3));
+        V.derVx.calcDerivative1_y(tmpArr1);     mpiHandle.syncAll(tmpArr1);
+        V.derVy.calcDerivative1_x(tmpArr2);     mpiHandle.syncAll(tmpArr2);
+        dataArr += blitz::sqr(gloData.shift2Wall(tmpArr1) + gloData.shift2Wall(tmpArr2));
 
-        //if (gloData.mesh.rankData.rank == 0) std::cout << dataArr(5, 5, blitz::Range(-2, 1, 1)) << std::endl;
-        //if (gloData.mesh.rankData.rank == 7) std::cout << dataArr(5, 5, blitz::Range(30, 33, 1)) << std::endl;
+        V.derVx.calcDerivative1_z(tmpArr1);     mpiHandle.syncAll(tmpArr1);
+        V.derVz.calcDerivative1_x(tmpArr2);     mpiHandle.syncAll(tmpArr2);
+        dataArr += blitz::sqr(gloData.shift2Wall(tmpArr1) + gloData.shift2Wall(tmpArr2));
 
-        //if (gloData.mesh.rankData.rank == 0) std::cout << dataArr(5, 5, blitz::Range(30, 33, 1)) << std::endl;
-        //if (gloData.mesh.rankData.rank == 1) std::cout << dataArr(5, 5, blitz::Range(-2, 1, 1)) << std::endl;
-        dataSync.syncAll();
-
-        //if (gloData.mesh.rankData.rank == 0) std::cout << dataArr(5, 5, blitz::Range(-2, 1, 1)) << std::endl;
-        //if (gloData.mesh.rankData.rank == 7) std::cout << dataArr(5, 5, blitz::Range(30, 33, 1)) << std::endl;
-
-        //if (gloData.mesh.rankData.rank == 0) std::cout << dataArr(5, 5, blitz::Range(30, 33, 1)) << std::endl;
-        //if (gloData.mesh.rankData.rank == 1) std::cout << dataArr(5, 5, blitz::Range(-2, 1, 1)) << std::endl;
-        //MPI_Finalize();
-        //exit(0);
-
-        V.derVx.calcDerivative1_y(tmpArr1);
-        V.derVy.calcDerivative1_x(tmpArr2);
-        dataArr += blitz::sqr(tmpArr1 + tmpArr2);
-
-        V.derVx.calcDerivative1_z(tmpArr1);
-        V.derVz.calcDerivative1_x(tmpArr2);
-        dataArr += blitz::sqr(tmpArr1 + tmpArr2);
-
-        V.derVy.calcDerivative1_z(tmpArr1);
-        V.derVz.calcDerivative1_y(tmpArr2);
-        dataArr += blitz::sqr(tmpArr1 + tmpArr2);
+        V.derVy.calcDerivative1_z(tmpArr1);     mpiHandle.syncAll(tmpArr1);
+        V.derVz.calcDerivative1_y(tmpArr2);     mpiHandle.syncAll(tmpArr2);
+        dataArr += blitz::sqr(gloData.shift2Wall(tmpArr1) + gloData.shift2Wall(tmpArr2));
 
         dataArr *= nu;
-        real epsU = gloData.volAvgMidPt(dataArr)/epsUNorm;
+        //std::cout << gloData.mesh.rankData.rank << dataArr(-1, 4, blitz::Range::all()) << std::endl;
+        /*
+        int foo[8] = {4, 5, 6, 7, 0, 1, 2, 3};
+        for (int i=0; i<8; i++) {
+            int sIndex = foo[i]*32;
+            int eIndex = sIndex + 31;
+            std::cout << foo[i] << dataArr(-1, 4, blitz::Range(sIndex-2, eIndex+2, 1)) << std::endl;
+        }
+        MPI_Finalize();
+        exit(0);
+        */
+
+        real epsU = gloData.simpsonInt(dataArr, gloData.mesh.z, gloData.mesh.y, gloData.mesh.x)/totalVol;
+        epsU /= epsUNorm;
 
         // Thermal dissipation
-        T.derS.calcDerivative1_x(tmpArr1);
-        T.derS.calcDerivative1_y(tmpArr2);
-        T.derS.calcDerivative1_z(tmpArr3);
+        T.derS.calcDerivative1_x(tmpArr1);     mpiHandle.syncAll(tmpArr1);
+        T.derS.calcDerivative1_y(tmpArr2);     mpiHandle.syncAll(tmpArr2);
+        T.derS.calcDerivative1_z(tmpArr3);     mpiHandle.syncAll(tmpArr3);
 
-        dataArr = kappa*(blitz::sqr(tmpArr1) + blitz::sqr(tmpArr2) + blitz::sqr(tmpArr3));
-        real epsT = gloData.volAvgMidPt(dataArr)/epsTNorm;
+        dataArr = kappa*(blitz::sqr(gloData.shift2Wall(tmpArr1)) +
+                         blitz::sqr(gloData.shift2Wall(tmpArr2)) +
+                         blitz::sqr(gloData.shift2Wall(tmpArr3)));
+        real epsT = gloData.simpsonInt(dataArr, gloData.mesh.z, gloData.mesh.y, gloData.mesh.x)/totalVol;
+        epsT /= epsTNorm;
 
         if (gloData.mesh.pf) std::cout << std::setprecision(16) << epsU << "\t" << epsT << "\n";
 
         MPI_Finalize();
         exit(0);
+
+        //if (gloData.mesh.rankData.rank == 0) std::cout << std::setprecision(16) << uRMS << std::endl;
+
+        //if (gloData.mesh.rankData.rank == 0) std::cout << dataArr(5, 5, blitz::Range(-2, 1, 1)) << std::endl;
+        //if (gloData.mesh.rankData.rank == 7) std::cout << dataArr(5, 5, blitz::Range(30, 33, 1)) << std::endl;
+
+        //if (gloData.mesh.rankData.rank == 0) std::cout << dataArr(5, 5, blitz::Range(30, 33, 1)) << std::endl;
+        //if (gloData.mesh.rankData.rank == 1) std::cout << dataArr(5, 5, blitz::Range(-2, 1, 1)) << std::endl;
+
+        //if (gloData.mesh.rankData.rank == 0) std::cout << dataArr(5, 5, blitz::Range(-2, 1, 1)) << std::endl;
+        //if (gloData.mesh.rankData.rank == 7) std::cout << dataArr(5, 5, blitz::Range(30, 33, 1)) << std::endl;
+
+        //if (gloData.mesh.rankData.rank == 0) std::cout << dataArr(5, 5, blitz::Range(30, 33, 1)) << std::endl;
+        //if (gloData.mesh.rankData.rank == 1) std::cout << dataArr(5, 5, blitz::Range(-2, 1, 1)) << std::endl;
     }
 }
