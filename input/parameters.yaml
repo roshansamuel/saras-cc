@@ -36,7 +36,7 @@
     # If domain is periodic along X and Y, but non-periodic along Z, Domain Type = PPN
     # If periodic along all directions, Domain Type = PPP, and so on
     # For 2D runs, only X and Z direction values are considered
-    "Domain Type": "NNN"
+    "Domain Type": "PPN"
 
     # For RBC, specify the non-dimensionalization to be used:
     # 1 = small U, large Pr
@@ -49,7 +49,7 @@
     # 0 = Disable LES
     # 1 = Stretched Spiral Vortex LES (velocity field only)
     # 2 = Stretched Spiral Vortex LES (both velocity and scalar fields)
-    "LES Model": 2
+    "LES Model": 0
 
     # Non-dimensional parameters
     "Reynolds Number": 2000
@@ -59,8 +59,8 @@
     "Taylor Number": 0.0
 
     # Dimensions of the domain
-    "X Length": 0.1
-    "Y Length": 0.1
+    "X Length": 2.0
+    "Y Length": 0.0
     "Z Length": 1.0
 
     # For Problem Type 5, heating can be applied at bottom wall using a circular heating plate
@@ -101,13 +101,13 @@
     # D - Double sided tangent-hyperbolic stretching (finest near both edges and coarsest at the center)
     # Specify the required spacing along X, Y and Z directions by using appropriate letters from above
     # Eg. Uniform spacing in X-direction, double sided tan-hyp stretching along Y and single sided tan-hyp along Z would be "UDS"
-    "Mesh Type": "DDD"
+    "Mesh Type": "UDD"
 
     # Stretching factor to be used for tangent-hyperbolic grids.
     # This option is considered only when tangent-hyperbolic stretching is specified in the Mesh Type
-    "X Beta": 1.2
-    "Y Beta": 1.2
-    "Z Beta": 1.6
+    "X Beta": 1.0
+    "Y Beta": 1.0
+    "Z Beta": 1.3
 
     # Choose the grid sizes (number of cells)
     # 1. The size specified along any given direction must be
@@ -116,17 +116,17 @@
     # a size that is divisible by a power of 2 (at least 4),
     # so that the multi-grid solver can coarsen the grid effectively.
     # 3. For 2D simulations, the value for Y Size must be 1
-    "X Size": 32
-    "Y Size": 32
-    "Z Size": 256
+    "X Size": 1024
+    "Y Size": 1
+    "Z Size": 512
 
 
 # Parellelization parameters
 "Parallel":
     "Number of OMP threads": 1
-    "X Number of Procs": 1
+    "X Number of Procs": 4
     "Y Number of Procs": 1
-    "Z Number of Procs": 8
+    "Z Number of Procs": 2
 
 
 # Solver parameters
@@ -170,11 +170,11 @@
     "Use CFL Condition": true
     # If above flag is true, then set the value of Courant number below
     "Courant Number": 0.2
-    "Time-Step": 0.001
-    "Final Time": 750.0
+    "Time-Step": 0.0002
+    "Final Time": 70.0
 
     # Number of iterations to display output to standard I/O
-    "I/O Count": 10
+    "I/O Count": 1
 
     # Select the format in which solution data must be written at each solution write interval
     # 1 = Write a single HDF5 file inside ./output/, containing all the variables - Vx, Vy, P, etc.

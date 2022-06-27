@@ -390,6 +390,13 @@ void parser::checkData() {
         std::cout << "WARNING: The specified LES Model is incompatible with the problem type. Resetting LES Model to 1" << std::endl;
         lesModel = 1;
     }
+
+    // CHECK IF THE SOLUTION FORMAT SPECIFIED BY THE USER IS NOT CONSISTENT
+    if (solnFormat > 2) {
+        std::cout << "ERROR: The specified Solution Format is inconsistent with expected values. Aborting" << std::endl;
+        MPI_Finalize();
+        exit(0);
+    }
 }
 
 /**

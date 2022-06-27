@@ -123,7 +123,7 @@ void multigrid_d2::smooth(const int smoothCount) {
         }
 
         // UPDATE OF RED CELLS COMPLETE. UPDATE SUB-DOMAIN FACES NOW
-        updateFull(lhs);
+        updateFace(lhs);
 
         // UPDATE BLACK CELLS
         // 1, 0 CONFIGURATION
@@ -193,7 +193,7 @@ void multigrid_d2::solve() {
         }
 
         // UPDATE OF RED CELLS COMPLETE. UPDATE SUB-DOMAIN FACES NOW
-        updateFull(lhs);
+        updateFace(lhs);
 
         // UPDATE BLACK CELLS
         // 1, 0 CONFIGURATION
@@ -267,6 +267,8 @@ void multigrid_d2::coarsen() {
         i2 = i*2;
         for (int k = 0; k <= zEnd(vLevel); ++k) {
             k2 = k*2;
+            // This restriction is not weighted unlike the 3D restriction operation
+            // The effect of this lack is not known for non-uniform grids
             rhs(vLevel)(i, 0, k) = (tmp(pLevel)(i2 + 1, 0, k2 + 1) + tmp(pLevel)(i2, 0, k2) +
                                     tmp(pLevel)(i2 + 1, 0, k2) + tmp(pLevel)(i2, 0, k2 + 1))/4;
         }
@@ -410,8 +412,8 @@ void multigrid_d2::createMGSubArrays() {
         MPI_Type_commit(&xFace(n));
 
         ////// ALONG Z-DIRECTION //////
-        count = xCount*yCount;
-        stride = zCount;
+        count = xCount;
+        stride = zCount*yCount;
 
         MPI_Type_vector(count, 1, stride, MPI_FP_REAL, &zFace(n));
         MPI_Type_commit(&zFace(n));
@@ -481,7 +483,7 @@ void multigrid_d2::imposeBC() {
 #endif
 
     // FOR PARALLEL RUNS, FIRST UPDATE GHOST POINTS OF MPI SUB-DOMAINS
-    updateFull(lhs);
+    updateFace(lhs);
 
     if (not inputParams.xPer) {
 #ifdef TEST_POISSON
@@ -580,8 +582,8 @@ void multigrid_d2::updateFace(blitz::Array<blitz::Array<real, 3>, 1> &data) {
     // TRANSFER DATA FROM NEIGHBOURING CELL TO IMPOSE SUB-DOMAIN BOUNDARY CONDITIONS
     MPI_Irecv(&(data(vLevel)(recvInd(vLevel, 0))), 1, xFace(vLevel), mesh.rankData.faceRanks(0), 1, MPI_COMM_WORLD, &recvRequest(0));
     MPI_Irecv(&(data(vLevel)(recvInd(vLevel, 1))), 1, xFace(vLevel), mesh.rankData.faceRanks(1), 2, MPI_COMM_WORLD, &recvRequest(1));
-    MPI_Irecv(&(data(vLevel)(recvInd(vLevel, 2))), 1, zFace(vLevel), mesh.rankData.faceRanks(4), 3, MPI_COMM_WORLD, &recvRequest(4));
-    MPI_Irecv(&(data(vLevel)(recvInd(vLevel, 3))), 1, zFace(vLevel), mesh.rankData.faceRanks(5), 4, MPI_COMM_WORLD, &recvRequest(5));
+    MPI_Irecv(&(data(vLevel)(recvInd(vLevel, 2))), 1, zFace(vLevel), mesh.rankData.faceRanks(4), 3, MPI_COMM_WORLD, &recvRequest(2));
+    MPI_Irecv(&(data(vLevel)(recvInd(vLevel, 3))), 1, zFace(vLevel), mesh.rankData.faceRanks(5), 4, MPI_COMM_WORLD, &recvRequest(3));
 
     MPI_Send(&(data(vLevel)(sendInd(vLevel, 0))), 1, xFace(vLevel), mesh.rankData.faceRanks(0), 2, MPI_COMM_WORLD);
     MPI_Send(&(data(vLevel)(sendInd(vLevel, 1))), 1, xFace(vLevel), mesh.rankData.faceRanks(1), 1, MPI_COMM_WORLD);
@@ -590,7 +592,6 @@ void multigrid_d2::updateFace(blitz::Array<blitz::Array<real, 3>, 1> &data) {
 
     MPI_Waitall(4, recvRequest.dataFirst(), recvStatus.dataFirst());
 }
-
 
 
 void multigrid_d2::updateFull(blitz::Array<blitz::Array<real, 3>, 1> &data) {
