@@ -73,7 +73,10 @@ class sfield {
 
         const grid &gridData;
 
-        blitz::Array<real, 3> tempX, tempY, tempZ;
+        blitz::Array<real, 3> tempX, tempZ;
+#ifndef PLANAR
+        blitz::Array<real, 3> tempY;
+#endif
 
         blitz::RectDomain<3> core;
 

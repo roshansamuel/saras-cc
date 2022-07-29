@@ -64,18 +64,14 @@ grid::grid(const parser &solParam, parallel &parallelData): inputParams(solParam
     if (rankData.rank == 0) pf = true;
 
     /** Depending on the finite-difference scheme chosen for calculating derivatives, set the \ref padWidths along all directions. */
-    if (inputParams.nlScheme > 2) {
+    if (inputParams.dScheme == 1) {
+        padWidths = 1, 1, 1;
+    } else if (inputParams.dScheme == 2) {
         padWidths = 2, 2, 2;
     } else {
-        if (inputParams.dScheme == 1) {
-            padWidths = 1, 1, 1;
-        } else if (inputParams.dScheme == 2) {
-            padWidths = 2, 2, 2;
-        } else {
-            if (pf) std::cout << "Undefined finite differencing scheme in YAML file. ABORTING" << std::endl;
-            MPI_Finalize();
-            exit(0);
-        }
+        if (pf) std::cout << "Undefined finite differencing scheme in YAML file. ABORTING" << std::endl;
+        MPI_Finalize();
+        exit(0);
     }
 
     globalSize = inputParams.Nx, inputParams.Ny, inputParams.Nz;
@@ -423,7 +419,6 @@ void grid::createTanHypGrid(int dim, blitz::Array<real, 1> xGlo, blitz::Array<re
     // Product of beta and length
     real btl = thBeta(dim)*dLen(dim);
 
-#ifndef POST_RUN
     if (pf) {
         switch (dim) {
             case 0: std::cout << "Generating tangent hyperbolic grid along X direction" << std::endl;
@@ -434,7 +429,6 @@ void grid::createTanHypGrid(int dim, blitz::Array<real, 1> xGlo, blitz::Array<re
                     break;
         }
     }
-#endif
 
     // GENERATE X-GRID POINTS FROM UNIFORM XI-GRID POINTS AND THEIR METRICS
     df_x.resize(blitz::Range(-padWidths(dim), globalSize(dim) + padWidths(dim) - 1));
