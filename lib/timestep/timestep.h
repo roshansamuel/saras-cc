@@ -62,6 +62,9 @@ class timestep {
         // These values can only be read by this class and not modified
         const real &solTime, &dt;
 
+        /** Maximum number of iterations for the iterative solvers solveVx, solveVy and solveVz */
+        int maxIterations;
+
         const grid &mesh;
 
         blitz::RectDomain<3> core;
@@ -69,6 +72,10 @@ class timestep {
         int xSt, xEn;
         int ySt, yEn;
         int zSt, zEn;
+
+        real ihx2, i2hx;
+        real ihy2, i2hy;
+        real ihz2, i2hz;
 
         /** Plain scalar field into which the pressure correction is calculated and written by the Poisson solver */
         plainsf Pp;
@@ -80,6 +87,17 @@ class timestep {
 
         /** Plain vector field which stores the pressure gradient term. */
         plainvf pressureGradient;
+
+        /** Blitz array used as temp array in iterative solvers. */
+        blitz::Array<real, 3> iterTemp;
+
+        void setCoefficients();
+
+        void solveVx(vfield &V, plainvf &nseRHS, real beta);
+        void solveVy(vfield &V, plainvf &nseRHS, real beta);
+        void solveVz(vfield &V, plainvf &nseRHS, real beta);
+
+        void solveT(sfield &T, plainsf &tmpRHS, real beta);
 };
 
 /**
@@ -98,22 +116,9 @@ class eulerCN_d2: public timestep {
         void timeAdvance(vfield &V, sfield &P, sfield &T);
 
     private:
-        /** Maximum number of iterations for the iterative solvers solveVx, solveVy and solveVz */
-        int maxIterations;
-
-        real ihx2, ihz2;
-        real i2hx, i2hz;
-
         real alphCN2, betaCN2;
 
         multigrid_d2 mgSolver;
-
-        void solveVx(vfield &V, plainvf &nseRHS, real beta);
-        void solveVz(vfield &V, plainvf &nseRHS, real beta);
-
-        void solveT(sfield &T, plainsf &tmpRHS, real beta);
-
-        void setCoefficients();
 };
 
 /**
@@ -132,25 +137,11 @@ class eulerCN_d3: public timestep {
         void timeAdvance(vfield &V, sfield &P, sfield &T);
 
     private:
-        /** Maximum number of iterations for the iterative solvers solveVx, solveVy and solveVz */
-        int maxIterations;
-
-        real ihx2, ihy2, ihz2;
-        real i2hx, i2hy, i2hz;
-
         real alphCN2, betaCN2;
 
         multigrid_d3 mgSolver;
 
         les *sgsLES;
-
-        void solveVx(vfield &V, plainvf &nseRHS, real beta);
-        void solveVy(vfield &V, plainvf &nseRHS, real beta);
-        void solveVz(vfield &V, plainvf &nseRHS, real beta);
-
-        void solveT(sfield &T, plainsf &tmpRHS, real beta);
-
-        void setCoefficients();
 };
 
 /**
@@ -169,23 +160,9 @@ class lsRK3_d2: public timestep {
         void timeAdvance(vfield &V, sfield &P, sfield &T);
 
     private:
-        /** Maximum number of iterations for the iterative solvers solveVx, solveVy and solveVz */
-        int maxIterations;
-
-        real ihx2, ihz2;
-        real i2hx, i2hz;
-
-        blitz::Array<real, 3> iterTemp;
         blitz::TinyVector<real, 3> alphRK3, betaRK3, zetaRK3, gammRK3;
 
         multigrid_d2 mgSolver;
-
-        void solveVx(vfield &V, plainvf &nseRHS, real beta);
-        void solveVz(vfield &V, plainvf &nseRHS, real beta);
-
-        void solveT(sfield &T, plainsf &tmpRHS, real beta);
-
-        void setCoefficients();
 };
 
 /**
@@ -204,26 +181,11 @@ class lsRK3_d3: public timestep {
         void timeAdvance(vfield &V, sfield &P, sfield &T);
 
     private:
-        /** Maximum number of iterations for the iterative solvers solveVx, solveVy and solveVz */
-        int maxIterations;
-
-        real ihx2, ihy2, ihz2;
-        real i2hx, i2hy, i2hz;
-
-        blitz::Array<real, 3> iterTemp;
         blitz::TinyVector<real, 3> alphRK3, betaRK3, zetaRK3, gammRK3;
 
         multigrid_d3 mgSolver;
 
         les *sgsLES;
-
-        void solveVx(vfield &V, plainvf &nseRHS, real beta);
-        void solveVy(vfield &V, plainvf &nseRHS, real beta);
-        void solveVz(vfield &V, plainvf &nseRHS, real beta);
-
-        void solveT(sfield &T, plainsf &tmpRHS, real beta);
-
-        void setCoefficients();
 };
 
 /**
