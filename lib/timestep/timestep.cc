@@ -71,7 +71,7 @@ timestep::timestep(const grid &mesh, const real &sTime, const real &dt, tseries 
         // For hydrodynamics simulation, set value of kinematic viscosity only
         nu = 1.0/mesh.inputParams.Re;
 
-    } else if (mesh.inputParams.probType <= 7) {
+    } else if (mesh.inputParams.probType <= 8) {
         // For scalar simulation, set values of kinematic viscosity and thermal diffusion
         if (mesh.inputParams.rbcType == 1) {
             nu = mesh.inputParams.Pr;

@@ -305,6 +305,10 @@ void hydro::initVBCs() {
         // NO-SLIP BCS FOR LDC
         V.uBot = new dirichlet(mesh, V.Vx, 4, 0.0);
         V.uTop = new dirichlet(mesh, V.Vx, 5, 1.0);
+    } else if (inputParams.probType == 8) {
+        // FREE-SLIP BCS
+        V.uBot = new neumann(mesh, V.Vx, 4, 0.0);
+        V.uTop = new neumann(mesh, V.Vx, 5, 0.0);
     } else {
         // NO-SLIP BCS
         V.uBot = new dirichlet(mesh, V.Vx, 4, 0.0);
@@ -326,9 +330,15 @@ void hydro::initVBCs() {
     V.vFrn = new dirichlet(mesh, V.Vy, 2, 0.0);
     V.vBak = new dirichlet(mesh, V.Vy, 3, 0.0);
 
-    // NO-SLIP BCS
-    V.vBot = new dirichlet(mesh, V.Vy, 4, 0.0);
-    V.vTop = new dirichlet(mesh, V.Vy, 5, 0.0);
+    if (inputParams.probType == 8) {
+        // FREE-SLIP BCS
+        V.vBot = new neumann(mesh, V.Vy, 4, 0.0);
+        V.vTop = new neumann(mesh, V.Vy, 5, 0.0);
+    } else {
+        // NO-SLIP BCS
+        V.vBot = new dirichlet(mesh, V.Vy, 4, 0.0);
+        V.vTop = new dirichlet(mesh, V.Vy, 5, 0.0);
+    }
 #endif
 
     if (inputParams.probType == 3) {
@@ -347,7 +357,7 @@ void hydro::initVBCs() {
     V.wBak = new dirichlet(mesh, V.Vz, 3, 0.0);
 #endif
 
-    // NO-SLIP BCS
+    // NO-PENETRATION BCS
     V.wBot = new dirichlet(mesh, V.Vz, 4, 0.0);
     V.wTop = new dirichlet(mesh, V.Vz, 5, 0.0);
 };
