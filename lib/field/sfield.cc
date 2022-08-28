@@ -66,8 +66,10 @@ sfield::sfield(const grid &gridData, std::string fieldName):
     tempX.resize(F.fSize);
     tempX.reindexSelf(F.flBound);
 
+#ifndef PLANAR
     tempY.resize(F.fSize);
     tempY.reindexSelf(F.flBound);
+#endif
 
     tempZ.resize(F.fSize);
     tempZ.reindexSelf(F.flBound);
@@ -199,50 +201,113 @@ void sfield::morinishiNLin(const vfield &V, plainsf &H) {
     real advTerm, divTerm;
 
     tempX = V.Vx.F * F.F;
+#ifndef PLANAR
     tempY = V.Vy.F * F.F;
+#endif
     tempZ = V.Vz.F * F.F;
 
+#ifdef PLANAR
+    int iY = 0;
     for (int iX = 0; iX <= core.ubound(0); iX++) {
-        for (int iY = 0; iY <= core.ubound(1); iY++) {
-            for (int iZ = 0; iZ <= core.ubound(2); iZ++) {
+        for (int iZ = 0; iZ <= core.ubound(2); iZ++) {
+            if (firstOrder) {
+                // Second order central difference everywhere
+                advTerm = V.Vx.F(iX, iY, iZ)*gridData.xi_x(iX)*(F.F(iX+1, iY, iZ) - F.F(iX-1, iY, iZ))*i2dx;
+                divTerm = gridData.xi_x(iX)*(tempX(iX+1, iY, iZ) - tempX(iX-1, iY, iZ))*i2dx;
+            } else {
                 if (((iX == 0) and xfr) or ((iX == core.ubound(0)) and xlr)) {
                     // Second order central difference for first and last point
                     advTerm = V.Vx.F(iX, iY, iZ)*gridData.xi_x(iX)*(F.F(iX+1, iY, iZ) - F.F(iX-1, iY, iZ))*i2dx;
                     divTerm = gridData.xi_x(iX)*(tempX(iX+1, iY, iZ) - tempX(iX-1, iY, iZ))*i2dx;
-                    H.F(iX, iY, iZ) -= (advTerm + divTerm)/2;
                 } else {
                     // Fourth order central difference elsewhere
                     advTerm = V.Vx.F(iX, iY, iZ)*gridData.xi_x(iX)*(-F.F(iX+2, iY, iZ) + 8.0*F.F(iX+1, iY, iZ) - 8.0*F.F(iX-1, iY, iZ) + F.F(iX-2, iY, iZ))*i2dx/6.0;
                     divTerm = gridData.xi_x(iX)*(-tempX(iX+2, iY, iZ) + 8.0*tempX(iX+1, iY, iZ) - 8.0*tempX(iX-1, iY, iZ) + tempX(iX-2, iY, iZ))*i2dx/6.0;
-                    H.F(iX, iY, iZ) -= (advTerm + divTerm)/2;
                 }
+            }
 
-                if (((iY == 0) and yfr) or ((iY == core.ubound(1)) and ylr)) {
-                    // Second order central difference for first and last point
-                    advTerm = V.Vy.F(iX, iY, iZ)*gridData.et_y(iY)*(F.F(iX, iY+1, iZ) - F.F(iX, iY-1, iZ))*i2dy;
-                    divTerm = gridData.et_y(iY)*(tempY(iX, iY+1, iZ) - tempY(iX, iY-1, iZ))*i2dy;
-                    H.F(iX, iY, iZ) -= (advTerm + divTerm)/2;
-                } else {
-                    // Fourth order central difference elsewhere
-                    advTerm = V.Vy.F(iX, iY, iZ)*gridData.et_y(iY)*(-F.F(iX, iY+2, iZ) + 8.0*F.F(iX, iY+1, iZ) - 8.0*F.F(iX, iY-1, iZ) + F.F(iX, iY-2, iZ))*i2dy/6.0;
-                    divTerm = gridData.et_y(iY)*(-tempY(iX, iY+2, iZ) + 8.0*tempY(iX, iY+1, iZ) - 8.0*tempY(iX, iY-1, iZ) + tempY(iX, iY-2, iZ))*i2dy/6.0;
-                    H.F(iX, iY, iZ) -= (advTerm + divTerm)/2;
-                }
+            H.F(iX, iY, iZ) -= (advTerm + divTerm)/2;
 
+            if (firstOrder) {
+                // Second order central difference everywhere
+                advTerm = V.Vz.F(iX, iY, iZ)*gridData.zt_z(iZ)*(F.F(iX, iY, iZ+1) - F.F(iX, iY, iZ-1))*i2dz;
+                divTerm = gridData.zt_z(iZ)*(tempZ(iX, iY, iZ+1) - tempZ(iX, iY, iZ-1))*i2dz;
+            } else {
                 if (((iZ == 0) and zfr) or ((iZ == core.ubound(1)) and zlr)) {
                     // Second order central difference for first and last point
                     advTerm = V.Vz.F(iX, iY, iZ)*gridData.zt_z(iZ)*(F.F(iX, iY, iZ+1) - F.F(iX, iY, iZ-1))*i2dz;
                     divTerm = gridData.zt_z(iZ)*(tempZ(iX, iY, iZ+1) - tempZ(iX, iY, iZ-1))*i2dz;
-                    H.F(iX, iY, iZ) -= (advTerm + divTerm)/2;
                 } else {
                     // Fourth order central difference elsewhere
                     advTerm = V.Vz.F(iX, iY, iZ)*gridData.zt_z(iZ)*(-F.F(iX, iY, iZ+2) + 8.0*F.F(iX, iY, iZ+1) - 8.0*F.F(iX, iY, iZ-1) + F.F(iX, iY, iZ-2))*i2dz/6.0;
                     divTerm = gridData.zt_z(iZ)*(-tempZ(iX, iY, iZ+2) + 8.0*tempZ(iX, iY, iZ+1) - 8.0*tempZ(iX, iY, iZ-1) + tempZ(iX, iY, iZ-2))*i2dz/6.0;
-                    H.F(iX, iY, iZ) -= (advTerm + divTerm)/2;
                 }
+            }
+
+            H.F(iX, iY, iZ) -= (advTerm + divTerm)/2;
+        }
+    }
+#else
+    for (int iX = 0; iX <= core.ubound(0); iX++) {
+        for (int iY = 0; iY <= core.ubound(1); iY++) {
+            for (int iZ = 0; iZ <= core.ubound(2); iZ++) {
+                if (firstOrder) {
+                    // Second order central difference everywhere
+                    advTerm = V.Vx.F(iX, iY, iZ)*gridData.xi_x(iX)*(F.F(iX+1, iY, iZ) - F.F(iX-1, iY, iZ))*i2dx;
+                    divTerm = gridData.xi_x(iX)*(tempX(iX+1, iY, iZ) - tempX(iX-1, iY, iZ))*i2dx;
+                } else {
+                    if (((iX == 0) and xfr) or ((iX == core.ubound(0)) and xlr)) {
+                        // Second order central difference for first and last point
+                        advTerm = V.Vx.F(iX, iY, iZ)*gridData.xi_x(iX)*(F.F(iX+1, iY, iZ) - F.F(iX-1, iY, iZ))*i2dx;
+                        divTerm = gridData.xi_x(iX)*(tempX(iX+1, iY, iZ) - tempX(iX-1, iY, iZ))*i2dx;
+                    } else {
+                        // Fourth order central difference elsewhere
+                        advTerm = V.Vx.F(iX, iY, iZ)*gridData.xi_x(iX)*(-F.F(iX+2, iY, iZ) + 8.0*F.F(iX+1, iY, iZ) - 8.0*F.F(iX-1, iY, iZ) + F.F(iX-2, iY, iZ))*i2dx/6.0;
+                        divTerm = gridData.xi_x(iX)*(-tempX(iX+2, iY, iZ) + 8.0*tempX(iX+1, iY, iZ) - 8.0*tempX(iX-1, iY, iZ) + tempX(iX-2, iY, iZ))*i2dx/6.0;
+                    }
+                }
+
+                H.F(iX, iY, iZ) -= (advTerm + divTerm)/2;
+
+                if (firstOrder) {
+                    // Second order central difference everywhere
+                    advTerm = V.Vy.F(iX, iY, iZ)*gridData.et_y(iY)*(F.F(iX, iY+1, iZ) - F.F(iX, iY-1, iZ))*i2dy;
+                    divTerm = gridData.et_y(iY)*(tempY(iX, iY+1, iZ) - tempY(iX, iY-1, iZ))*i2dy;
+                } else {
+                    if (((iY == 0) and yfr) or ((iY == core.ubound(1)) and ylr)) {
+                        // Second order central difference for first and last point
+                        advTerm = V.Vy.F(iX, iY, iZ)*gridData.et_y(iY)*(F.F(iX, iY+1, iZ) - F.F(iX, iY-1, iZ))*i2dy;
+                        divTerm = gridData.et_y(iY)*(tempY(iX, iY+1, iZ) - tempY(iX, iY-1, iZ))*i2dy;
+                    } else {
+                        // Fourth order central difference elsewhere
+                        advTerm = V.Vy.F(iX, iY, iZ)*gridData.et_y(iY)*(-F.F(iX, iY+2, iZ) + 8.0*F.F(iX, iY+1, iZ) - 8.0*F.F(iX, iY-1, iZ) + F.F(iX, iY-2, iZ))*i2dy/6.0;
+                        divTerm = gridData.et_y(iY)*(-tempY(iX, iY+2, iZ) + 8.0*tempY(iX, iY+1, iZ) - 8.0*tempY(iX, iY-1, iZ) + tempY(iX, iY-2, iZ))*i2dy/6.0;
+                    }
+                }
+
+                H.F(iX, iY, iZ) -= (advTerm + divTerm)/2;
+
+                if (firstOrder) {
+                    // Second order central difference everywhere
+                    advTerm = V.Vz.F(iX, iY, iZ)*gridData.zt_z(iZ)*(F.F(iX, iY, iZ+1) - F.F(iX, iY, iZ-1))*i2dz;
+                    divTerm = gridData.zt_z(iZ)*(tempZ(iX, iY, iZ+1) - tempZ(iX, iY, iZ-1))*i2dz;
+                } else {
+                    if (((iZ == 0) and zfr) or ((iZ == core.ubound(1)) and zlr)) {
+                        // Second order central difference for first and last point
+                        advTerm = V.Vz.F(iX, iY, iZ)*gridData.zt_z(iZ)*(F.F(iX, iY, iZ+1) - F.F(iX, iY, iZ-1))*i2dz;
+                        divTerm = gridData.zt_z(iZ)*(tempZ(iX, iY, iZ+1) - tempZ(iX, iY, iZ-1))*i2dz;
+                    } else {
+                        // Fourth order central difference elsewhere
+                        advTerm = V.Vz.F(iX, iY, iZ)*gridData.zt_z(iZ)*(-F.F(iX, iY, iZ+2) + 8.0*F.F(iX, iY, iZ+1) - 8.0*F.F(iX, iY, iZ-1) + F.F(iX, iY, iZ-2))*i2dz/6.0;
+                        divTerm = gridData.zt_z(iZ)*(-tempZ(iX, iY, iZ+2) + 8.0*tempZ(iX, iY, iZ+1) - 8.0*tempZ(iX, iY, iZ-1) + tempZ(iX, iY, iZ-2))*i2dz/6.0;
+                    }
+                }
+
+                H.F(iX, iY, iZ) -= (advTerm + divTerm)/2;
             }
         }
     }
+#endif
 }
 
 /**

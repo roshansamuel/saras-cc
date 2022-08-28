@@ -335,9 +335,8 @@ void writer::writeSolution(real time) {
 
     herr_t status;
 
-    std::ostringstream constFile;
-
     char fileName[25];
+    std::ostringstream constFile;
 
     // Create a property list for collectively opening a file by all processors
     plist_id = H5Pcreate(H5P_FILE_ACCESS);

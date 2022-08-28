@@ -78,7 +78,7 @@ class hydro {
         probes *dataProbe;
 
         /** Instance of the \ref parallel class that holds the MPI-related data like rank, xRank, etc. */
-        parallel &mpiData;
+        parallel &rankData;
 
         void checkPeriodic();
 

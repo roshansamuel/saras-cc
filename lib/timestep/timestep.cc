@@ -71,7 +71,7 @@ timestep::timestep(const grid &mesh, const real &sTime, const real &dt, tseries 
         // For hydrodynamics simulation, set value of kinematic viscosity only
         nu = 1.0/mesh.inputParams.Re;
 
-    } else if (mesh.inputParams.probType <= 7) {
+    } else if (mesh.inputParams.probType <= 8) {
         // For scalar simulation, set values of kinematic viscosity and thermal diffusion
         if (mesh.inputParams.rbcType == 1) {
             nu = mesh.inputParams.Pr;
@@ -94,13 +94,8 @@ timestep::timestep(const grid &mesh, const real &sTime, const real &dt, tseries 
     }
 
     // Additional options to turn off diffusion for debugging/diagnostics only
-    if (viscSwitch) {
-        nu = 0.0;
-    }
-
-    if (diffSwitch) {
-        kappa = 0.0;
-    }
+    if (viscSwitch) nu = 0.0;
+    if (diffSwitch) kappa = 0.0;
 
     core = mesh.coreDomain;
 
@@ -110,6 +105,17 @@ timestep::timestep(const grid &mesh, const real &sTime, const real &dt, tseries 
     ySt = core.lbound(1);        yEn = core.ubound(1);
 #endif
     zSt = core.lbound(2);        zEn = core.ubound(2);
+
+    setCoefficients();
+
+    // This upper limit on max iterations is an arbitrarily chosen function.
+    // Using Nx x Ny x Nz as the upper limit may cause the run to freeze for very long time.
+    // This can eat away a lot of core hours unnecessarily.
+    // It remains to be seen if this upper limit is safe.
+    maxIterations = int(std::pow(std::log(mesh.coreSize(0)*mesh.coreSize(1)*mesh.coreSize(2)), 3));
+
+    iterTemp.resize(mesh.fullSize);
+    iterTemp.reindexSelf(-mesh.padWidths);
 
     tsWriter.mDiff = nu;
     tsWriter.tDiff = kappa;
@@ -137,3 +143,32 @@ void timestep::timeAdvance(vfield &V, sfield &P) { };
  ********************************************************************************************************************************************
  */
 void timestep::timeAdvance(vfield &V, sfield &P, sfield &T) { };
+
+
+/**
+ ********************************************************************************************************************************************
+ * \brief   Function to set the coefficients used for solving the implicit equations predictor step
+ *
+ *          The function assigns values to the variables \ref hx, \ref hy, etc.
+ *          These coefficients are repeatedly used at many places in the iterative solver for implicit calculation of field variables.
+ ********************************************************************************************************************************************
+ */
+void timestep::setCoefficients() {
+    real hx2 = pow(mesh.dXi, 2.0);
+#ifndef PLANAR
+    real hy2 = pow(mesh.dEt, 2.0);
+#endif
+    real hz2 = pow(mesh.dZt, 2.0);
+
+    i2hx = 0.5/mesh.dXi;
+#ifndef PLANAR
+    i2hy = 0.5/mesh.dEt;
+#endif
+    i2hz = 0.5/mesh.dZt;
+
+    ihx2 = 1.0/hx2;
+#ifndef PLANAR
+    ihy2 = 1.0/hy2;
+#endif
+    ihz2 = 1.0/hz2;
+};

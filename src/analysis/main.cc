@@ -1,7 +1,7 @@
 /********************************************************************************************************************************************
  * Saras
  * 
- * Copyright (C) 2019, Mahendra K. Verma
+ * Copyright (C) 2022, Roshan J. Samuel
  *
  * All rights reserved.
  * 
@@ -29,69 +29,68 @@
  *
  ********************************************************************************************************************************************
  */
-/*! \file reader.h
+/*! \file main.cc
  *
- *  \brief Class declaration of reader
+ *  \brief Main file for post-processing run of Saras.
  *
  *  \author Roshan Samuel
- *  \date Nov 2019
+ *  \date Nov 2022
  *  \copyright New BSD License
  *
  ********************************************************************************************************************************************
  */
 
-#ifndef READER_H
-#define READER_H
+#include "global.h"
+#include "postprocess.h"
 
-#include <sys/stat.h>
-#include <algorithm>
-#include <iomanip>
-#include <vector>
-#include <dirent.h>
+int main() {
+    int mpiThreadProvided;
+    struct timeval runStart, runEnd;
 
-#include "field.h"
-#include "grid.h"
-#include "hdf5.h"
+    // INITIALIZE MPI
+    MPI_Init_thread(NULL, NULL, MPI_THREAD_MULTIPLE, &mpiThreadProvided);
 
-class reader {
-    public:
-        reader(const grid &mesh);
+    // ALL PROCESSES READ THE INPUT PARAMETERS
+    parser inputParams;
 
-        real readRestart(std::vector<field> &rFields);
-        void readSolution(real solTime, std::vector<field> &rFields);
+    // INITIALIZE PARALLELIZATION DATA
+    parallel mpi(inputParams);
 
-        ~reader();
+    // WRITE CONTENTS OF THE INPUT YAML FILE TO THE STANDARD I/O
+    //if (mpi.rank == 0) {
+    //    inputParams.writeParams();
+    //}
 
-    private:
-        const grid &mesh;
+    // INITIALIZE GRID DATA
+    grid gridData(inputParams, mpi);
 
-        // Print flag - basically flag to ease printing to I/O. It is true for root rank (0)
-        bool pf;
+    // INITIALIZE POST-PROCESSING GLOBALS
+    global gloData(gridData);
 
-#ifdef PLANAR
-        blitz::Array<real, 2> fieldData;
-#else
-        blitz::Array<real, 3> fieldData;
-#endif
+    // ENABLE-DISABLE PERIODIC DATA TRANSFER IN GLOBALS
+    gloData.checkPeriodic(inputParams, mpi);
 
-        hid_t sourceDSpace, targetDSpace;
+    if (mpiThreadProvided < MPI_THREAD_MULTIPLE)
+        if (gridData.pf)
+            std::cout << "\nWARNING: MPI does not provide desired threading level" << std::endl;
 
-        blitz::TinyVector<int, 3> locSize;
+    gettimeofday(&runStart, NULL);
 
-        void fileCheck(hid_t fHandle);
+    std::vector<real> timeList = inputParams.readTimes();
 
-        void initLimits();
+    dissipation(gloData, timeList);
 
-        void copyData(field &outField);
-};
+    gettimeofday(&runEnd, NULL);
+    real run_time = ((runEnd.tv_sec - runStart.tv_sec)*1000000u + runEnd.tv_usec - runStart.tv_usec)/1.e6;
 
-/**
- ********************************************************************************************************************************************
- *  \class reader reader.h "lib/reader.h"
- *  \brief Class for all the global variables and functions related to reading input data for the solver.
- *
- *  The computational data for the solver can be read from HDF5 file.
- ********************************************************************************************************************************************
- */
+    if (mpi.rank == 0) {
+        std::cout << std::endl << "Post-processing completed" << std::endl;
+        std::cout << std::endl;
+        std::cout << "Time taken for processing: " << run_time << std::endl;
+    }
 
-#endif
+    // FINALIZE AND CLEAN-UP
+    MPI_Finalize();
+
+    return 0;
+}

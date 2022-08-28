@@ -64,18 +64,14 @@ grid::grid(const parser &solParam, parallel &parallelData): inputParams(solParam
     if (rankData.rank == 0) pf = true;
 
     /** Depending on the finite-difference scheme chosen for calculating derivatives, set the \ref padWidths along all directions. */
-    if (inputParams.nlScheme > 2) {
+    if (inputParams.dScheme == 1) {
+        padWidths = 1, 1, 1;
+    } else if (inputParams.dScheme == 2) {
         padWidths = 2, 2, 2;
     } else {
-        if (inputParams.dScheme == 1) {
-            padWidths = 1, 1, 1;
-        } else if (inputParams.dScheme == 2) {
-            padWidths = 2, 2, 2;
-        } else {
-            if (pf) std::cout << "Undefined finite differencing scheme in YAML file. ABORTING" << std::endl;
-            MPI_Finalize();
-            exit(0);
-        }
+        if (pf) std::cout << "Undefined finite differencing scheme in YAML file. ABORTING" << std::endl;
+        MPI_Finalize();
+        exit(0);
     }
 
     globalSize = inputParams.Nx, inputParams.Ny, inputParams.Nz;
@@ -136,11 +132,28 @@ grid::grid(const parser &solParam, parallel &parallelData): inputParams(solParam
         gridCheck = true;
     }
 
+#ifndef POST_RUN
     x = xGlobal(blitz::Range(subarrayStarts(0) - padWidths(0), subarrayEnds(0) + padWidths(0)));
     y = yGlobal(blitz::Range(subarrayStarts(1) - padWidths(1), subarrayEnds(1) + padWidths(1)));
     z = zGlobal(blitz::Range(subarrayStarts(2) - padWidths(2), subarrayEnds(2) + padWidths(2)));
 
     if (gridCheck) checkAnisotropy();
+#else
+    // For post-processing, X, Y and Z are defined differently to perform
+    // volume integrations correctly. This doesn't affect derivative calculation.
+    x = xGlobal(blitz::Range(subarrayStarts(0) - 1, subarrayEnds(0) + 1));
+    y = yGlobal(blitz::Range(subarrayStarts(1) - 1, subarrayEnds(1) + 1));
+    z = zGlobal(blitz::Range(subarrayStarts(2) - 1, subarrayEnds(2) + 1));
+
+    if (rankData.xRank == 0) x(-1) = 0;
+    if (rankData.xRank == rankData.npX - 1) x(coreDomain.ubound(0) + 1) = xLen;
+
+    if (rankData.yRank == 0) y(-1) = 0;
+    if (rankData.yRank == rankData.npY - 1) y(coreDomain.ubound(1) + 1) = yLen;
+
+    if (rankData.zRank == 0) z(-1) = 0;
+    if (rankData.zRank == rankData.npZ - 1) z(coreDomain.ubound(2) + 1) = zLen;
+#endif
 }
 
 
@@ -269,15 +282,25 @@ void grid::resizeGrid() {
     et.resize(yRange);
     zt.resize(zRange);
 
-    // LOCAL GRID POINTS
-    x.resize(xRange);
-    y.resize(yRange);
-    z.resize(zRange);
-
     // LOCAL GRID METRICS
     xi_x.resize(xRange);        xixx.resize(xRange);        xix2.resize(xRange);
     et_y.resize(yRange);        etyy.resize(yRange);        ety2.resize(yRange);
     zt_z.resize(zRange);        ztzz.resize(zRange);        ztz2.resize(zRange);
+
+    // LOCAL GRID POINTS
+#ifndef POST_RUN
+    x.resize(xRange);
+    y.resize(yRange);
+    z.resize(zRange);
+#else
+    xRange = blitz::Range(coreDomain.lbound(0)-1, coreDomain.ubound(0)+1);
+    yRange = blitz::Range(coreDomain.lbound(1)-1, coreDomain.ubound(1)+1);
+    zRange = blitz::Range(coreDomain.lbound(2)-1, coreDomain.ubound(2)+1);
+
+    x.resize(xRange);
+    y.resize(yRange);
+    z.resize(zRange);
+#endif
 }
 
 
@@ -396,7 +419,6 @@ void grid::createTanHypGrid(int dim, blitz::Array<real, 1> xGlo, blitz::Array<re
     // Product of beta and length
     real btl = thBeta(dim)*dLen(dim);
 
-#ifndef TEST_RUN
     if (pf) {
         switch (dim) {
             case 0: std::cout << "Generating tangent hyperbolic grid along X direction" << std::endl;
@@ -407,12 +429,11 @@ void grid::createTanHypGrid(int dim, blitz::Array<real, 1> xGlo, blitz::Array<re
                     break;
         }
     }
-#endif
 
     // GENERATE X-GRID POINTS FROM UNIFORM XI-GRID POINTS AND THEIR METRICS
-    df_x.resize(blitz::Range(-padWidths(dim), globalSize(dim)));
-    dfxx.resize(blitz::Range(-padWidths(dim), globalSize(dim)));
-    dfx2.resize(blitz::Range(-padWidths(dim), globalSize(dim)));
+    df_x.resize(blitz::Range(-padWidths(dim), globalSize(dim) + padWidths(dim) - 1));
+    dfxx.resize(blitz::Range(-padWidths(dim), globalSize(dim) + padWidths(dim) - 1));
+    dfx2.resize(blitz::Range(-padWidths(dim), globalSize(dim) + padWidths(dim) - 1));
 
     for (int i = 0; i < globalSize(dim); i++) {
         xGlo(i) = dLen(dim)*(1.0 - tanh(thBeta[dim]*(1.0 - 2.0*xiGl(i)))/thb)/2.0;

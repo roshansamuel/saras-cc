@@ -47,14 +47,14 @@
 PROC=1
 REAL_TYPE="DOUBLE"
 #PLANAR="PLANAR"
-#TEST_RUN="TEST_RUN"
+#POST_RUN="POST_RUN"
 EXECUTE_AFTER_COMPILE="EXECUTE"
 
 # NO USER MODIFICATIONS NECESSARY BELOW THIS LINE
 
 # REMOVE PRE-EXISTING EXECUTATBLES
 rm -f ../saras
-rm -f ../saras_test
+rm -f ../saras_post
 
 # IF build DIRECTORY DOESN'T EXIST, CREATE IT
 if [ ! -d build ]; then
@@ -66,24 +66,24 @@ cd build
 
 # RUN Cmake WITH NECESSARY FLAGS AS SET BY USER
 if [ -z $PLANAR ]; then
-    if [ -z $TEST_RUN ]; then
+    if [ -z $POST_RUN ]; then
         if [ "$REAL_TYPE" == "DOUBLE" ]; then
             CC=mpicc CXX=mpicxx cmake ../../
         else
             CC=mpicc CXX=mpicxx cmake ../../ -DREAL_SINGLE=ON
         fi
     else
-        CC=mpicc CXX=mpicxx cmake ../../ -DTEST_RUN=ON
+        CC=mpicc CXX=mpicxx cmake ../../ -DPOST_RUN=ON
     fi
 else
-    if [ -z $TEST_RUN ]; then
+    if [ -z $POST_RUN ]; then
         if [ "$REAL_TYPE" == "DOUBLE" ]; then
             CC=mpicc CXX=mpicxx cmake ../../ -DPLANAR=ON
         else
             CC=mpicc CXX=mpicxx cmake ../../ -DPLANAR=ON -DREAL_SINGLE=ON
         fi
     else
-        CC=mpicc CXX=mpicxx cmake ../../ -DTEST_RUN=ON -DPLANAR=ON
+        CC=mpicc CXX=mpicxx cmake ../../ -DPOST_RUN=ON -DPLANAR=ON
     fi
 fi
 
@@ -95,11 +95,11 @@ cd ../../
 
 # RUN CODE IF REQUESTED BY USER
 if ! [ -z $EXECUTE_AFTER_COMPILE ]; then
-    if [ -z $TEST_RUN ]; then
+    if [ -z $POST_RUN ]; then
         echo "localhost slots="$PROC > hostfile
         mpirun --hostfile hostfile -np $PROC ./saras
         rm hostfile
     else
-        mpirun -np $PROC ./saras_test
+        mpirun -np $PROC ./saras_post
     fi
 fi

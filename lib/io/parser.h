@@ -45,6 +45,7 @@
 
 #include <math.h>
 #include <string>
+#include <vector>
 #include <sstream>
 #include <fstream>
 #include <blitz/array.h>
@@ -117,6 +118,7 @@ class parser {
         parser();
 
         void writeParams();
+        std::vector<real> readTimes();
 
     private:
         std::string meshType;

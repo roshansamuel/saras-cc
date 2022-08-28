@@ -107,7 +107,7 @@ int main() {
 
         delete nseSolver;
 
-    } else if (inputParams.probType <= 7) {
+    } else if (inputParams.probType <= 8) {
         // SELECTION OF SOLVERS FOR SCALAR SIMULATIONS
         switch (inputParams.probType) {
             case 5: if (mpi.rank == 0) std::cout << std::endl << "Solving NSE for heated bottom-plate problem" << std::endl;
@@ -123,6 +123,8 @@ int main() {
                     MPI_Finalize();
                     exit(0);
                 }
+                break;
+            case 8: if (mpi.rank == 0) std::cout << std::endl << "Solving NSE for heated bottom-plate with free-slip" << std::endl;
                 break;
         }
         if (mpi.rank == 0) std::cout << std::endl;

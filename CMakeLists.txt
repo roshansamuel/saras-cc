@@ -148,10 +148,10 @@ else ()
     add_definitions(-DREAL_DOUBLE)
 endif ()
 
-# Add compiler flag for test runs as requested by user while running cmake
-if (TEST_RUN)
-    message (STATUS "Compiling Saras for running unit tests")
-    add_definitions(-DTEST_RUN)
+# Add compiler flag for post-processing runs as requested by user while running cmake
+if (POST_RUN)
+    message (STATUS "Compiling Saras for post-processing runs")
+    add_definitions(-DPOST_RUN)
 endif ()
 
 # Add compiler flag for testing the Poisson library
@@ -172,8 +172,8 @@ add_subdirectory (src)
 # Remove the PLANAR variable from cache to force user to manually set the PLANAR flag each time a 2D run is needed
 unset (PLANAR CACHE)
 
-# Remove the TEST_RUN variable from cache to force user to manually set the TEST_RUN flag each time unit-tests must be performed
-unset (TEST_RUN CACHE)
+# Remove the POST_RUN variable from cache to force user to manually set the POST_RUN flag each time post-processing must be performed
+unset (POST_RUN CACHE)
 
 # Remove the REAL_DOUBLE variable from cache to force user to manually set the precision each time the solver is compiled
 unset (REAL_DOUBLE CACHE)

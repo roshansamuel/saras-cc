@@ -613,7 +613,7 @@ void multigrid_d3::createMGSubArrays() {
 
     sendInd.resize(mesh.vcDepth + 1, 26);        recvInd.resize(mesh.vcDepth + 1, 26);
 
-    for(int n=0; n<=mesh.vcDepth; n++) {
+    for(int n=0; n<=mesh.vcDepth; ++n) {
         int xCount = stagFull(n).ubound(0) + 2;
         int yCount = stagFull(n).ubound(1) + 2;
         int zCount = stagFull(n).ubound(2) + 2;

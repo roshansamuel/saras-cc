@@ -75,27 +75,27 @@ scalar::scalar(const grid &mesh, const parser &solParam, parallel &mpiParam):
 void scalar::initVForcing() {
     switch (inputParams.forceType) {
         case 0:
-            if (mpiData.rank == 0) std::cout << "WARNING: Running scalar simulation with zero velocity forcing" << std::endl << std::endl;
+            if (rankData.rank == 0) std::cout << "WARNING: Running scalar simulation with zero velocity forcing" << std::endl << std::endl;
             V.vForcing = new zeroForcing(mesh, V);
             break;
         case 1:
-            if (mpiData.rank == 0) std::cout << "WARNING: Running scalar simulation with random velocity forcing" << std::endl << std::endl;
+            if (rankData.rank == 0) std::cout << "WARNING: Running scalar simulation with random velocity forcing" << std::endl << std::endl;
             V.vForcing = new randomForcing(mesh, V);
             break;
         case 2:
-            if (mpiData.rank == 0) std::cout << "WARNING: Running scalar simulation with pure rotation" << std::endl << std::endl;
+            if (rankData.rank == 0) std::cout << "WARNING: Running scalar simulation with pure rotation" << std::endl << std::endl;
             V.vForcing = new coriolisForce(mesh, V);
             break;
         case 3:
-            if (mpiData.rank == 0) std::cout << "Running convection simulation with pure buoyancy forcing for velocity" << std::endl << std::endl;
+            if (rankData.rank == 0) std::cout << "Running convection simulation with pure buoyancy forcing for velocity" << std::endl << std::endl;
             V.vForcing = new buoyantForce(mesh, V, T);
             break;
         case 4:
-            if (mpiData.rank == 0) std::cout << "Running rotating convection simulation with both buoyancy and Coriolis forcing for velocity" << std::endl << std::endl;
+            if (rankData.rank == 0) std::cout << "Running rotating convection simulation with both buoyancy and Coriolis forcing for velocity" << std::endl << std::endl;
             V.vForcing = new rotatingConv(mesh, V, T);
             break;
         default:
-            if (mpiData.rank == 0) std::cout << "WARNING: Chosen velocity forcing is incompatible with scalar runs. Defaulting to buoyant forcing" << std::endl << std::endl;
+            if (rankData.rank == 0) std::cout << "WARNING: Chosen velocity forcing is incompatible with scalar runs. Defaulting to buoyant forcing" << std::endl << std::endl;
             V.vForcing = new buoyantForce(mesh, V, T);
     }
 }
@@ -112,7 +112,7 @@ void scalar::initVForcing() {
  */
 void scalar::initTForcing() {
     // Currently no forcing for scalar terms are available
-    if (mpiData.rank == 0) std::cout << "Running scalar simulation with zero scalar forcing" << std::endl << std::endl;
+    if (rankData.rank == 0) std::cout << "Running scalar simulation with zero scalar forcing" << std::endl << std::endl;
     T.tForcing = new zeroForcing(mesh, V);
 }
 
@@ -148,10 +148,10 @@ void scalar::initTBCs() {
         // CREATE HEATING PATCH IF THE USER SET PARAMETER FOR HEATING PLATE IS TRUE
         if (inputParams.nonHgBC) {
 #ifndef PLANAR
-            if (mpiData.rank == 0) std::cout << "Using non-homogeneous boundary condition (heating plate) on bottom wall" << std::endl << std::endl;
+            if (rankData.rank == 0) std::cout << "Using non-homogeneous boundary condition (heating plate) on bottom wall" << std::endl << std::endl;
             T.tBot = new hotPlate(mesh, T.F, 4, inputParams.patchRadius);
 #else
-            if (mpiData.rank == 0) std::cout << "WARNING: Non-homogenous BC flag is set to true in input paramters for 2D simulation. IGNORING" << std::endl << std::endl;
+            if (rankData.rank == 0) std::cout << "WARNING: Non-homogenous BC flag is set to true in input paramters for 2D simulation. IGNORING" << std::endl << std::endl;
 #endif
         } else {
             T.tBot = new dirichlet(mesh, T.F, 4, 1.0);

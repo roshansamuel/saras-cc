@@ -1,7 +1,7 @@
 /********************************************************************************************************************************************
  * Saras
  * 
- * Copyright (C) 2019, Mahendra K. Verma
+ * Copyright (C) 2022, Roshan J. Samuel
  *
  * All rights reserved.
  * 
@@ -29,69 +29,32 @@
  *
  ********************************************************************************************************************************************
  */
-/*! \file reader.h
+/*! \file postprocess.h
  *
- *  \brief Class declaration of reader
+ *  \brief Declarations of all the functions for post-processing.
  *
  *  \author Roshan Samuel
- *  \date Nov 2019
+ *  \date Nov 2022
  *  \copyright New BSD License
  *
  ********************************************************************************************************************************************
  */
 
-#ifndef READER_H
-#define READER_H
+#ifndef POSTPROC_H
+#define POSTPROC_H
 
-#include <sys/stat.h>
-#include <algorithm>
-#include <iomanip>
-#include <vector>
-#include <dirent.h>
+#include <sys/time.h>
 
-#include "field.h"
 #include "grid.h"
-#include "hdf5.h"
+#include "parser.h"
+#include "reader.h"
+#include "sfield.h"
+#include "vfield.h"
+#include "global.h"
+#include "parallel.h"
 
-class reader {
-    public:
-        reader(const grid &mesh);
+void dissipation(global &gloData, std::vector<real> tList);
 
-        real readRestart(std::vector<field> &rFields);
-        void readSolution(real solTime, std::vector<field> &rFields);
-
-        ~reader();
-
-    private:
-        const grid &mesh;
-
-        // Print flag - basically flag to ease printing to I/O. It is true for root rank (0)
-        bool pf;
-
-#ifdef PLANAR
-        blitz::Array<real, 2> fieldData;
-#else
-        blitz::Array<real, 3> fieldData;
-#endif
-
-        hid_t sourceDSpace, targetDSpace;
-
-        blitz::TinyVector<int, 3> locSize;
-
-        void fileCheck(hid_t fHandle);
-
-        void initLimits();
-
-        void copyData(field &outField);
-};
-
-/**
- ********************************************************************************************************************************************
- *  \class reader reader.h "lib/reader.h"
- *  \brief Class for all the global variables and functions related to reading input data for the solver.
- *
- *  The computational data for the solver can be read from HDF5 file.
- ********************************************************************************************************************************************
- */
+void nse_terms(grid &gridData);
 
 #endif

@@ -111,6 +111,12 @@ void derivative::calcDerivative1_x(blitz::Array<real, 3> outArray) {
         // 2ND ORDER CENTRAL DIFFERENCE AT BOUNDARIES
         if (xfr) outArray(x0Mid) = 0.5*(F(x0Rgt) - F(x0Lft));
         if (xlr) outArray(x1Mid) = 0.5*(F(x1Rgt) - F(x1Lft));
+
+        // 2ND ORDER FORWARD DIFFERENCE AT GHOST POINT TO GET DERIVATIVES ON WALLS
+#ifdef POST_RUN
+        if (xfr) outArray(x0Lft) = 0.5*(-3.0*F(x0Lft) + 4.0*F(x0Mid) - F(x0Rgt));
+        if (xlr) outArray(x1Rgt) = 0.5*( 3.0*F(x1Rgt) - 4.0*F(x1Mid) + F(x1Lft));
+#endif
     }
 
     outArray *= ihx;
@@ -139,6 +145,12 @@ void derivative::calcDerivative1_y(blitz::Array<real, 3> outArray) {
         // 2ND ORDER CENTRAL DIFFERENCE AT BOUNDARIES
         if (yfr) outArray(y0Mid) = 0.5*(F(y0Rgt) - F(y0Lft));
         if (ylr) outArray(y1Mid) = 0.5*(F(y1Rgt) - F(y1Lft));
+
+        // 2ND ORDER FORWARD DIFFERENCE AT GHOST POINT TO GET DERIVATIVES ON WALLS
+#ifdef POST_RUN
+        if (yfr) outArray(y0Lft) = 0.5*(-3.0*F(y0Lft) + 4.0*F(y0Mid) - F(y0Rgt));
+        if (ylr) outArray(y1Rgt) = 0.5*( 3.0*F(y1Rgt) - 4.0*F(y1Mid) + F(y1Lft));
+#endif
     }
 
     outArray *= ihy;
@@ -167,6 +179,12 @@ void derivative::calcDerivative1_z(blitz::Array<real, 3> outArray) {
         // 2ND ORDER CENTRAL DIFFERENCE AT BOUNDARIES
         if (zfr) outArray(z0Mid) = 0.5*(F(z0Rgt) - F(z0Lft));
         if (zlr) outArray(z1Mid) = 0.5*(F(z1Rgt) - F(z1Lft));
+
+        // 2ND ORDER FORWARD DIFFERENCE AT GHOST POINT TO GET DERIVATIVES ON WALLS
+#ifdef POST_RUN
+        if (zfr) outArray(z0Lft) = 0.5*(-3.0*F(z0Lft) + 4.0*F(z0Mid) - F(z0Rgt));
+        if (zlr) outArray(z1Rgt) = 0.5*( 3.0*F(z1Rgt) - 4.0*F(z1Mid) + F(z1Lft));
+#endif
     }
 
     outArray *= ihz;

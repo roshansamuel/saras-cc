@@ -29,69 +29,54 @@
  *
  ********************************************************************************************************************************************
  */
-/*! \file reader.h
+/*! \file nse_terms.cc
  *
- *  \brief Class declaration of reader
- *
+ *  \brief Definitions of functions to test the field library, specifically divergence computation.
+ *  \sa postprocess.h
  *  \author Roshan Samuel
- *  \date Nov 2019
+ *  \date May 2022
  *  \copyright New BSD License
  *
  ********************************************************************************************************************************************
  */
 
-#ifndef READER_H
-#define READER_H
+#include <iostream>
+#include "postprocess.h"
+#include "sfield.h"
+#include "vfield.h"
 
-#include <sys/stat.h>
-#include <algorithm>
-#include <iomanip>
-#include <vector>
-#include <dirent.h>
+static void taylorGreen(vfield &V, grid &mesh);
 
-#include "field.h"
-#include "grid.h"
-#include "hdf5.h"
+void nse_terms(grid &gridData) {
+    sfield div(gridData, "DIV");
+    vfield V(gridData, "V");
 
-class reader {
-    public:
-        reader(const grid &mesh);
+    taylorGreen(V, gridData);
+}
 
-        real readRestart(std::vector<field> &rFields);
-        void readSolution(real solTime, std::vector<field> &rFields);
+static void taylorGreen(vfield &V, grid &mesh) {
+    // X-Velocity
+    for (int i=V.Vx.F.lbound(0); i <= V.Vx.F.ubound(0); i++) {
+        for (int j=V.Vx.F.lbound(1); j <= V.Vx.F.ubound(1); j++) {
+            for (int k=V.Vx.F.lbound(2); k <= V.Vx.F.ubound(2); k++) {
+                V.Vx.F(i, j, k) = sin(2.0*M_PI*mesh.x(i)/mesh.xLen)*
+                                  cos(2.0*M_PI*mesh.y(j)/mesh.yLen)*
+                                  cos(2.0*M_PI*mesh.z(k)/mesh.zLen);
+            }
+        }
+    }
 
-        ~reader();
+    // Y-Velocity
+    for (int i=V.Vy.F.lbound(0); i <= V.Vy.F.ubound(0); i++) {
+        for (int j=V.Vy.F.lbound(1); j <= V.Vy.F.ubound(1); j++) {
+            for (int k=V.Vy.F.lbound(2); k <= V.Vy.F.ubound(2); k++) {
+                V.Vy.F(i, j, k) = -cos(2.0*M_PI*mesh.x(i)/mesh.xLen)*
+                                   sin(2.0*M_PI*mesh.y(j)/mesh.yLen)*
+                                   cos(2.0*M_PI*mesh.z(k)/mesh.zLen);
+            }
+        }
+    }
 
-    private:
-        const grid &mesh;
-
-        // Print flag - basically flag to ease printing to I/O. It is true for root rank (0)
-        bool pf;
-
-#ifdef PLANAR
-        blitz::Array<real, 2> fieldData;
-#else
-        blitz::Array<real, 3> fieldData;
-#endif
-
-        hid_t sourceDSpace, targetDSpace;
-
-        blitz::TinyVector<int, 3> locSize;
-
-        void fileCheck(hid_t fHandle);
-
-        void initLimits();
-
-        void copyData(field &outField);
-};
-
-/**
- ********************************************************************************************************************************************
- *  \class reader reader.h "lib/reader.h"
- *  \brief Class for all the global variables and functions related to reading input data for the solver.
- *
- *  The computational data for the solver can be read from HDF5 file.
- ********************************************************************************************************************************************
- */
-
-#endif
+    // Z-Velocity
+    V.Vz.F = 0.0;
+}

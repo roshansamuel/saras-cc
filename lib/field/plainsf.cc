@@ -71,7 +71,7 @@ plainsf::plainsf(const grid &gridData): gridData(gridData) {
 
     core = gridData.coreDomain;
 
-    mpiHandle = new mpidata(F, gridData.rankData);
+    mpiHandle = new mpidata(gridData.rankData);
     mpiHandle->createSubarrays(dSize, core.ubound() + 1, gridData.padWidths);
 }
 

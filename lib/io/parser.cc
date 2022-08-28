@@ -394,6 +394,13 @@ void parser::checkData() {
         std::cout << "WARNING: The specified LES Model is incompatible with the problem type. Resetting LES Model to 1" << std::endl;
         lesModel = 1;
     }
+
+    // CHECK IF THE SOLUTION FORMAT SPECIFIED BY THE USER IS NOT CONSISTENT
+    if (solnFormat > 2) {
+        std::cout << "ERROR: The specified Solution Format is inconsistent with expected values. Aborting" << std::endl;
+        MPI_Finalize();
+        exit(0);
+    }
 }
 
 /**
@@ -642,4 +649,34 @@ void parser::writeParams() {
 
     std::cout << std::endl << "\t******************* END OF parameters.yaml *******************" << std::endl;
     std::cout << std::endl;
+}
+
+/**
+ ********************************************************************************************************************************************
+ * \brief   Function to read a list of solution times for which solution files are available
+ *
+ *          This function is called only for post-processing runs, where a list of solution times
+ *          is given, such that a solution file exists for each entry in the list.
+ *          This list is read and returned by the function.
+ ********************************************************************************************************************************************
+ */
+std::vector<real> parser::readTimes() {
+    std::vector<real> timeList;
+    std::ifstream tlFile;
+    std::string tString;
+    real tVal;
+
+    tlFile.open("output/timeList.dat");
+    if (tlFile.is_open()) {
+        while (std::getline(tlFile, tString)) {
+            tVal = atof(tString.c_str());
+            timeList.push_back(tVal);
+        }
+    } else {
+        std::cout << "ERROR: Could not read list of solution times. Aborting" << std::endl;
+        MPI_Finalize();
+        exit(0);
+    }
+
+    return timeList;
 }

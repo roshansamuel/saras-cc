@@ -8,6 +8,7 @@
     # 5 = Flows with scalar: Heated bottom plate 
     # 6 = Flows with scalar: Heated upper plate
     # 7 = Flows with scalar: Heated sidewall
+    # 8 = Flows with scalar: Free-slip top-bottom
     "Problem Type": 5
 
     # Choose from the following initial conditions
@@ -141,7 +142,7 @@
     # Choose from following list of differentiation stencils
     # 1 = Second-order central-difference
     # 2 = Fourth-order central-difference
-    "Differentiation Scheme": 2
+    "Differentiation Scheme": 1
 
     # Non-Linear Term Calculation
     # 1 = Standard finite-difference
@@ -164,7 +165,7 @@
     # Choose from following list of integration schemes:
     # 1 = Implicit Crank-Nicholson
     # 2 = Low Storage 3rd Order Runge-Kutta
-    "Integration Scheme": 2
+    "Integration Scheme": 1
 
     # Tolerance used in iterative method (if Implicit Crank-Nicholson scheme is chosen above)
     "Solve Tolerance": 1.0e-6

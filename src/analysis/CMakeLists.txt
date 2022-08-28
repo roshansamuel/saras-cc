@@ -31,7 +31,7 @@
  ##
  ##! \file CMakeLists.txt
  #
- #   \brief CMakeLists file to add the timestep class
+ #   \brief CMakeLists file where the executable is linked for the post-processing runs of Saras solver.
  #
  #   \author Roshan Samuel
  #   \date Nov 2019
@@ -40,11 +40,19 @@
  ############################################################################################################################################
  ##
 
-add_library (timestep
-             timestep.cc
-             predictors.cc
-             eulerCN_d2.cc
-             eulerCN_d3.cc
-             lsRK3_d2.cc
-             lsRK3_d3.cc
+include_directories (
+    ${PARENT_DIR}/src/analysis/postprocessors
+    ${PARENT_DIR}/src/analysis/global
 )
+
+set (EXECUTABLE_OUTPUT_PATH ${PARENT_DIR})
+
+set (POST_SOURCE postprocessors/dissipation.cc postprocessors/nse_terms.cc)
+
+set (GLOBAL_SOURCE global/global.cc)
+
+set (SOURCES main.cc ${POST_SOURCE} ${GLOBAL_SOURCE})
+
+add_executable(saras_post ${SOURCES})
+
+target_link_libraries(saras_post field grid parser reader writer boundary parallel yaml-cpp hdf5 debug /usr/local/lib/libblitz.a)

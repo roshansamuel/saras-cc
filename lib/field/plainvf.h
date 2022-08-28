@@ -54,7 +54,7 @@ class plainvf {
 
         plainvf(const grid &gridData);
 
-        mpidata *mpiVxData, *mpiVyData, *mpiVzData;
+        mpidata *mpiHandle;
 
         plainvf& multAdd(const plainvf &a, real k);
 
@@ -79,9 +79,9 @@ class plainvf {
  ********************************************************************************************************************************************
  */
         inline void syncFaces() {
-            mpiVxData->syncFaces();
-            mpiVyData->syncFaces();
-            mpiVzData->syncFaces();
+            mpiHandle->syncFaces(Vx);
+            mpiHandle->syncFaces(Vy);
+            mpiHandle->syncFaces(Vz);
         }
 
 /**
@@ -93,9 +93,9 @@ class plainvf {
  ********************************************************************************************************************************************
  */
         inline void syncAll() {
-            mpiVxData->syncAll();
-            mpiVyData->syncAll();
-            mpiVzData->syncAll();
+            mpiHandle->syncAll(Vx);
+            mpiHandle->syncAll(Vy);
+            mpiHandle->syncAll(Vz);
         }
 
 /**

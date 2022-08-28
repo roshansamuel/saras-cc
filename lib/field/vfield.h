@@ -73,8 +73,10 @@ class vfield {
 
         const grid &gridData;
 
-        blitz::Array<real, 3> tempXX, tempYY, tempZZ;
-        blitz::Array<real, 3> tempXY, tempYZ, tempZX;
+        blitz::Array<real, 3> tempXX, tempZX, tempZZ;
+#ifndef PLANAR
+        blitz::Array<real, 3> tempXY, tempYZ, tempYY;
+#endif
 
         blitz::RectDomain<3> core;
 

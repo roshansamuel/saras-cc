@@ -50,11 +50,10 @@
  *          The former is used in non-blocking communication of MPI_Irecv, while the later is used in the MPI_Waitall
  *          function to complete the non-blocking communication call.
  *
- * \param   inputArray is the blitz array whose sub-arrays have to be created and synchronised across processors
  * \param   parallelData is a const reference to the global data contained in the parallel class
  ********************************************************************************************************************************************
  */
-mpidata::mpidata(blitz::Array<real, 3> inputArray, const parallel &parallelData): dataField(inputArray), rankData(parallelData) {
+mpidata::mpidata(const parallel &parallelData): rankData(parallelData) {
     recvStatus.resize(12);
     recvRequest.resize(12);
 
@@ -101,8 +100,10 @@ void mpidata::createSubarrays(const blitz::TinyVector<int, 3> globSize,
     blitz::TinyVector<int, 3> globCopy;
     blitz::TinyVector<int, 3> loclSize;
     blitz::TinyVector<int, 3> saStarts;
+    blitz::TinyVector<int, 3> zeroPont;
 
     globCopy = globSize;
+    zeroPont = 0, 0, 0;
 
     /********************************************************************************************************/
     /************************ MPI SUB-ARRAY DATATYPES FOR DATA TRANSFER ACROSS FACES ************************/
@@ -110,58 +111,58 @@ void mpidata::createSubarrays(const blitz::TinyVector<int, 3> globSize,
 
     /** ALONG X-DIRECTION **/
 
-    loclSize = coreSize;            loclSize(0) = padWidth(0);
+    loclSize = globSize;            loclSize(0) = padWidth(0);
 
     /////// LEFT FACE ///////
-    saStarts = padWidth;
+    saStarts = zeroPont;            saStarts(0) = padWidth(0);
     MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &fsSubs(0));
 
-    saStarts = padWidth;            saStarts(0) = 0;
+    saStarts = zeroPont;
     MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &frSubs(0));
 
     /////// RIGHT FACE //////
-    saStarts = padWidth;            saStarts(0) = coreSize(0);
+    saStarts = zeroPont;            saStarts(0) = coreSize(0);
     MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &fsSubs(1));
 
-    saStarts = padWidth;            saStarts(0) = coreSize(0) + padWidth(0);
+    saStarts = zeroPont;            saStarts(0) = coreSize(0) + padWidth(0);
     MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &frSubs(1));
 
 
     /** ALONG Y-DIRECTION **/
 
-    loclSize = coreSize;            loclSize(1) = padWidth(1);
+    loclSize = globSize;            loclSize(1) = padWidth(1);
 
     /////// FRONT FACE //////
-    saStarts = padWidth;
+    saStarts = zeroPont;            saStarts(1) = padWidth(1);
     MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &fsSubs(2));
 
-    saStarts = padWidth;            saStarts(1) = 0;
+    saStarts = zeroPont;
     MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &frSubs(2));
 
     /////// BACK FACE ///////
-    saStarts = padWidth;            saStarts(1) = coreSize(1);
+    saStarts = zeroPont;            saStarts(1) = coreSize(1);
     MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &fsSubs(3));
 
-    saStarts = padWidth;            saStarts(1) = coreSize(1) + padWidth(1);
+    saStarts = zeroPont;            saStarts(1) = coreSize(1) + padWidth(1);
     MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &frSubs(3));
 
 
     /** ALONG Z-DIRECTION **/
 
-    loclSize = coreSize;            loclSize(2) = padWidth(2);
+    loclSize = globSize;            loclSize(2) = padWidth(2);
 
     ////// BOTTOM FACE //////
-    saStarts = padWidth;
+    saStarts = zeroPont;            saStarts(2) = padWidth(2);
     MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &fsSubs(4));
 
-    saStarts = padWidth;            saStarts(2) = 0;
+    saStarts = zeroPont;
     MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &frSubs(4));
 
     /////// TOP FACE ////////
-    saStarts = padWidth;            saStarts(2) = coreSize(2);
+    saStarts = zeroPont;            saStarts(2) = coreSize(2);
     MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &fsSubs(5));
 
-    saStarts = padWidth;            saStarts(2) = coreSize(2) + padWidth(2);
+    saStarts = zeroPont;            saStarts(2) = coreSize(2) + padWidth(2);
     MPI_Type_create_subarray(3, globCopy.data(), loclSize.data(), saStarts.data(), MPI_ORDER_C, MPI_FP_REAL, &frSubs(5));
 
 
@@ -367,7 +368,7 @@ void mpidata::createSubarrays(const blitz::TinyVector<int, 3> globSize,
  *          The receives are non-blocking, while the sends are blocking. This combination prevents inter-processor deadlock.
  ********************************************************************************************************************************************
  */
-void mpidata::syncFaces() {
+void mpidata::syncFaces(blitz::Array<real, 3> dataField) {
     recvRequest = MPI_REQUEST_NULL;
 
     // PERFORM DATA TRANSFER ACROSS THE SIX FACES
@@ -395,11 +396,11 @@ void mpidata::syncFaces() {
  *          The receives are non-blocking, while the sends are blocking. This combination prevents inter-processor deadlock.
  ********************************************************************************************************************************************
  */
-void mpidata::syncAll() {
+void mpidata::syncAll(blitz::Array<real, 3> dataField) {
     recvRequest = MPI_REQUEST_NULL;
 
     // PERFORM DATA TRANSFER ACROSS THE SIX FACES
-    syncFaces();
+    syncFaces(dataField);
 
     // PERFORM DATA TRANSFER ACROSS THE TWELVE EDGES
     for (int i=0; i<12; i++)
