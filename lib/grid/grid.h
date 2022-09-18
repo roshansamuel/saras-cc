@@ -69,6 +69,7 @@ class grid {
         void createUniformGrid();
         void createTanHypGrid(int dim, blitz::Array<real, 1> xGlo, blitz::Array<real, 1> xiGl);
 
+        void setVCDepth();
         void mgGridMetrics();
         void mgGridMetrics(int dim);
 
@@ -82,8 +83,8 @@ class grid {
         /** A const reference to the global variables stored in the parallel class to access MPI related parameters */
         const parallel &rankData;
 
-        /** Maximum depth of V-Cycle allowable for given mesh configuration */
-        int vcDepth;
+        /** Maximum depth of V-Cycle allowable for given mesh configuration in local and global grids*/
+        int vcdLoc, vcdGlo;
 
         /** Total number of points (cell-centers) in the full global domain */
         int totalPoints;

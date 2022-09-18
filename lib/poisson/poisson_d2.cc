@@ -84,7 +84,7 @@ void multigrid_d2::computeResidual() {
         }
     }
 
-    updateFull(tmp);
+    if (locSolve) updateFull(tmp);
 }
 
 
@@ -123,7 +123,7 @@ void multigrid_d2::smooth(const int smoothCount) {
         }
 
         // UPDATE OF RED CELLS COMPLETE. UPDATE SUB-DOMAIN FACES NOW
-        updateFace(lhs);
+        if (locSolve) updateFace(lhs);
 
         // UPDATE BLACK CELLS
         // 1, 0 CONFIGURATION
@@ -193,7 +193,7 @@ void multigrid_d2::solve() {
         }
 
         // UPDATE OF RED CELLS COMPLETE. UPDATE SUB-DOMAIN FACES NOW
-        updateFace(lhs);
+        if (locSolve) updateFace(lhs);
 
         // UPDATE BLACK CELLS
         // 1, 0 CONFIGURATION
@@ -239,6 +239,7 @@ void multigrid_d2::solve() {
 
         MPI_Allreduce(&localMax, &globalMax, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);
 
+        if (mesh.pf) std::cout << globalMax << "\t" << inputParams.mgTolerance << "\t" << iterCount << std::endl;
         if (globalMax < inputParams.mgTolerance) break;
 
         iterCount += 1;
@@ -262,15 +263,42 @@ void multigrid_d2::coarsen() {
     pLevel = vLevel;
     vLevel += 1;
 
+    if (vLevel == mesh.vcdLoc+1) {
+        //for (int i = 0; i < mesh.rankData.nProc; i++)
+        //    if (mesh.rankData.rank == i) std::cout << std::setprecision(8) << std::fixed << mesh.rankData.rank << tmp(pLevel)(blitz::Range(0,1), 0, blitz::Range(0,1)) << std::endl;
+        //if (mesh.rankData.rank == 1) std::cout << std::setprecision(8) << std::fixed << mesh.rankData.rank << tmp(pLevel)(blitz::Range::all(), 0, blitz::Range::all()) << std::endl;
+        //if (mesh.rankData.rank == 4) std::cout << std::setprecision(8) << std::fixed << mesh.rankData.rank << tmp(pLevel)(blitz::Range::all(), 0, blitz::Range::all()) << std::endl;
+
+        MPI_Allgatherv(&tmp(pLevel)(0, 0, 0), 1, locDomain, &rtmp(0, 0, 0), &recvCnts[0], &gloDisps[0], gloDomain, MPI_COMM_WORLD); 
+
+        //MPI_Allgather(&tmp(pLevel)(0, 0, 0), 1, locDomain, &rtmp(0, 0, 0), 1, gloDomain, MPI_COMM_WORLD); 
+        //if (mesh.pf) std::cout << rtmp << std::endl;
+        //if (mesh.pf) std::cout << xEnd(vLevel) << "\t" << zEnd(vLevel) << rtmp.ubound() << std::endl;
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none) shared(pLevel) private(i2) private(k2)
-    for (int i = 0; i <= xEnd(vLevel); ++i) {
-        i2 = i*2;
-        for (int k = 0; k <= zEnd(vLevel); ++k) {
-            k2 = k*2;
-            // This restriction is not weighted unlike the 3D restriction operation
-            // The effect of this lack is not known for non-uniform grids
-            rhs(vLevel)(i, 0, k) = (tmp(pLevel)(i2 + 1, 0, k2 + 1) + tmp(pLevel)(i2, 0, k2) +
-                                    tmp(pLevel)(i2 + 1, 0, k2) + tmp(pLevel)(i2, 0, k2 + 1))/4;
+        for (int i = 0; i <= xEnd(vLevel); ++i) {
+            i2 = i*2;
+            for (int k = 0; k <= zEnd(vLevel); ++k) {
+                k2 = k*2;
+                // This restriction is not weighted unlike the 3D restriction operation
+                // The effect of this lack is not known for non-uniform grids
+                rhs(vLevel)(i, 0, k) = (rtmp(i2 + 1, 0, k2 + 1) + rtmp(i2, 0, k2) +
+                                        rtmp(i2 + 1, 0, k2) + rtmp(i2, 0, k2 + 1))/4;
+            }
+        }
+
+        locSolve = false;
+    } else {
+        // REGULAR COARSENING OPERATION
+#pragma omp parallel for num_threads(inputParams.nThreads) default(none) shared(pLevel) private(i2) private(k2)
+        for (int i = 0; i <= xEnd(vLevel); ++i) {
+            i2 = i*2;
+            for (int k = 0; k <= zEnd(vLevel); ++k) {
+                k2 = k*2;
+                // This restriction is not weighted unlike the 3D restriction operation
+                // The effect of this lack is not known for non-uniform grids
+                rhs(vLevel)(i, 0, k) = (tmp(pLevel)(i2 + 1, 0, k2 + 1) + tmp(pLevel)(i2, 0, k2) +
+                                        tmp(pLevel)(i2 + 1, 0, k2) + tmp(pLevel)(i2, 0, k2 + 1))/4;
+            }
         }
     }
 }
@@ -285,12 +313,35 @@ void multigrid_d2::prolong() {
 
     lhs(vLevel) = 0.0;
 
+    if (vLevel == mesh.vcdLoc) {
+        if (mesh.rankData.rank == 1) std::cout << std::setprecision(8) << std::fixed << mesh.rankData.rank << lhs(pLevel)(blitz::Range::all(), 0, blitz::Range::all()) << std::endl;
+        if (mesh.rankData.rank == 15) std::cout << std::setprecision(8) << std::fixed << mesh.rankData.rank << lhs(pLevel)(blitz::Range::all(), 0, blitz::Range::all()) << std::endl;
+        MPI_Finalize();
+        exit(0);
+        for (int i = 0; i < mesh.rankData.nProc; i++)
+            if (mesh.rankData.rank == i) std::cout << std::setprecision(8) << std::fixed << mesh.rankData.rank << lhs(pLevel)(blitz::Range(0,1), 0, blitz::Range(0,1)) << std::endl;
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none) shared(pLevel) private(i2) private(k2)
-    for (int i = 0; i <= xEnd(vLevel); ++i) {
-        i2 = i/2;
-        for (int k = 0; k <= zEnd(vLevel); ++k) {
-            k2 = k/2;
-            lhs(vLevel)(i, 0, k) = lhs(pLevel)(i2, 0, k2);
+        for (int i = 0; i <= xEnd(vLevel); ++i) {
+            i2 = i/2;
+            for (int k = 0; k <= zEnd(vLevel); ++k) {
+                k2 = k/2;
+                rtmp(i, 0, k) = lhs(pLevel)(i2, 0, k2);
+            }
+        }
+
+        if (mesh.pf) std::cout << rhs(vLevel)(blitz::Range::all(), 0, blitz::Range::all()) << std::endl;
+        MPI_Finalize();
+        exit(0);
+
+        locSolve = false;
+    } else {
+#pragma omp parallel for num_threads(inputParams.nThreads) default(none) shared(pLevel) private(i2) private(k2)
+        for (int i = 0; i <= xEnd(vLevel); ++i) {
+            i2 = i/2;
+            for (int k = 0; k <= zEnd(vLevel); ++k) {
+                k2 = k/2;
+                lhs(vLevel)(i, 0, k) = lhs(pLevel)(i2, 0, k2);
+            }
         }
     }
 }
@@ -393,12 +444,12 @@ void multigrid_d2::createMGSubArrays() {
     recvStatus.resize(4);
     recvRequest.resize(4);
 
-    xFace.resize(mesh.vcDepth + 1);
-    zFace.resize(mesh.vcDepth + 1);
+    xFace.resize(mesh.vcdLoc + 1);
+    zFace.resize(mesh.vcdLoc + 1);
 
-    sendInd.resize(mesh.vcDepth + 1, 8);         recvInd.resize(mesh.vcDepth + 1, 8);
+    sendInd.resize(mesh.vcdLoc + 1, 8);         recvInd.resize(mesh.vcdLoc + 1, 8);
 
-    for(int n=0; n<=mesh.vcDepth; ++n) {
+    for(int n=0; n<=mesh.vcdLoc; ++n) {
         int xCount = stagFull(n).ubound(0) + 2;
         int yCount = stagFull(n).ubound(1) + 2;
         int zCount = stagFull(n).ubound(2) + 2;
@@ -435,6 +486,42 @@ void multigrid_d2::createMGSubArrays() {
         recvInd(n, 6) = -1, 0, stagCore(n).ubound(2) + 1;
         recvInd(n, 7) = stagCore(n).ubound(0) + 1, 0, stagCore(n).ubound(2) + 1;
     }
+
+    // CREATE SUBARRAY DATA-TYPES TO GATHER LOCAL DOMAINS OF ALL PROCESSES
+    int n = mesh.vcdLoc;
+    int xCount = stagCore(n).ubound(0) + 1;
+    int yCount = stagCore(n).ubound(1) + 1;
+    int zCount = stagCore(n).ubound(2) + 1;
+
+    stride = (zCount + 2)*(yCount + 2);
+    MPI_Type_vector(xCount, zCount, stride, MPI_FP_REAL, &locDomain);
+    MPI_Type_commit(&locDomain);
+
+    MPI_Datatype tmpDomain;
+    stride = (zCount*mesh.rankData.npZ);
+    MPI_Type_vector(xCount, zCount, stride, MPI_FP_REAL, &tmpDomain);
+    MPI_Type_commit(&tmpDomain);
+
+    MPI_Type_create_resized(tmpDomain, 0, sizeof(real), &gloDomain);
+    MPI_Type_commit(&gloDomain);
+
+    gloDisps.resize(mesh.rankData.nProc);
+    recvCnts.resize(mesh.rankData.nProc);
+    for (int i=0; i<mesh.rankData.npX; ++i) {
+        for (int k=0; k<mesh.rankData.npZ; ++k) {
+            gloDisps[i*mesh.rankData.npX + k] = k*(xCount*zCount*mesh.rankData.npZ) + i*zCount;
+            recvCnts[i*mesh.rankData.npX + k] = 1;
+        }
+    }
+
+    //for (int i=0; i<mesh.rankData.nProc; ++i)
+    //    if (mesh.pf) std::cout << gloDisps[i] << std::endl;
+    //MPI_Finalize();
+    //exit(0);
+
+    /*
+    if (mesh.pf) std::cout << gloDisps.size() << "\t" << stride << "\t" << zCount << stagCore(mesh.vcdLoc).ubound() << std::endl;
+    */
 }
 
 
@@ -483,7 +570,9 @@ void multigrid_d2::imposeBC() {
 #endif
 
     // FOR PARALLEL RUNS, FIRST UPDATE GHOST POINTS OF MPI SUB-DOMAINS
-    updateFace(lhs);
+    // EXCEPT WHEN THE GRID HAS COARSENED TO THE POINT WHERE ALL
+    // PROCESSES ARE SOLVING FOR THE GLOBAL DOMAIN
+    if (locSolve) updateFace(lhs);
 
     if (not inputParams.xPer) {
 #ifdef TEST_POISSON

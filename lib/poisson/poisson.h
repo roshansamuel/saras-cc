@@ -54,6 +54,7 @@ class poisson {
         int vLevel, maxCount;
 
         bool zeroBC;
+        bool locSolve;
 
         /** Flags for first rank (fr) and last rank (lr) along X, Y and Z directions */
         bool xfr, xlr, yfr, ylr, zfr, zlr;
@@ -73,6 +74,7 @@ class poisson {
         blitz::Array<blitz::Array<real, 3>, 1> rhs;
         blitz::Array<blitz::Array<real, 3>, 1> tmp;
         blitz::Array<blitz::Array<real, 3>, 1> smd;
+        blitz::Array<real, 3> rtmp;
 
         blitz::Array<blitz::RectDomain<3>, 1> stagFull;
         blitz::Array<blitz::RectDomain<3>, 1> stagCore;
@@ -89,6 +91,8 @@ class poisson {
         blitz::Array<blitz::Array<real, 1>, 1> y, etyy, ety2;
         blitz::Array<blitz::Array<real, 1>, 1> z, ztzz, ztz2;
 
+        MPI_Datatype locDomain, gloDomain;
+        std::vector<int> gloDisps, recvCnts;
         blitz::Array<MPI_Datatype, 1> xFace, yFace, zFace;
         blitz::Array<MPI_Datatype, 1> xEdge, yEdge, zEdge;
 

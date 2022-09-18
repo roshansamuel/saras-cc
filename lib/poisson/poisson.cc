@@ -115,7 +115,7 @@ poisson::poisson(const grid &mesh, const parser &solParam): mesh(mesh), inputPar
 void poisson::mgSolve(plainsf &outLHS, const plainsf &inpRHS) {
     vLevel = 0;
 
-    for (int i=0; i <= mesh.vcDepth; i++) {
+    for (int i=0; i <= mesh.vcdGlo; i++) {
         lhs(i) = 0.0;
         rhs(i) = 0.0;
         smd(i) = 0.0;
@@ -242,6 +242,9 @@ void poisson::vCycle() {
 
     vLevel = 0;
 
+    // In MPI parallel runs, the processes are initially solving only for the local grids
+    locSolve = true;
+
     // When using Dirichlet BC, the residue, r, has homogeneous BC (r=0 at boundary) and only the original solution, x, has non-homogeneous BC.
     // Since pre-smoothing is performed on x, non-homogeneous (non-zero) Dirichlet BC is imposed
     zeroBC = false;
@@ -253,13 +256,14 @@ void poisson::vCycle() {
     zeroBC = true;
 
     // RESTRICTION OPERATIONS DOWN TO COARSEST MESH
-    for (int i=0; i<mesh.vcDepth; i++) {
+    for (int i=0; i<mesh.vcdGlo; i++) {
         // Step 2) Compute the residual r = b - Ax
         computeResidual();
 
         // Copy lhs into smd
         smd(vLevel) = lhs(vLevel);
 
+        //if (mesh.pf) std::cout << i << "\t" << vLevel << "\t" << mesh.vcdLoc << "\t" << mesh.vcdGlo << std::endl;
         // Restrict the residual to a coarser level
         coarsen();
 
@@ -267,16 +271,20 @@ void poisson::vCycle() {
         lhs(vLevel) = 0.0;
 
         // Step 3) Perform pre-smoothing iterations to solve for the error: Ae = r
-        (vLevel == mesh.vcDepth)?
+        (vLevel == mesh.vcdGlo)?
             inputParams.solveFlag?
                 solve():
                 smooth(inputParams.preSmooth):
             smooth(inputParams.preSmooth);
+
+        // WHEN ALL PROCESSES ARE INDEPENDENTLY SOLVING FOR GLOBAL GRID AT THE COARSEST LEVELS,
+        // ENFORCE A BARRIER AT THE END OF EACH V-CYCLE TO KEEP THEM SYNCHRONIZED
+        if (not locSolve) MPI_Barrier(MPI_COMM_WORLD);
     }
     // Step 4) Repeat steps 2-3 until you reach the coarsest grid level,
 
     // PROLONGATION OPERATIONS UP TO FINEST MESH
-    for (int i=0; i<mesh.vcDepth; i++) {
+    for (int i=0; i<mesh.vcdGlo; i++) {
         // Step 6) Prolong the error 'e' to the next finer level.
         prolong();
 
@@ -290,6 +298,9 @@ void poisson::vCycle() {
         smooth(inputParams.postSmooth);
     }
     // Step 8) Repeat steps 6-7 until you reach the finest grid level,
+
+    MPI_Finalize();
+    exit(0);
 };
 
 
@@ -304,12 +315,12 @@ void poisson::vCycle() {
  ********************************************************************************************************************************************
  */
 void poisson::initializeArrays() {
-    lhs.resize(mesh.vcDepth + 1);
-    rhs.resize(mesh.vcDepth + 1);
-    tmp.resize(mesh.vcDepth + 1);
-    smd.resize(mesh.vcDepth + 1);
+    lhs.resize(mesh.vcdGlo + 1);
+    rhs.resize(mesh.vcdGlo + 1);
+    tmp.resize(mesh.vcdGlo + 1);
+    smd.resize(mesh.vcdGlo + 1);
 
-    for (int i=0; i <= mesh.vcDepth; i++) {
+    for (int i=0; i <= mesh.vcdGlo; i++) {
         lhs(i).resize(blitz::TinyVector<int, 3>(stagFull(i).ubound() - stagFull(i).lbound() + 1));
         lhs(i).reindexSelf(stagFull(i).lbound());
         lhs(i) = 0.0;
@@ -326,6 +337,20 @@ void poisson::initializeArrays() {
         smd(i).reindexSelf(stagFull(i).lbound());
         smd(i) = 0.0;
     }
+
+    // RESIZE THE TEMPORARY ARRAY USED BEFORE COARSENING WHEN GLOBAL SOLVING IS ACTIVATED AT LOCAL LEVEL
+    blitz::TinyVector<int, 3> loBound, upBound;
+    loBound = 0, 0, 0;
+#ifdef PLANAR
+    upBound = mesh.globalSize(0)/int(std::pow(2, mesh.vcdLoc)), 1, mesh.globalSize(2)/int(std::pow(2, mesh.vcdLoc));
+#else
+    upBound = mesh.globalSize/int(std::pow(2, mesh.vcdLoc));
+#endif
+    rtmp.resize(upBound - loBound);
+
+    //if (mesh.pf) std::cout << rtmp.shape() << rtmp.lbound() << rtmp.ubound() << std::endl;
+    //MPI_Finalize();
+    //exit(0);
 }
 
 
@@ -344,23 +369,29 @@ void poisson::initializeArrays() {
 void poisson::setStagBounds() {
     blitz::TinyVector<int, 3> loBound, upBound;
 
-    stagFull.resize(mesh.vcDepth + 1);
-    stagCore.resize(mesh.vcDepth + 1);
+    stagFull.resize(mesh.vcdGlo + 1);
+    stagCore.resize(mesh.vcdGlo + 1);
 
-    xEnd.resize(mesh.vcDepth + 1);
-    yEnd.resize(mesh.vcDepth + 1);
-    zEnd.resize(mesh.vcDepth + 1);
+    xEnd.resize(mesh.vcdGlo + 1);
+    yEnd.resize(mesh.vcdGlo + 1);
+    zEnd.resize(mesh.vcdGlo + 1);
 
     if (mesh.pf) std::cout << "The grids at each level of multi-grid solver are:\n" << std::endl;
     if (mesh.pf) std::cout << "Level" << "\t" << "Global Grid      " << "\t" << "Local Grid    " << std::endl;
 
-    for (int i=0; i<=mesh.vcDepth; i++) {
+    for (int i=0; i<=mesh.vcdGlo; i++) {
         // LOWER BOUND AND UPPER BOUND OF STAGGERED CORE - USED TO CONSTRUCT THE CORE SLICE
         loBound = 0, 0, 0;
 #ifdef PLANAR
-        upBound = mesh.coreSize(0)/int(std::pow(2, i)) - 1, 0, mesh.coreSize(2)/int(std::pow(2, i)) - 1;
+        if (i <= mesh.vcdLoc)
+            upBound = mesh.coreSize(0)/int(std::pow(2, i)) - 1, 0, mesh.coreSize(2)/int(std::pow(2, i)) - 1;
+        else
+            upBound = mesh.globalSize(0)/int(std::pow(2, i)) - 1, 0, mesh.globalSize(2)/int(std::pow(2, i)) - 1;
 #else
-        upBound = mesh.coreSize/int(std::pow(2, i)) - 1;
+        if (i <= mesh.vcdLoc)
+            upBound = mesh.coreSize/int(std::pow(2, i)) - 1;
+        else
+            upBound = mesh.globalSize/int(std::pow(2, i)) - 1;
 #endif
         stagCore(i) = blitz::RectDomain<3>(loBound, upBound);
 
@@ -380,26 +411,36 @@ void poisson::setStagBounds() {
         if (mesh.pf) {
             std::ostringstream gstr, lstr;
 #ifdef PLANAR
-            gstr << (xEnd(i)+1)*mesh.rankData.npX << " x " << (zEnd(i)+1)*mesh.rankData.npZ;
+            if (i <= mesh.vcdLoc)
+                gstr << (xEnd(i)+1)*mesh.rankData.npX << " x " << (zEnd(i)+1)*mesh.rankData.npZ;
+            else
+                gstr << (xEnd(i)+1) << " x " << (zEnd(i)+1);
+
             lstr << (xEnd(i)+1) << " x " << (zEnd(i)+1);
             std::cout << std::setw(5) << std::right << i << "\t"
                       << std::setw(18) << std::left << gstr.str() << "\t"
                       << std::setw(15) << std::left << lstr.str() << std::endl;
 #else
-            gstr << (xEnd(i)+1)*mesh.rankData.npX << " x " << (yEnd(i)+1)*mesh.rankData.npY << " x " << (zEnd(i)+1)*mesh.rankData.npZ;
+            if (i <= mesh.vcdLoc)
+                gstr << (xEnd(i)+1)*mesh.rankData.npX << " x " << (yEnd(i)+1)*mesh.rankData.npY << " x " << (zEnd(i)+1)*mesh.rankData.npZ;
+            else
+                gstr << (xEnd(i)+1) << " x " << (yEnd(i)+1) << " x " << (zEnd(i)+1);
+
             lstr << (xEnd(i)+1) << " x " << (yEnd(i)+1) << " x " << (zEnd(i)+1);
             std::cout << std::setw(5) << std::right << i << "\t"
                       << std::setw(18) << std::left << gstr.str() << "\t"
                       << std::setw(15) << std::left << lstr.str() << std::endl;
 #endif
+            if (i == mesh.vcdLoc)
+                std::cout << " ============= Global --> Local ============= " << std::endl;
         }
     }
 
     if (mesh.pf) std::cout << std::right << std::endl;
 
     // SET MAXIMUM NUMBER OF ITERATIONS FOR THE GAUSS-SEIDEL SOLVER AT COARSEST LEVEL OF MULTIGRID SOLVER
-    blitz::TinyVector<int, 3> cgSize = stagCore(mesh.vcDepth).ubound() + 1;
-    maxCount = cgSize(0)*cgSize(1)*cgSize(2)*mesh.rankData.npX*mesh.rankData.npY*mesh.rankData.npZ;
+    blitz::TinyVector<int, 3> cgSize = stagCore(mesh.vcdGlo).ubound() + 1;
+    maxCount = 5*cgSize(0)*cgSize(1)*cgSize(2);
 
     if (inputParams.solveFlag)
         if (mesh.pf)
@@ -417,16 +458,16 @@ void poisson::setStagBounds() {
  ********************************************************************************************************************************************
  */
 void poisson::setCoefficients() {
-    ihx2.resize(mesh.vcDepth + 1);
-    i2hx.resize(mesh.vcDepth + 1);
+    ihx2.resize(mesh.vcdGlo + 1);
+    i2hx.resize(mesh.vcdGlo + 1);
 #ifndef PLANAR
-    ihy2.resize(mesh.vcDepth + 1);
-    i2hy.resize(mesh.vcDepth + 1);
+    ihy2.resize(mesh.vcdGlo + 1);
+    i2hy.resize(mesh.vcdGlo + 1);
 #endif
-    ihz2.resize(mesh.vcDepth + 1);
-    i2hz.resize(mesh.vcDepth + 1);
+    ihz2.resize(mesh.vcdGlo + 1);
+    i2hz.resize(mesh.vcdGlo + 1);
 
-    for (int i=0; i<=mesh.vcDepth; i++) {
+    for (int i=0; i<=mesh.vcdGlo; i++) {
         int hInc = (1 << i);
 
         real hx = hInc*mesh.dXi;
@@ -468,21 +509,26 @@ void poisson::copyDerivs() {
     // Sub-array start and end indices (in global indexing) at different levels of multigrid
     int ss, se, ls;
 
-    x.resize(mesh.vcDepth + 1);
-    xixx.resize(mesh.vcDepth + 1);
-    xix2.resize(mesh.vcDepth + 1);
+    x.resize(mesh.vcdGlo + 1);
+    xixx.resize(mesh.vcdGlo + 1);
+    xix2.resize(mesh.vcdGlo + 1);
 #ifndef PLANAR
-    y.resize(mesh.vcDepth + 1);
-    etyy.resize(mesh.vcDepth + 1);
-    ety2.resize(mesh.vcDepth + 1);
+    y.resize(mesh.vcdGlo + 1);
+    etyy.resize(mesh.vcdGlo + 1);
+    ety2.resize(mesh.vcdGlo + 1);
 #endif
-    z.resize(mesh.vcDepth + 1);
-    ztzz.resize(mesh.vcDepth + 1);
-    ztz2.resize(mesh.vcDepth + 1);
+    z.resize(mesh.vcdGlo + 1);
+    ztzz.resize(mesh.vcdGlo + 1);
+    ztz2.resize(mesh.vcdGlo + 1);
 
-    for(int n=0; n<=mesh.vcDepth; ++n) {
-        ss = mesh.subarrayStarts(0)/int(pow(2, n)) - 1;
-        se = (mesh.subarrayEnds(0) - 1)/int(pow(2, n)) + 1;
+    for(int n=0; n<=mesh.vcdGlo; ++n) {
+        if (n <=mesh.vcdLoc) {
+            ss = mesh.subarrayStarts(0)/int(pow(2, n)) - 1;
+            se = (mesh.subarrayEnds(0) - 1)/int(pow(2, n)) + 1;
+        } else {
+            ss = -1;
+            se = mesh.globalSize(0)/int(pow(2, n));
+        }
 
         ls = 15*n + 1;
         x(n).resize(stagFull(n).ubound(0) - stagFull(n).lbound(0) + 1);
@@ -503,8 +549,13 @@ void poisson::copyDerivs() {
         xix2(n)(blitz::Range(-1, stagFull(n).ubound(0))) = mesh.globalMetrics(ls)(blitz::Range(ss, se));
 
 #ifndef PLANAR
-        ss = mesh.subarrayStarts(1)/int(pow(2, n)) - 1;
-        se = (mesh.subarrayEnds(1) - 1)/int(pow(2, n)) + 1;
+        if (n <=mesh.vcdLoc) {
+            ss = mesh.subarrayStarts(1)/int(pow(2, n)) - 1;
+            se = (mesh.subarrayEnds(1) - 1)/int(pow(2, n)) + 1;
+        } else {
+            ss = -1;
+            se = mesh.globalSize(1)/int(pow(2, n));
+        }
 
         ls = 15*n + 6;
         y(n).resize(stagFull(n).ubound(1) - stagFull(n).lbound(1) + 1);
@@ -525,8 +576,13 @@ void poisson::copyDerivs() {
         ety2(n)(blitz::Range(-1, stagFull(n).ubound(1))) = mesh.globalMetrics(ls)(blitz::Range(ss, se));
 #endif
 
-        ss = mesh.subarrayStarts(2)/int(pow(2, n)) - 1;
-        se = (mesh.subarrayEnds(2) - 1)/int(pow(2, n)) + 1;
+        if (n <=mesh.vcdLoc) {
+            ss = mesh.subarrayStarts(2)/int(pow(2, n)) - 1;
+            se = (mesh.subarrayEnds(2) - 1)/int(pow(2, n)) + 1;
+        } else {
+            ss = -1;
+            se = mesh.globalSize(2)/int(pow(2, n));
+        }
 
         ls = 15*n + 11;
         z(n).resize(stagFull(n).ubound(2) - stagFull(n).lbound(2) + 1);
@@ -546,6 +602,11 @@ void poisson::copyDerivs() {
         ztz2(n) = 0.0;
         ztz2(n)(blitz::Range(-1, stagFull(n).ubound(2))) = mesh.globalMetrics(ls)(blitz::Range(ss, se));
     }
+
+    //if (mesh.pf) std::cout << ztzz(8) << std::endl;
+    //if (mesh.rankData.rank == 15) std::cout << ztzz(8) << std::endl;
+    //if (mesh.pf) std::cout << ztzz(9) << std::endl;
+    //if (mesh.pf) std::cout << ztzz(10) << std::endl;
 };
 
 
@@ -668,7 +729,7 @@ void poisson::updateFace(blitz::Array<blitz::Array<real, 3>, 1> &data) { };
  *          with different mesh strides.
  *          The number of sub-arrays along each edge/face of the sub-domains are equal to the number of V-cycle levels.
  *          Since this data transfer has to take place at all the mesh levels including the finest mesh, there will be
- *          vcDepth + 1 elements.
+ *          vcdLoc + 1 elements.
  *
  ********************************************************************************************************************************************
  */

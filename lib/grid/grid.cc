@@ -505,40 +505,17 @@ void grid::mgGridMetrics() {
     blitz::Range xRange, yRange, zRange;
     blitz::Array<real, 1> trnsGrid, physGrid;
 
-    int divNum;
-#ifdef PLANAR
-    blitz::TinyVector<int, 2> maxSize, remList, subSize;
-    maxSize = coreSize(0), coreSize(2);
-#else
-    blitz::TinyVector<int, 3> maxSize, remList, subSize;
-    maxSize = coreSize;
-#endif
-
     dLen = xLen, yLen, zLen;
 
-    vcDepth = 0;
-    while (true) {
-        divNum = int(std::pow(2, vcDepth));
-        remList = maxSize % divNum;
-        subSize = maxSize / divNum;
-        if (blitz::max(remList) > 0) break;
-        vcDepth += 1;
-    }
-    vcDepth -= 1;
-
-    // Check if there is only one point along any direction in sub-domains.
-    // If so, then decrease the V-Cycle depth by 1 to prevent it.
-    divNum = int(std::pow(2, vcDepth));
-    subSize = maxSize / divNum;
-    if (blitz::min(subSize) == 1) vcDepth -= 1;
+    setVCDepth();
 
     // FOR EACH LEVEL, THERE ARE 15 ONE-DIMENSIONAL ARRAYS:
     // xi, x, xi_x, xixx, xix2,
     // et, y, et_y, etyy, ety2,
     // zt, z, zt_z, ztzz, ztz2
-    globalMetrics.resize(15*(vcDepth+1));
+    globalMetrics.resize(15*(vcdGlo + 1));
 
-    for (int vLev=0; vLev<=vcDepth; vLev++) {
+    for (int vLev=0; vLev<=vcdGlo; vLev++) {
         int mgNx, mgNy, mgNz;
 
         mgNx = int(globalSize(0)/std::pow(2, vLev));
@@ -560,9 +537,9 @@ void grid::mgGridMetrics() {
 
         if (vLev == 0) {
             // Uniform grid values at the finest grid level
-            globalMetrics(0) = xiGlo;       globalMetrics(1) = xGlobal;
-            globalMetrics(5) = etGlo;       globalMetrics(6) = yGlobal;
-            globalMetrics(10) = ztGlo;      globalMetrics(11) = zGlobal;
+            globalMetrics(0) = xiGlo(xRange);       globalMetrics(1) = xGlobal(xRange);
+            globalMetrics(5) = etGlo(yRange);       globalMetrics(6) = yGlobal(yRange);
+            globalMetrics(10) = ztGlo(zRange);      globalMetrics(11) = zGlobal(zRange);
 
         } else {
             for (int dim=0; dim<3; dim++) {
@@ -585,6 +562,16 @@ void grid::mgGridMetrics() {
 
                 globalMetrics(sls) = trnsGrid;
                 globalMetrics(sls + 1) = physGrid;
+
+                //if (vLev < 3) {
+                //    if (dim == 2) {
+                //        if (pf) {
+                //            std::cout << vLev << std::endl;
+                //            std::cout << trnsGrid(blitz::Range(-1, 5)) << std::endl;
+                //            std::cout << trnsGrid(blitz::Range(cLen-5, cLen)) << std::endl;
+                //        }
+                //    }
+                //}
             }
         }
 
@@ -594,6 +581,70 @@ void grid::mgGridMetrics() {
         globalMetrics(ls +  7) = 1.0/yLen;     globalMetrics(ls +  8) = 0.0;     globalMetrics(ls +  9) = pow(globalMetrics(ls +  7), 2.0);
         globalMetrics(ls + 12) = 1.0/zLen;     globalMetrics(ls + 13) = 0.0;     globalMetrics(ls + 14) = pow(globalMetrics(ls + 12), 2.0);
     }
+}
+
+
+/**
+ ********************************************************************************************************************************************
+ * \brief   Function to set local and global V-cycle depths
+ *
+ *          The function computes the maximum allowable V-cycle depth for the given grid configuration.
+ *          There are two allowable depths at the local and global levels for a given MPI decomposition.
+ *          Both values are calculated here.
+ ********************************************************************************************************************************************
+ */
+void grid::setVCDepth() {
+    int divNum;
+
+#ifdef PLANAR
+    blitz::TinyVector<int, 2> maxSize, remList, subSize;
+#else
+    blitz::TinyVector<int, 3> maxSize, remList, subSize;
+#endif
+
+    /////////////// First set global depths ///////////////
+    vcdGlo = 0;
+#ifdef PLANAR
+    maxSize = globalSize(0), globalSize(2);
+#else
+    maxSize = globalSize;
+#endif
+    while (true) {
+        divNum = int(std::pow(2, vcdGlo));
+        remList = maxSize % divNum;
+        subSize = maxSize / divNum;
+        if (blitz::max(remList) > 0) break;
+        vcdGlo += 1;
+    }
+    vcdGlo -= 1;
+
+    // Check if there is only one point along any direction in sub-domains.
+    // If so, then decrease the V-Cycle depth by 1 to prevent it.
+    divNum = int(std::pow(2, vcdGlo));
+    subSize = maxSize / divNum;
+    if (blitz::min(subSize) == 1) vcdGlo -= 1;
+
+    /////////////// Then set local depths ///////////////
+    vcdLoc = 0;
+#ifdef PLANAR
+    maxSize = coreSize(0), coreSize(2);
+#else
+    maxSize = coreSize;
+#endif
+    while (true) {
+        divNum = int(std::pow(2, vcdLoc));
+        remList = maxSize % divNum;
+        subSize = maxSize / divNum;
+        if (blitz::max(remList) > 0) break;
+        vcdLoc += 1;
+    }
+    vcdLoc -= 1;
+
+    // Check if there is only one point along any direction in sub-domains.
+    // If so, then decrease the V-Cycle depth by 1 to prevent it.
+    divNum = int(std::pow(2, vcdLoc));
+    subSize = maxSize / divNum;
+    if (blitz::min(subSize) == 1) vcdLoc -= 1;
 }
 
 
@@ -617,7 +668,7 @@ void grid::mgGridMetrics(int dim) {
     // Product of beta and length
     real btl = thBeta(dim)*dLen(dim);
 
-    for (int vLev=1; vLev<=vcDepth; vLev++) {
+    for (int vLev=1; vLev<=vcdGlo; vLev++) {
         // START INDEX FOR LEVEL
         int ls = 5*dim + 15*vLev;
         int cLen = globalMetrics(ls).shape()(0);
@@ -649,11 +700,22 @@ void grid::mgGridMetrics(int dim) {
         dfxx(cLen-2) = dfxx(0);
         dfx2(cLen-2) = dfx2(0);
 
+        //if (vLev > 7) {
+        //    if (dim == 2) {
+        //        if (pf) {
+        //            std::cout << dfxx << std::endl;
+        //        }
+        //    }
+        //}
+
         globalMetrics(ls + 1) = physGrid;
         globalMetrics(ls + 2) = df_x;
         globalMetrics(ls + 3) = dfxx;
         globalMetrics(ls + 4) = dfx2;
     }
+
+    //MPI_Finalize();
+    //exit(0);
 }
 
 
