@@ -562,16 +562,6 @@ void grid::mgGridMetrics() {
 
                 globalMetrics(sls) = trnsGrid;
                 globalMetrics(sls + 1) = physGrid;
-
-                //if (vLev < 3) {
-                //    if (dim == 2) {
-                //        if (pf) {
-                //            std::cout << vLev << std::endl;
-                //            std::cout << trnsGrid(blitz::Range(-1, 5)) << std::endl;
-                //            std::cout << trnsGrid(blitz::Range(cLen-5, cLen)) << std::endl;
-                //        }
-                //    }
-                //}
             }
         }
 
@@ -700,22 +690,11 @@ void grid::mgGridMetrics(int dim) {
         dfxx(cLen-2) = dfxx(0);
         dfx2(cLen-2) = dfx2(0);
 
-        //if (vLev > 7) {
-        //    if (dim == 2) {
-        //        if (pf) {
-        //            std::cout << dfxx << std::endl;
-        //        }
-        //    }
-        //}
-
         globalMetrics(ls + 1) = physGrid;
         globalMetrics(ls + 2) = df_x;
         globalMetrics(ls + 3) = dfxx;
         globalMetrics(ls + 4) = dfx2;
     }
-
-    //MPI_Finalize();
-    //exit(0);
 }
 
 

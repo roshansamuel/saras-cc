@@ -80,6 +80,7 @@ class poisson {
         blitz::Array<blitz::RectDomain<3>, 1> stagCore;
         blitz::Array<int, 1> xEnd, yEnd, zEnd;
         blitz::RectDomain<3> meanCore;
+        blitz::RectDomain<3> gloLocRD;
 
         blitz::Array<MPI_Request, 1> recvRequest;
         blitz::Array<MPI_Status, 1> recvStatus;
@@ -100,6 +101,7 @@ class poisson {
 
         static inline bool isOdd(int x) { return x % 2; };
 
+        void setFLRanks(const bool lSol);
         void initializeArrays();
         void copyDerivs();
         void setCoefficients();

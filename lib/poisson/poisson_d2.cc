@@ -239,7 +239,7 @@ void multigrid_d2::solve() {
 
         MPI_Allreduce(&localMax, &globalMax, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);
 
-        if (mesh.pf) std::cout << globalMax << "\t" << inputParams.mgTolerance << "\t" << iterCount << std::endl;
+        //if (mesh.pf) std::cout << globalMax << "\t" << inputParams.mgTolerance << "\t" << iterCount << std::endl;
         if (globalMax < inputParams.mgTolerance) break;
 
         iterCount += 1;
@@ -272,8 +272,6 @@ void multigrid_d2::coarsen() {
         MPI_Allgatherv(&tmp(pLevel)(0, 0, 0), 1, locDomain, &rtmp(0, 0, 0), &recvCnts[0], &gloDisps[0], gloDomain, MPI_COMM_WORLD); 
 
         //MPI_Allgather(&tmp(pLevel)(0, 0, 0), 1, locDomain, &rtmp(0, 0, 0), 1, gloDomain, MPI_COMM_WORLD); 
-        //if (mesh.pf) std::cout << rtmp << std::endl;
-        //if (mesh.pf) std::cout << xEnd(vLevel) << "\t" << zEnd(vLevel) << rtmp.ubound() << std::endl;
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none) shared(pLevel) private(i2) private(k2)
         for (int i = 0; i <= xEnd(vLevel); ++i) {
             i2 = i*2;
@@ -287,6 +285,7 @@ void multigrid_d2::coarsen() {
         }
 
         locSolve = false;
+        setFLRanks(false);
     } else {
         // REGULAR COARSENING OPERATION
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none) shared(pLevel) private(i2) private(k2)
@@ -314,12 +313,8 @@ void multigrid_d2::prolong() {
     lhs(vLevel) = 0.0;
 
     if (vLevel == mesh.vcdLoc) {
-        if (mesh.rankData.rank == 1) std::cout << std::setprecision(8) << std::fixed << mesh.rankData.rank << lhs(pLevel)(blitz::Range::all(), 0, blitz::Range::all()) << std::endl;
-        if (mesh.rankData.rank == 15) std::cout << std::setprecision(8) << std::fixed << mesh.rankData.rank << lhs(pLevel)(blitz::Range::all(), 0, blitz::Range::all()) << std::endl;
-        MPI_Finalize();
-        exit(0);
-        for (int i = 0; i < mesh.rankData.nProc; i++)
-            if (mesh.rankData.rank == i) std::cout << std::setprecision(8) << std::fixed << mesh.rankData.rank << lhs(pLevel)(blitz::Range(0,1), 0, blitz::Range(0,1)) << std::endl;
+        //if (mesh.rankData.rank == 0) std::cout << std::setprecision(8) << std::fixed << mesh.rankData.rank << lhs(pLevel)(all, 0, all) << std::endl;
+        //MPI_Barrier(MPI_COMM_WORLD);
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none) shared(pLevel) private(i2) private(k2)
         for (int i = 0; i <= xEnd(vLevel); ++i) {
             i2 = i/2;
@@ -329,11 +324,18 @@ void multigrid_d2::prolong() {
             }
         }
 
-        if (mesh.pf) std::cout << rhs(vLevel)(blitz::Range::all(), 0, blitz::Range::all()) << std::endl;
-        MPI_Finalize();
-        exit(0);
+        // TRANSFER GLOBAL DATA TO LOCAL DATA
+        lhs(vLevel)(stagCore(vLevel)) = rtmp(gloLocRD);
+        //for (int i=12; i<16; i++) {
+        //    if (mesh.rankData.rank == i) std::cout << i << "\t" << lhs(vLevel)(stagCore(vLevel)) << std::endl;
+        //    MPI_Barrier(MPI_COMM_WORLD);
+        //}
+        //if (mesh.pf) std::cout << rtmp(all, 0, all) << std::endl;
+        //MPI_Finalize();
+        //exit(0);
 
-        locSolve = false;
+        locSolve = true;
+        setFLRanks(true);
     } else {
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none) shared(pLevel) private(i2) private(k2)
         for (int i = 0; i <= xEnd(vLevel); ++i) {
@@ -513,15 +515,6 @@ void multigrid_d2::createMGSubArrays() {
             recvCnts[i*mesh.rankData.npX + k] = 1;
         }
     }
-
-    //for (int i=0; i<mesh.rankData.nProc; ++i)
-    //    if (mesh.pf) std::cout << gloDisps[i] << std::endl;
-    //MPI_Finalize();
-    //exit(0);
-
-    /*
-    if (mesh.pf) std::cout << gloDisps.size() << "\t" << stride << "\t" << zCount << stagCore(mesh.vcdLoc).ubound() << std::endl;
-    */
 }
 
 
@@ -568,7 +561,6 @@ void multigrid_d2::imposeBC() {
     hx = 0.5/i2hx(vLevel);
     hz = 0.5/i2hz(vLevel);
 #endif
-
     // FOR PARALLEL RUNS, FIRST UPDATE GHOST POINTS OF MPI SUB-DOMAINS
     // EXCEPT WHEN THE GRID HAS COARSENED TO THE POINT WHERE ALL
     // PROCESSES ARE SOLVING FOR THE GLOBAL DOMAIN
@@ -621,7 +613,14 @@ void multigrid_d2::imposeBC() {
             if (xlr) lhs(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = -lhs(vLevel)(stagCore(vLevel).ubound(0), 0, all);
         }
 #endif
-    } // PERIODIC BOUNDARY CONDITIONS ARE AUTOMATICALLY IMPOSED BY PERIODIC DATA TRANSFER ACROSS PROCESSORS THROUGH updateFace()
+    } else {
+        // WHEN PROCESSES ARE SOLVING LOCALLY MPI AUTOMATICALLY IMPOSES PERIODIC BCs
+        // HOWEVER, WHEN SOLVING GLOBALLY, PERIODIC BCs HAVE TO BE MANUALLY IMPOSED
+        if (not locSolve) {
+            lhs(vLevel)(-1, 0, all) = lhs(vLevel)(stagCore(vLevel).ubound(0), 0, all);
+            lhs(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = lhs(vLevel)(0, 0, all);
+        }
+    }
 
     if (not inputParams.zPer) {
 #ifdef TEST_POISSON

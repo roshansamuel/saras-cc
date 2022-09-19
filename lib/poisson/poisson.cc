@@ -66,14 +66,8 @@
 poisson::poisson(const grid &mesh, const parser &solParam): mesh(mesh), inputParams(solParam) {
     all = blitz::Range::all();
 
-    // SET FLAGS FOR FIRST AND LAST RANKS ALONG X AND Y DIRECTIONS
-    xfr = (mesh.rankData.xRank == 0)? true: false;
-    yfr = (mesh.rankData.yRank == 0)? true: false;
-    zfr = (mesh.rankData.zRank == 0)? true: false;
-
-    xlr = (mesh.rankData.xRank == mesh.rankData.npX - 1)? true: false;
-    ylr = (mesh.rankData.yRank == mesh.rankData.npY - 1)? true: false;
-    zlr = (mesh.rankData.zRank == mesh.rankData.npZ - 1)? true: false;
+    // SET THE FLAGS THAT DENOTE MPI-PROCESSES ALONG WALLS OF THE DOMAIN
+    setFLRanks(true);
 
     // SET THE ARRAY LIMITS OF FULL AND CORE DOMAINS
     setStagBounds();
@@ -298,9 +292,6 @@ void poisson::vCycle() {
         smooth(inputParams.postSmooth);
     }
     // Step 8) Repeat steps 6-7 until you reach the finest grid level,
-
-    MPI_Finalize();
-    exit(0);
 };
 
 
@@ -348,9 +339,21 @@ void poisson::initializeArrays() {
 #endif
     rtmp.resize(upBound - loBound);
 
-    //if (mesh.pf) std::cout << rtmp.shape() << rtmp.lbound() << rtmp.ubound() << std::endl;
-    //MPI_Finalize();
-    //exit(0);
+    int xS = mesh.rankData.xRank*(stagCore(mesh.vcdLoc).ubound(0) + 1);
+    int xE = (mesh.rankData.xRank + 1)*(stagCore(mesh.vcdLoc).ubound(0) + 1) - 1;
+
+#ifdef PLANAR
+    int yS = 0;
+    int yE = 0;
+#else
+    int yS = mesh.rankData.yRank*(stagCore(mesh.vcdLoc).ubound(1) + 1);
+    int yE = (mesh.rankData.yRank + 1)*(stagCore(mesh.vcdLoc).ubound(1) + 1) - 1;
+#endif
+
+    int zS = mesh.rankData.zRank*(stagCore(mesh.vcdLoc).ubound(2) + 1);
+    int zE = (mesh.rankData.zRank + 1)*(stagCore(mesh.vcdLoc).ubound(2) + 1) - 1;
+
+    gloLocRD = blitz::RectDomain<3>(blitz::TinyVector<int, 3>(xS, yS, zS), blitz::TinyVector<int, 3>(xE, yE, zE));
 }
 
 
@@ -602,12 +605,37 @@ void poisson::copyDerivs() {
         ztz2(n) = 0.0;
         ztz2(n)(blitz::Range(-1, stagFull(n).ubound(2))) = mesh.globalMetrics(ls)(blitz::Range(ss, se));
     }
-
-    //if (mesh.pf) std::cout << ztzz(8) << std::endl;
-    //if (mesh.rankData.rank == 15) std::cout << ztzz(8) << std::endl;
-    //if (mesh.pf) std::cout << ztzz(9) << std::endl;
-    //if (mesh.pf) std::cout << ztzz(10) << std::endl;
 };
+
+
+/**
+ ********************************************************************************************************************************************
+ * \brief   Function to set boolean values for first and last ranks
+ *
+ *          At the deepest levels of the V-cycle, all sub-domains are solving for the global field. 
+ *          Hence the first and last rank flags along each direction will be turned on and off
+ *          based on the V-cycle level.
+ *          This funtion sets the flags correctly and has to be called whenver moving to local solving.
+ *
+ ********************************************************************************************************************************************
+ */
+void poisson::setFLRanks(const bool lSol) {
+    if (lSol) {
+        // SET FLAGS FOR FIRST AND LAST RANKS ALONG X AND Y DIRECTIONS
+        xfr = (mesh.rankData.xRank == 0)? true: false;
+        yfr = (mesh.rankData.yRank == 0)? true: false;
+        zfr = (mesh.rankData.zRank == 0)? true: false;
+
+        xlr = (mesh.rankData.xRank == mesh.rankData.npX - 1)? true: false;
+        ylr = (mesh.rankData.yRank == mesh.rankData.npY - 1)? true: false;
+        zlr = (mesh.rankData.zRank == mesh.rankData.npZ - 1)? true: false;
+    } else {
+        // IF ALL PROCESSES ARE SOLVING GLOBALLY, THEN CHANGE
+        xfr = xlr = true;
+        yfr = ylr = true;
+        zfr = zlr = true;
+    }
+}
 
 
 /**
