@@ -108,6 +108,7 @@ poisson::poisson(const grid &mesh, const parser &solParam): mesh(mesh), inputPar
  */
 void poisson::mgSolve(plainsf &outLHS, const plainsf &inpRHS) {
     vLevel = 0;
+    locSolve = true;
 
     for (int i=0; i <= mesh.vcdGlo; i++) {
         lhs(i) = 0.0;
@@ -257,7 +258,6 @@ void poisson::vCycle() {
         // Copy lhs into smd
         smd(vLevel) = lhs(vLevel);
 
-        //if (mesh.pf) std::cout << i << "\t" << vLevel << "\t" << mesh.vcdLoc << "\t" << mesh.vcdGlo << std::endl;
         // Restrict the residual to a coarser level
         coarsen();
 
@@ -279,6 +279,11 @@ void poisson::vCycle() {
 
     // PROLONGATION OPERATIONS UP TO FINEST MESH
     for (int i=0; i<mesh.vcdGlo; i++) {
+        //if (vLevel == 8) {
+        //    if (mesh.rankData.rank == 15) std::cout << lhs(vLevel)(stagCore(vLevel)) << std::endl;
+        //    MPI_Finalize();
+        //    exit(0);
+        //}
         // Step 6) Prolong the error 'e' to the next finer level.
         prolong();
 

@@ -124,7 +124,7 @@ class parallel {
  ********************************************************************************************************************************************
  */
 
-        inline int findRank(int xR, int yR, int zR) {return pmod(zR, npZ)*npX*npY + pmod(yR, npY)*npX + pmod(xR, npX);};
+        inline int findRank(int xR, int yR, int zR) const {return pmod(zR, npZ)*npX*npY + pmod(yR, npY)*npX + pmod(xR, npX);};
 };
 
 /**

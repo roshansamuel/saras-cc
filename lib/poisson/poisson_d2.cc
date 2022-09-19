@@ -123,7 +123,7 @@ void multigrid_d2::smooth(const int smoothCount) {
         }
 
         // UPDATE OF RED CELLS COMPLETE. UPDATE SUB-DOMAIN FACES NOW
-        if (locSolve) updateFace(lhs);
+        updateFace(lhs);
 
         // UPDATE BLACK CELLS
         // 1, 0 CONFIGURATION
@@ -193,7 +193,7 @@ void multigrid_d2::solve() {
         }
 
         // UPDATE OF RED CELLS COMPLETE. UPDATE SUB-DOMAIN FACES NOW
-        if (locSolve) updateFace(lhs);
+        updateFace(lhs);
 
         // UPDATE BLACK CELLS
         // 1, 0 CONFIGURATION
@@ -263,28 +263,27 @@ void multigrid_d2::coarsen() {
     pLevel = vLevel;
     vLevel += 1;
 
+    // This coarsening is not weighted unlike the 3D restriction operation
+    // The effect of this lack is not known for non-uniform grids
     if (vLevel == mesh.vcdLoc+1) {
-        //for (int i = 0; i < mesh.rankData.nProc; i++)
-        //    if (mesh.rankData.rank == i) std::cout << std::setprecision(8) << std::fixed << mesh.rankData.rank << tmp(pLevel)(blitz::Range(0,1), 0, blitz::Range(0,1)) << std::endl;
-        //if (mesh.rankData.rank == 1) std::cout << std::setprecision(8) << std::fixed << mesh.rankData.rank << tmp(pLevel)(blitz::Range::all(), 0, blitz::Range::all()) << std::endl;
-        //if (mesh.rankData.rank == 4) std::cout << std::setprecision(8) << std::fixed << mesh.rankData.rank << tmp(pLevel)(blitz::Range::all(), 0, blitz::Range::all()) << std::endl;
-
+        // GATHER DATA FROM ALL PROCESSES SUCH THAT ALL SUB-DOMAINS NOW HAVE FULL DATA
         MPI_Allgatherv(&tmp(pLevel)(0, 0, 0), 1, locDomain, &rtmp(0, 0, 0), &recvCnts[0], &gloDisps[0], gloDomain, MPI_COMM_WORLD); 
 
-        //MPI_Allgather(&tmp(pLevel)(0, 0, 0), 1, locDomain, &rtmp(0, 0, 0), 1, gloDomain, MPI_COMM_WORLD); 
+        // PERFORM THE USUAL COARSENING FROM GLOBAL DATA IN rtmp ARRAY
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none) shared(pLevel) private(i2) private(k2)
         for (int i = 0; i <= xEnd(vLevel); ++i) {
             i2 = i*2;
             for (int k = 0; k <= zEnd(vLevel); ++k) {
                 k2 = k*2;
-                // This restriction is not weighted unlike the 3D restriction operation
-                // The effect of this lack is not known for non-uniform grids
                 rhs(vLevel)(i, 0, k) = (rtmp(i2 + 1, 0, k2 + 1) + rtmp(i2, 0, k2) +
                                         rtmp(i2 + 1, 0, k2) + rtmp(i2, 0, k2 + 1))/4;
             }
         }
 
+        // DISABLE LOCAL SOLVING
         locSolve = false;
+
+        // ALL PROCESSES ACT LIKE THEY ARE BOTH FIRST AND LAST RANKS NOW
         setFLRanks(false);
     } else {
         // REGULAR COARSENING OPERATION
@@ -293,8 +292,6 @@ void multigrid_d2::coarsen() {
             i2 = i*2;
             for (int k = 0; k <= zEnd(vLevel); ++k) {
                 k2 = k*2;
-                // This restriction is not weighted unlike the 3D restriction operation
-                // The effect of this lack is not known for non-uniform grids
                 rhs(vLevel)(i, 0, k) = (tmp(pLevel)(i2 + 1, 0, k2 + 1) + tmp(pLevel)(i2, 0, k2) +
                                         tmp(pLevel)(i2 + 1, 0, k2) + tmp(pLevel)(i2, 0, k2 + 1))/4;
             }
@@ -313,28 +310,23 @@ void multigrid_d2::prolong() {
     lhs(vLevel) = 0.0;
 
     if (vLevel == mesh.vcdLoc) {
-        //if (mesh.rankData.rank == 0) std::cout << std::setprecision(8) << std::fixed << mesh.rankData.rank << lhs(pLevel)(all, 0, all) << std::endl;
-        //MPI_Barrier(MPI_COMM_WORLD);
+        // PERFORM THE USUAL PROLONGATION INTO THE rtmp ARRAY
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none) shared(pLevel) private(i2) private(k2)
-        for (int i = 0; i <= xEnd(vLevel); ++i) {
+        for (int i = 0; i <= rtmp.ubound(0); ++i) {
             i2 = i/2;
-            for (int k = 0; k <= zEnd(vLevel); ++k) {
+            for (int k = 0; k <= rtmp.ubound(2); ++k) {
                 k2 = k/2;
                 rtmp(i, 0, k) = lhs(pLevel)(i2, 0, k2);
             }
         }
 
-        // TRANSFER GLOBAL DATA TO LOCAL DATA
+        // TRANSFER GLOBAL DATA FROM rtmp ARRAY TO LOCAL DATA IN lhs ARRAY
         lhs(vLevel)(stagCore(vLevel)) = rtmp(gloLocRD);
-        //for (int i=12; i<16; i++) {
-        //    if (mesh.rankData.rank == i) std::cout << i << "\t" << lhs(vLevel)(stagCore(vLevel)) << std::endl;
-        //    MPI_Barrier(MPI_COMM_WORLD);
-        //}
-        //if (mesh.pf) std::cout << rtmp(all, 0, all) << std::endl;
-        //MPI_Finalize();
-        //exit(0);
 
+        // ENABLE LOCAL SOLVING
         locSolve = true;
+
+        // SET CORRECT FIRST AND LAST RANKS NOW
         setFLRanks(true);
     } else {
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none) shared(pLevel) private(i2) private(k2)
@@ -346,6 +338,14 @@ void multigrid_d2::prolong() {
             }
         }
     }
+
+    //if (vLevel == 8) {
+    //    if (mesh.pf) std::cout << lhs(pLevel)(stagCore(pLevel)) << std::endl;
+    //    //if (mesh.pf) std::cout << lhs(vLevel)(stagCore(vLevel)) << std::endl;
+    //    if (mesh.pf) std::cout << rtmp(all, 0, all) << std::endl;
+    //    MPI_Finalize();
+    //    exit(0);
+    //}
 }
 
 
@@ -441,7 +441,9 @@ real multigrid_d2::computeError(const int normOrder) {
 
 
 void multigrid_d2::createMGSubArrays() {
+    int n;
     int count, stride;
+    int xCount, yCount, zCount;
 
     recvStatus.resize(4);
     recvRequest.resize(4);
@@ -451,10 +453,10 @@ void multigrid_d2::createMGSubArrays() {
 
     sendInd.resize(mesh.vcdLoc + 1, 8);         recvInd.resize(mesh.vcdLoc + 1, 8);
 
-    for(int n=0; n<=mesh.vcdLoc; ++n) {
-        int xCount = stagFull(n).ubound(0) + 2;
-        int yCount = stagFull(n).ubound(1) + 2;
-        int zCount = stagFull(n).ubound(2) + 2;
+    for(n=0; n<=mesh.vcdLoc; ++n) {
+        xCount = stagFull(n).ubound(0) + 2;
+        yCount = stagFull(n).ubound(1) + 2;
+        zCount = stagFull(n).ubound(2) + 2;
 
         /*************************** MPI DATATYPES FOR FACE TRANSFER ***************************/
 
@@ -490,10 +492,10 @@ void multigrid_d2::createMGSubArrays() {
     }
 
     // CREATE SUBARRAY DATA-TYPES TO GATHER LOCAL DOMAINS OF ALL PROCESSES
-    int n = mesh.vcdLoc;
-    int xCount = stagCore(n).ubound(0) + 1;
-    int yCount = stagCore(n).ubound(1) + 1;
-    int zCount = stagCore(n).ubound(2) + 1;
+    n = mesh.vcdLoc;
+    xCount = stagCore(n).ubound(0) + 1;
+    yCount = stagCore(n).ubound(1) + 1;
+    zCount = stagCore(n).ubound(2) + 1;
 
     stride = (zCount + 2)*(yCount + 2);
     MPI_Type_vector(xCount, zCount, stride, MPI_FP_REAL, &locDomain);
@@ -509,10 +511,10 @@ void multigrid_d2::createMGSubArrays() {
 
     gloDisps.resize(mesh.rankData.nProc);
     recvCnts.resize(mesh.rankData.nProc);
-    for (int i=0; i<mesh.rankData.npX; ++i) {
-        for (int k=0; k<mesh.rankData.npZ; ++k) {
-            gloDisps[i*mesh.rankData.npX + k] = k*(xCount*zCount*mesh.rankData.npZ) + i*zCount;
-            recvCnts[i*mesh.rankData.npX + k] = 1;
+    for (int i=0; i<mesh.rankData.npX; i++) {
+        for (int k=0; k<mesh.rankData.npZ; k++) {
+            gloDisps[mesh.rankData.findRank(i, 0, k)] = i*(xCount*zCount*mesh.rankData.npZ) + k*zCount;
+            recvCnts[mesh.rankData.findRank(i, 0, k)] = 1;
         }
     }
 }
@@ -564,7 +566,7 @@ void multigrid_d2::imposeBC() {
     // FOR PARALLEL RUNS, FIRST UPDATE GHOST POINTS OF MPI SUB-DOMAINS
     // EXCEPT WHEN THE GRID HAS COARSENED TO THE POINT WHERE ALL
     // PROCESSES ARE SOLVING FOR THE GLOBAL DOMAIN
-    if (locSolve) updateFace(lhs);
+    updateFace(lhs);
 
     if (not inputParams.xPer) {
 #ifdef TEST_POISSON
@@ -613,13 +615,6 @@ void multigrid_d2::imposeBC() {
             if (xlr) lhs(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = -lhs(vLevel)(stagCore(vLevel).ubound(0), 0, all);
         }
 #endif
-    } else {
-        // WHEN PROCESSES ARE SOLVING LOCALLY MPI AUTOMATICALLY IMPOSES PERIODIC BCs
-        // HOWEVER, WHEN SOLVING GLOBALLY, PERIODIC BCs HAVE TO BE MANUALLY IMPOSED
-        if (not locSolve) {
-            lhs(vLevel)(-1, 0, all) = lhs(vLevel)(stagCore(vLevel).ubound(0), 0, all);
-            lhs(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = lhs(vLevel)(0, 0, all);
-        }
     }
 
     if (not inputParams.zPer) {
@@ -660,25 +655,39 @@ void multigrid_d2::imposeBC() {
             if (zlr) lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = -lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2));
         }
 #endif
-    } // PERIODIC BOUNDARY CONDITIONS ARE AUTOMATICALLY IMPOSED BY PERIODIC DATA TRANSFER ACROSS PROCESSORS THROUGH updateFace()
+    }
 }
 
 
 void multigrid_d2::updateFace(blitz::Array<blitz::Array<real, 3>, 1> &data) {
-    recvRequest = MPI_REQUEST_NULL;
+    if (locSolve) {
+        recvRequest = MPI_REQUEST_NULL;
 
-    // TRANSFER DATA FROM NEIGHBOURING CELL TO IMPOSE SUB-DOMAIN BOUNDARY CONDITIONS
-    MPI_Irecv(&(data(vLevel)(recvInd(vLevel, 0))), 1, xFace(vLevel), mesh.rankData.faceRanks(0), 1, MPI_COMM_WORLD, &recvRequest(0));
-    MPI_Irecv(&(data(vLevel)(recvInd(vLevel, 1))), 1, xFace(vLevel), mesh.rankData.faceRanks(1), 2, MPI_COMM_WORLD, &recvRequest(1));
-    MPI_Irecv(&(data(vLevel)(recvInd(vLevel, 2))), 1, zFace(vLevel), mesh.rankData.faceRanks(4), 3, MPI_COMM_WORLD, &recvRequest(2));
-    MPI_Irecv(&(data(vLevel)(recvInd(vLevel, 3))), 1, zFace(vLevel), mesh.rankData.faceRanks(5), 4, MPI_COMM_WORLD, &recvRequest(3));
+        // TRANSFER DATA FROM NEIGHBOURING CELL TO IMPOSE SUB-DOMAIN BOUNDARY CONDITIONS
+        MPI_Irecv(&(data(vLevel)(recvInd(vLevel, 0))), 1, xFace(vLevel), mesh.rankData.faceRanks(0), 1, MPI_COMM_WORLD, &recvRequest(0));
+        MPI_Irecv(&(data(vLevel)(recvInd(vLevel, 1))), 1, xFace(vLevel), mesh.rankData.faceRanks(1), 2, MPI_COMM_WORLD, &recvRequest(1));
+        MPI_Irecv(&(data(vLevel)(recvInd(vLevel, 2))), 1, zFace(vLevel), mesh.rankData.faceRanks(4), 3, MPI_COMM_WORLD, &recvRequest(2));
+        MPI_Irecv(&(data(vLevel)(recvInd(vLevel, 3))), 1, zFace(vLevel), mesh.rankData.faceRanks(5), 4, MPI_COMM_WORLD, &recvRequest(3));
 
-    MPI_Send(&(data(vLevel)(sendInd(vLevel, 0))), 1, xFace(vLevel), mesh.rankData.faceRanks(0), 2, MPI_COMM_WORLD);
-    MPI_Send(&(data(vLevel)(sendInd(vLevel, 1))), 1, xFace(vLevel), mesh.rankData.faceRanks(1), 1, MPI_COMM_WORLD);
-    MPI_Send(&(data(vLevel)(sendInd(vLevel, 2))), 1, zFace(vLevel), mesh.rankData.faceRanks(4), 4, MPI_COMM_WORLD);
-    MPI_Send(&(data(vLevel)(sendInd(vLevel, 3))), 1, zFace(vLevel), mesh.rankData.faceRanks(5), 3, MPI_COMM_WORLD);
+        MPI_Send(&(data(vLevel)(sendInd(vLevel, 0))), 1, xFace(vLevel), mesh.rankData.faceRanks(0), 2, MPI_COMM_WORLD);
+        MPI_Send(&(data(vLevel)(sendInd(vLevel, 1))), 1, xFace(vLevel), mesh.rankData.faceRanks(1), 1, MPI_COMM_WORLD);
+        MPI_Send(&(data(vLevel)(sendInd(vLevel, 2))), 1, zFace(vLevel), mesh.rankData.faceRanks(4), 4, MPI_COMM_WORLD);
+        MPI_Send(&(data(vLevel)(sendInd(vLevel, 3))), 1, zFace(vLevel), mesh.rankData.faceRanks(5), 3, MPI_COMM_WORLD);
 
-    MPI_Waitall(4, recvRequest.dataFirst(), recvStatus.dataFirst());
+        MPI_Waitall(4, recvRequest.dataFirst(), recvStatus.dataFirst());
+    } else {
+        // WHEN PROCESSES ARE SOLVING LOCALLY MPI AUTOMATICALLY IMPOSES PERIODIC BCs
+        // HOWEVER, WHEN SOLVING GLOBALLY, PERIODIC BCs HAVE TO BE MANUALLY IMPOSED
+        if (inputParams.xPer) {
+            lhs(vLevel)(-1, 0, all) = lhs(vLevel)(stagCore(vLevel).ubound(0), 0, all);
+            lhs(vLevel)(stagCore(vLevel).ubound(0) + 1, 0, all) = lhs(vLevel)(0, 0, all);
+        }
+
+        if (inputParams.zPer) {
+            lhs(vLevel)(all, 0, -1) = lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2));
+            lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = lhs(vLevel)(all, 0, 0);
+        }
+    }
 }
 
 
