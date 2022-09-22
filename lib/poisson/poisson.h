@@ -88,6 +88,7 @@ class poisson {
         blitz::Array<real, 1> i2hx, i2hy, i2hz;
         blitz::Array<real, 1> ihx2, ihy2, ihz2;
 
+        blitz::Array<real, 1> xGL, yGL, zGL;
         blitz::Array<blitz::Array<real, 1>, 1> x, xixx, xix2;
         blitz::Array<blitz::Array<real, 1>, 1> y, etyy, ety2;
         blitz::Array<blitz::Array<real, 1>, 1> z, ztzz, ztz2;

@@ -239,7 +239,6 @@ void multigrid_d2::solve() {
 
         MPI_Allreduce(&localMax, &globalMax, 1, MPI_FP_REAL, MPI_MAX, MPI_COMM_WORLD);
 
-        //if (mesh.pf) std::cout << globalMax << "\t" << inputParams.mgTolerance << "\t" << iterCount << std::endl;
         if (globalMax < inputParams.mgTolerance) break;
 
         iterCount += 1;
@@ -267,7 +266,7 @@ void multigrid_d2::coarsen() {
     // The effect of this lack is not known for non-uniform grids
     if (vLevel == mesh.vcdLoc+1) {
         // GATHER DATA FROM ALL PROCESSES SUCH THAT ALL SUB-DOMAINS NOW HAVE FULL DATA
-        MPI_Allgatherv(&tmp(pLevel)(0, 0, 0), 1, locDomain, &rtmp(0, 0, 0), &recvCnts[0], &gloDisps[0], gloDomain, MPI_COMM_WORLD); 
+        MPI_Allgatherv(&tmp(pLevel)(0, 0, 0), 1, locDomain, &rtmp(0, 0, 0), &recvCnts[0], &gloDisps[0], gloDomain, MPI_COMM_WORLD);
 
         // PERFORM THE USUAL COARSENING FROM GLOBAL DATA IN rtmp ARRAY
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none) shared(pLevel) private(i2) private(k2)
@@ -338,14 +337,6 @@ void multigrid_d2::prolong() {
             }
         }
     }
-
-    //if (vLevel == 8) {
-    //    if (mesh.pf) std::cout << lhs(pLevel)(stagCore(pLevel)) << std::endl;
-    //    //if (mesh.pf) std::cout << lhs(vLevel)(stagCore(vLevel)) << std::endl;
-    //    if (mesh.pf) std::cout << rtmp(all, 0, all) << std::endl;
-    //    MPI_Finalize();
-    //    exit(0);
-    //}
 }
 
 
@@ -563,9 +554,8 @@ void multigrid_d2::imposeBC() {
     hx = 0.5/i2hx(vLevel);
     hz = 0.5/i2hz(vLevel);
 #endif
-    // FOR PARALLEL RUNS, FIRST UPDATE GHOST POINTS OF MPI SUB-DOMAINS
-    // EXCEPT WHEN THE GRID HAS COARSENED TO THE POINT WHERE ALL
-    // PROCESSES ARE SOLVING FOR THE GLOBAL DOMAIN
+
+    // FIRST UPDATE GHOST POINTS OF MPI SUB-DOMAINS
     updateFace(lhs);
 
     if (not inputParams.xPer) {

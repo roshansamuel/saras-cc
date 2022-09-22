@@ -184,25 +184,10 @@ void poisson::mgSolve(plainsf &outLHS, const plainsf &inpRHS) {
 #endif
     }
 
-    // Below operation has been disabled because it is not strictly necessary,
-    // and because the calculation of mean is not accurate.
-    /*
-#ifndef TEST_POISSON
-    if (allNeumann) {
-        // WHEN USING NEUMANN BC ON ALL SIDES, THERE ARE INFINTELY MANY SOLUTIONS.
-        // SUBTRACT THE MEAN OF THE SOLUTION SO THAT THE PRESSURE CORRECTION HAS ZERO MEAN.
-        // THIS CAN ENSURE THAT THE PRESSURE DOESN'T DRIFT AS THE SIMULATION EVOLVES.
-        // THIS DOES NOT AFFECT THE PRESSURE GRADIENT, WHICH IS THE ACTUAL METRIC THAT
-        // SATISFIES DIVERGENCE IN THIS FORMULATION OF NSE.
-        real localMean = blitz::sum(lhs(0)(stagCore(0)))/mesh.totalPoints;
-        real globalAvg = 0.0;
-
-        MPI_Allreduce(&localMean, &globalAvg, 1, MPI_FP_REAL, MPI_SUM, MPI_COMM_WORLD);
-
-        lhs(0) -= globalAvg;
-    }
-#endif
-    */
+    //if (mesh.rankData.rank == 0) std::cout << lhs(0)(32, 32, all) << std::endl;
+    //if (mesh.rankData.rank == 0) std::cout << x(0) << z(0) << std::endl;
+    //MPI_Finalize();
+    //exit(0);
 
     // RETURN CALCULATED PRESSURE DATA
     outLHS.F(stagFull(0)) = lhs(0)(stagFull(0));
@@ -277,15 +262,20 @@ void poisson::vCycle() {
     }
     // Step 4) Repeat steps 2-3 until you reach the coarsest grid level,
 
+    //if (mesh.rankData.rank == 0) std::cout << lhs(vLevel)(stagCore(vLevel)) << std::endl;
+    //MPI_Finalize();
+    //exit(0);
+
     // PROLONGATION OPERATIONS UP TO FINEST MESH
     for (int i=0; i<mesh.vcdGlo; i++) {
-        //if (vLevel == 8) {
-        //    if (mesh.rankData.rank == 15) std::cout << lhs(vLevel)(stagCore(vLevel)) << std::endl;
+        // Step 6) Prolong the error 'e' to the next finer level.
+        prolong();
+
+        //if (vLevel == 4) {
+        //    if (mesh.rankData.rank == 0) std::cout << lhs(vLevel)(stagCore(vLevel)) << std::endl;
         //    MPI_Finalize();
         //    exit(0);
         //}
-        // Step 6) Prolong the error 'e' to the next finer level.
-        prolong();
 
         // Step 9) Add correction 'e' to the solution 'x' and perform post-smoothing iterations.
         lhs(vLevel) += smd(vLevel);
@@ -439,7 +429,7 @@ void poisson::setStagBounds() {
                       << std::setw(18) << std::left << gstr.str() << "\t"
                       << std::setw(15) << std::left << lstr.str() << std::endl;
 #endif
-            if (i == mesh.vcdLoc)
+            if ((i == mesh.vcdLoc) and (mesh.vcdLoc != mesh.vcdGlo))
                 std::cout << " ============= Global --> Local ============= " << std::endl;
         }
     }
@@ -447,8 +437,8 @@ void poisson::setStagBounds() {
     if (mesh.pf) std::cout << std::right << std::endl;
 
     // SET MAXIMUM NUMBER OF ITERATIONS FOR THE GAUSS-SEIDEL SOLVER AT COARSEST LEVEL OF MULTIGRID SOLVER
-    blitz::TinyVector<int, 3> cgSize = stagCore(mesh.vcdGlo).ubound() + 1;
-    maxCount = 5*cgSize(0)*cgSize(1)*cgSize(2);
+    blitz::TinyVector<int, 3> cgSize = mesh.globalSize/int(pow(2, mesh.vcdGlo));
+    maxCount = int(2.5*cgSize(0)*cgSize(1)*cgSize(2));
 
     if (inputParams.solveFlag)
         if (mesh.pf)
@@ -544,6 +534,14 @@ void poisson::copyDerivs() {
         x(n) = 0.0;
         x(n)(blitz::Range(-1, stagFull(n).ubound(0))) = mesh.globalMetrics(ls)(blitz::Range(ss, se));
 
+        // FILL GLOBAL TO LOCAL ARRAY OF X-DIMENSION FOR CORRECT COARSENING IN MULTI-GRID
+        if (n == mesh.vcdLoc) {
+            int globExtent = mesh.globalSize(0)/int(pow(2, n));
+            xGL.resize(globExtent + 2);
+            xGL.reindexSelf(-1);
+            xGL = mesh.globalMetrics(ls);
+        }
+
         ls = 15*n + 3;
         xixx(n).resize(stagFull(n).ubound(0) - stagFull(n).lbound(0) + 1);
         xixx(n).reindexSelf(stagFull(n).lbound(0));
@@ -571,6 +569,14 @@ void poisson::copyDerivs() {
         y(n) = 0.0;
         y(n)(blitz::Range(-1, stagFull(n).ubound(1))) = mesh.globalMetrics(ls)(blitz::Range(ss, se));
 
+        // FILL GLOBAL TO LOCAL ARRAY OF Y-DIMENSION FOR CORRECT COARSENING IN MULTI-GRID
+        if (n == mesh.vcdLoc) {
+            int globExtent = mesh.globalSize(1)/int(pow(2, n));
+            yGL.resize(globExtent + 2);
+            yGL.reindexSelf(-1);
+            yGL = mesh.globalMetrics(ls);
+        }
+
         ls = 15*n + 8;
         etyy(n).resize(stagFull(n).ubound(1) - stagFull(n).lbound(1) + 1);
         etyy(n).reindexSelf(stagFull(n).lbound(1));
@@ -597,6 +603,14 @@ void poisson::copyDerivs() {
         z(n).reindexSelf(stagFull(n).lbound(2));
         z(n) = 0.0;
         z(n)(blitz::Range(-1, stagFull(n).ubound(2))) = mesh.globalMetrics(ls)(blitz::Range(ss, se));
+
+        // FILL GLOBAL TO LOCAL ARRAY OF Z-DIMENSION FOR CORRECT COARSENING IN MULTI-GRID
+        if (n == mesh.vcdLoc) {
+            int globExtent = mesh.globalSize(2)/int(pow(2, n));
+            zGL.resize(globExtent + 2);
+            zGL.reindexSelf(-1);
+            zGL = mesh.globalMetrics(ls);
+        }
 
         ls = 15*n + 13;
         ztzz(n).resize(stagFull(n).ubound(2) - stagFull(n).lbound(2) + 1);

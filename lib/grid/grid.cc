@@ -592,7 +592,7 @@ void grid::setVCDepth() {
     blitz::TinyVector<int, 3> maxSize, remList, subSize;
 #endif
 
-    /////////////// First set global depths ///////////////
+    /////////////// First set global depth ///////////////
     vcdGlo = 0;
 #ifdef PLANAR
     maxSize = globalSize(0), globalSize(2);
@@ -614,7 +614,16 @@ void grid::setVCDepth() {
     subSize = maxSize / divNum;
     if (blitz::min(subSize) == 1) vcdGlo -= 1;
 
-    /////////////// Then set local depths ///////////////
+    // This additional adjustment is necessary when domain is non-periodic along all directions.
+    // Due to the resultant Neumann BC in pressure correction, multi-drid doesn't
+    // perform well at the coarsest level. Hence decrease the depth by 1 for this case.
+#ifdef PLANAR
+    if ((not inputParams.xPer) and (not inputParams.zPer)) vcdGlo -= 1;
+#else
+    if ((not inputParams.xPer) and (not inputParams.yPer) and (not inputParams.zPer)) vcdGlo -= 1;
+#endif
+
+    /////////////// Then set local depth ///////////////
     vcdLoc = 0;
 #ifdef PLANAR
     maxSize = coreSize(0), coreSize(2);
@@ -635,6 +644,9 @@ void grid::setVCDepth() {
     divNum = int(std::pow(2, vcdLoc));
     subSize = maxSize / divNum;
     if (blitz::min(subSize) == 1) vcdLoc -= 1;
+
+    // Final check for non-periodic serial runs
+    if (vcdLoc > vcdGlo) vcdLoc = vcdGlo;
 }
 
 
