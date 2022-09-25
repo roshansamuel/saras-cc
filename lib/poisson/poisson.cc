@@ -184,11 +184,6 @@ void poisson::mgSolve(plainsf &outLHS, const plainsf &inpRHS) {
 #endif
     }
 
-    //if (mesh.rankData.rank == 0) std::cout << lhs(0)(32, 32, all) << std::endl;
-    //if (mesh.rankData.rank == 0) std::cout << x(0) << z(0) << std::endl;
-    //MPI_Finalize();
-    //exit(0);
-
     // RETURN CALCULATED PRESSURE DATA
     outLHS.F(stagFull(0)) = lhs(0)(stagFull(0));
 };
@@ -256,26 +251,16 @@ void poisson::vCycle() {
                 smooth(inputParams.preSmooth):
             smooth(inputParams.preSmooth);
 
-        // WHEN ALL PROCESSES ARE INDEPENDENTLY SOLVING FOR GLOBAL GRID AT THE COARSEST LEVELS,
-        // ENFORCE A BARRIER AT THE END OF EACH V-CYCLE TO KEEP THEM SYNCHRONIZED
+        // When all processes are independently solving the global field at the coarsest levels,
+        // call MPI_Barrier at the end of each coarsening and smoothing to keep them synchronized.
         if (not locSolve) MPI_Barrier(MPI_COMM_WORLD);
     }
     // Step 4) Repeat steps 2-3 until you reach the coarsest grid level,
-
-    //if (mesh.rankData.rank == 0) std::cout << lhs(vLevel)(stagCore(vLevel)) << std::endl;
-    //MPI_Finalize();
-    //exit(0);
 
     // PROLONGATION OPERATIONS UP TO FINEST MESH
     for (int i=0; i<mesh.vcdGlo; i++) {
         // Step 6) Prolong the error 'e' to the next finer level.
         prolong();
-
-        //if (vLevel == 4) {
-        //    if (mesh.rankData.rank == 0) std::cout << lhs(vLevel)(stagCore(vLevel)) << std::endl;
-        //    MPI_Finalize();
-        //    exit(0);
-        //}
 
         // Step 9) Add correction 'e' to the solution 'x' and perform post-smoothing iterations.
         lhs(vLevel) += smd(vLevel);
@@ -285,6 +270,10 @@ void poisson::vCycle() {
 
         // Step 7) Perform post-smoothing iterations
         smooth(inputParams.postSmooth);
+
+        // When all processes are independently solving the global field at the coarsest levels,
+        // call MPI_Barrier at the end of each prolongation and smoothing to keep them synchronized.
+        if (not locSolve) MPI_Barrier(MPI_COMM_WORLD);
     }
     // Step 8) Repeat steps 6-7 until you reach the finest grid level,
 };
@@ -324,7 +313,8 @@ void poisson::initializeArrays() {
         smd(i) = 0.0;
     }
 
-    // RESIZE THE TEMPORARY ARRAY USED BEFORE COARSENING WHEN GLOBAL SOLVING IS ACTIVATED AT LOCAL LEVEL
+    // SPECIAL ARRAYS AND VIEWS USED FOR FULL-COARSENING IN PARALLEL RUNS
+    // RESIZE THE TEMPORARY ARRAY USED BEFORE COARSENING WHEN SWITCHING FROM LOCAL TO GLOBAL
     blitz::TinyVector<int, 3> loBound, upBound;
     loBound = 0, 0, 0;
 #ifdef PLANAR
@@ -334,6 +324,7 @@ void poisson::initializeArrays() {
 #endif
     rtmp.resize(upBound - loBound);
 
+    // DEFINE THE RectDomain USED AFTER PROLONGATION WHEN SWITCHING FROM GLOBAL TO LOCAL
     int xS = mesh.rankData.xRank*(stagCore(mesh.vcdLoc).ubound(0) + 1);
     int xE = (mesh.rankData.xRank + 1)*(stagCore(mesh.vcdLoc).ubound(0) + 1) - 1;
 
@@ -649,7 +640,7 @@ void poisson::setFLRanks(const bool lSol) {
         ylr = (mesh.rankData.yRank == mesh.rankData.npY - 1)? true: false;
         zlr = (mesh.rankData.zRank == mesh.rankData.npZ - 1)? true: false;
     } else {
-        // IF ALL PROCESSES ARE SOLVING GLOBALLY, THEN CHANGE
+        // IF ALL PROCESSES ARE SOLVING GLOBALLY, THEN USE GLOBAL BCs
         xfr = xlr = true;
         yfr = ylr = true;
         zfr = zlr = true;

@@ -444,15 +444,6 @@ void multigrid_d3::coarsen() {
         // GATHER DATA FROM ALL PROCESSES SUCH THAT ALL SUB-DOMAINS NOW HAVE FULL DATA
         MPI_Allgatherv(&tmp(pLevel)(0, 0, 0), 1, locDomain, &rtmp(0, 0, 0), &recvCnts[0], &gloDisps[0], gloDomain, MPI_COMM_WORLD);
 
-        //if (mesh.pf) {
-        //    std::cout << rtmp << std::endl;
-        //    //std::cout << xGL << std::endl;
-        //    //std::cout << yGL << std::endl;
-        //    //std::cout << zGL << std::endl;
-        //    //MPI_Finalize();
-        //    //exit(0);
-        //}
-
         // PERFORM THE USUAL COARSENING FROM GLOBAL DATA IN rtmp ARRAY
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none) shared(pLevel) private(i2, j2, k2, v000, v001, v010, v100, v011, v101, v110, v111, vTot)
         for (int i = 0; i <= xEnd(vLevel); ++i) {
@@ -483,24 +474,13 @@ void multigrid_d3::coarsen() {
             }
         }
 
-        //if (mesh.pf) std::cout << rhs(vLevel)(stagCore(vLevel)) << std::endl;
-        //MPI_Finalize();
-        //exit(0);
-
         // DISABLE LOCAL SOLVING
         locSolve = false;
 
         // ALL PROCESSES ACT LIKE THEY ARE BOTH FIRST AND LAST RANKS NOW
         setFLRanks(false);
     } else {
-        //if (vLevel == 6) {
-        //    std::cout << tmp(pLevel)(stagCore(pLevel)) << std::endl;
-        //    //std::cout << x(pLevel) << std::endl;
-        //    //std::cout << y(pLevel) << std::endl;
-        //    //std::cout << z(pLevel) << std::endl;
-        //    //MPI_Finalize();
-        //    //exit(0);
-        //}
+        // REGULAR COARSENING OPERATION
 #pragma omp parallel for num_threads(inputParams.nThreads) default(none) shared(pLevel) private(i2, j2, k2, v000, v001, v010, v100, v011, v101, v110, v111, vTot)
         for (int i = 0; i <= xEnd(vLevel); ++i) {
             i2 = i*2;
@@ -529,12 +509,6 @@ void multigrid_d3::coarsen() {
                 }
             }
         }
-
-        //if (vLevel == 6) {
-        //    std::cout << rhs(vLevel)(stagCore(vLevel)) << std::endl;
-        //    MPI_Finalize();
-        //    exit(0);
-        //}
     }
 }
 
@@ -562,10 +536,6 @@ void multigrid_d3::prolong() {
             }
         }
 
-        //if (mesh.pf) std::cout << rtmp << std::endl;
-        //MPI_Finalize();
-        //exit(0);
-
         // TRANSFER GLOBAL DATA FROM rtmp ARRAY TO LOCAL DATA IN lhs ARRAY
         lhs(vLevel)(stagCore(vLevel)) = rtmp(gloLocRD);
 
@@ -586,10 +556,6 @@ void multigrid_d3::prolong() {
                 }
             }
         }
-
-        //if (mesh.pf) std::cout << lhs(vLevel)(stagCore(vLevel)) << std::endl;
-        //MPI_Finalize();
-        //exit(0);
     }
 }
 
