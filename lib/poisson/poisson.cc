@@ -429,7 +429,11 @@ void poisson::setStagBounds() {
 
     // SET MAXIMUM NUMBER OF ITERATIONS FOR THE GAUSS-SEIDEL SOLVER AT COARSEST LEVEL OF MULTIGRID SOLVER
     blitz::TinyVector<int, 3> cgSize = mesh.globalSize/int(pow(2, mesh.vcdGlo));
+#ifdef PLANAR
+    maxCount = int(2.5*cgSize(0)*cgSize(2));
+#else
     maxCount = int(2.5*cgSize(0)*cgSize(1)*cgSize(2));
+#endif
 
     if (inputParams.solveFlag)
         if (mesh.pf)

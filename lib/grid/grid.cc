@@ -407,8 +407,8 @@ void grid::createUniformGrid() {
  ********************************************************************************************************************************************
  */
 void grid::createTanHypGrid(int dim, blitz::Array<real, 1> xGlo, blitz::Array<real, 1> xiGl) {
-    blitz::Range lftPts, rgtPts;
     blitz::TinyVector<real, 3> dLen;
+    blitz::Range lftPts, rgtPts, gmRange;
     blitz::Array<real, 1> df_x, dfxx, dfx2;
 
     dLen = xLen, yLen, zLen;
@@ -462,11 +462,12 @@ void grid::createTanHypGrid(int dim, blitz::Array<real, 1> xGlo, blitz::Array<re
     dfxx(rgtPts) = dfxx(lftPts);
     dfx2(rgtPts) = dfx2(lftPts);
 
-    globalMetrics(5*dim + 0) = xiGl;
-    globalMetrics(5*dim + 1) = xGlo;
-    globalMetrics(5*dim + 2) = df_x;
-    globalMetrics(5*dim + 3) = dfxx;
-    globalMetrics(5*dim + 4) = dfx2;
+    gmRange = blitz::Range(globalMetrics(5*dim).lbound(0), globalMetrics(5*dim).ubound(0));
+    globalMetrics(5*dim + 0) = xiGl(gmRange);
+    globalMetrics(5*dim + 1) = xGlo(gmRange);
+    globalMetrics(5*dim + 2) = df_x(gmRange);
+    globalMetrics(5*dim + 3) = dfxx(gmRange);
+    globalMetrics(5*dim + 4) = dfx2(gmRange);
 
     switch (dim) {
         case 0:
@@ -576,6 +577,66 @@ void grid::mgGridMetrics() {
 
 /**
  ********************************************************************************************************************************************
+ * \brief   Function to update the globalMetrics array for non-uniform grid
+ *
+ *          The overloaded version of this function is called to generate grid metrics for
+ *          coarser grids of the multi-grid Poisson solver.
+ ********************************************************************************************************************************************
+ */
+void grid::mgGridMetrics(int dim) {
+    blitz::TinyVector<real, 3> dLen;
+    blitz::Array<real, 1> trnsGrid, physGrid, df_x, dfxx, dfx2;
+
+    dLen = xLen, yLen, zLen;
+
+    // Hyperbolic tangent of beta parameter
+    real thb = tanh(thBeta(dim));
+
+    // Product of beta and length
+    real btl = thBeta(dim)*dLen(dim);
+
+    for (int vLev=1; vLev<=vcdGlo; vLev++) {
+        // START INDEX FOR LEVEL
+        int ls = 5*dim + 15*vLev;
+        int cLen = globalMetrics(ls).shape()(0);
+
+        // GENERATE X-GRID POINTS FROM UNIFORM XI-GRID POINTS AND THEIR METRICS
+        physGrid.resize(cLen);      physGrid.reindexSelf(-1);
+        df_x.resize(cLen);          df_x.reindexSelf(-1);
+        dfxx.resize(cLen);          dfxx.reindexSelf(-1);
+        dfx2.resize(cLen);          dfx2.reindexSelf(-1);
+
+        for (int i = 0; i < cLen-2; i++) {
+            physGrid(i) = dLen(dim)*(1.0 - tanh(thBeta(dim)*(1.0 - 2.0*globalMetrics(ls)(i)))/thb)/2.0;
+
+            // Non-dimensionalized physical coordinate
+            real ndx = physGrid(i)/dLen(dim);
+
+            df_x(i) = thb/(btl*(1.0 - pow((1.0 - 2.0*ndx)*thb, 2)));
+            dfxx(i) = -4.0*pow(thb, 3)*(1.0 - 2.0*ndx)/(dLen(dim)*btl*pow(1.0 - pow(thb*(1.0 - 2.0*ndx), 2), 2));
+            dfx2(i) = pow(df_x(i), 2.0);
+        }
+
+        physGrid(-1) = -physGrid(0);
+        df_x(-1) = df_x(cLen-3);
+        dfxx(-1) = dfxx(cLen-3);
+        dfx2(-1) = dfx2(cLen-3);
+
+        physGrid(cLen-2) = dLen(dim) + physGrid(0);
+        df_x(cLen-2) = df_x(0);
+        dfxx(cLen-2) = dfxx(0);
+        dfx2(cLen-2) = dfx2(0);
+
+        globalMetrics(ls + 1) = physGrid;
+        globalMetrics(ls + 2) = df_x;
+        globalMetrics(ls + 3) = dfxx;
+        globalMetrics(ls + 4) = dfx2;
+    }
+}
+
+
+/**
+ ********************************************************************************************************************************************
  * \brief   Function to set local and global V-cycle depths
  *
  *          The function computes the maximum allowable V-cycle depth for the given grid configuration.
@@ -647,66 +708,6 @@ void grid::setVCDepth() {
 
     // Final check for non-periodic serial runs
     if (vcdLoc > vcdGlo) vcdLoc = vcdGlo;
-}
-
-
-/**
- ********************************************************************************************************************************************
- * \brief   Function to update the globalMetrics array for non-uniform grid
- *
- *          The overloaded version of this function is called to generate grid metrics for
- *          coarser grids of the multi-grid Poisson solver.
- ********************************************************************************************************************************************
- */
-void grid::mgGridMetrics(int dim) {
-    blitz::TinyVector<real, 3> dLen;
-    blitz::Array<real, 1> trnsGrid, physGrid, df_x, dfxx, dfx2;
-
-    dLen = xLen, yLen, zLen;
-
-    // Hyperbolic tangent of beta parameter
-    real thb = tanh(thBeta(dim));
-
-    // Product of beta and length
-    real btl = thBeta(dim)*dLen(dim);
-
-    for (int vLev=1; vLev<=vcdGlo; vLev++) {
-        // START INDEX FOR LEVEL
-        int ls = 5*dim + 15*vLev;
-        int cLen = globalMetrics(ls).shape()(0);
-
-        // GENERATE X-GRID POINTS FROM UNIFORM XI-GRID POINTS AND THEIR METRICS
-        physGrid.resize(cLen);      physGrid.reindexSelf(-1);
-        df_x.resize(cLen);          df_x.reindexSelf(-1);
-        dfxx.resize(cLen);          dfxx.reindexSelf(-1);
-        dfx2.resize(cLen);          dfx2.reindexSelf(-1);
-
-        for (int i = 0; i < cLen-2; i++) {
-            physGrid(i) = dLen(dim)*(1.0 - tanh(thBeta(dim)*(1.0 - 2.0*globalMetrics(ls)(i)))/thb)/2.0;
-
-            // Non-dimensionalized physical coordinate
-            real ndx = physGrid(i)/dLen(dim);
-
-            df_x(i) = thb/(btl*(1.0 - pow((1.0 - 2.0*ndx)*thb, 2)));
-            dfxx(i) = -4.0*pow(thb, 3)*(1.0 - 2.0*ndx)/(dLen(dim)*btl*pow(1.0 - pow(thb*(1.0 - 2.0*ndx), 2), 2));
-            dfx2(i) = pow(df_x(i), 2.0);
-        }
-
-        physGrid(-1) = -physGrid(0);
-        df_x(-1) = df_x(cLen-3);
-        dfxx(-1) = dfxx(cLen-3);
-        dfx2(-1) = dfx2(cLen-3);
-
-        physGrid(cLen-2) = dLen(dim) + physGrid(0);
-        df_x(cLen-2) = df_x(0);
-        dfxx(cLen-2) = dfxx(0);
-        dfx2(cLen-2) = dfx2(0);
-
-        globalMetrics(ls + 1) = physGrid;
-        globalMetrics(ls + 2) = df_x;
-        globalMetrics(ls + 3) = dfxx;
-        globalMetrics(ls + 4) = dfx2;
-    }
 }
 
 

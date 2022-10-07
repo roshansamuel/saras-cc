@@ -135,7 +135,7 @@
     # Choose from following list of differentiation stencils
     # 1 = Second-order central-difference
     # 2 = Fourth-order central-difference
-    "Differentiation Scheme": 1
+    "Differentiation Scheme": 2
 
     # Non-Linear Term Calculation
     # 1 = Standard finite-difference
@@ -144,7 +144,7 @@
     # Option 1 will use the same order as specified in "Differentiation Scheme"
     # Option 2 will use upwinding of half the order (first or second) specified above.
     # Option 3 will ignore "Differentiation Scheme" for non-linear term alone.
-    "Non-Linear Term": 1
+    "Non-Linear Term": 3
 
     # If upwinding is enabled above, the limiting Peclet number can be adjusted.
     "Peclet Limit": 2.0
@@ -158,7 +158,7 @@
     # Choose from following list of integration schemes:
     # 1 = Implicit Crank-Nicholson
     # 2 = Low Storage 3rd Order Runge-Kutta
-    "Integration Scheme": 1
+    "Integration Scheme": 2
 
     # Tolerance used in iterative method (if Implicit Crank-Nicholson scheme is chosen above)
     "Solve Tolerance": 1.0e-6
