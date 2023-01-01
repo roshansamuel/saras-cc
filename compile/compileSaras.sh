@@ -42,15 +42,27 @@
  ############################################################################################################################################
  ##
 
-# USER SET PARAMETERS - COMMENT/UNCOMMENT AS NECESSARY
+# USER-SET PARAMETERS
 
+# Enable PLANAR for 2D simulations
+PLANAR=false
+
+# Enable LEGACY_YAML if the version of yaml-cpp is old (for TARANG compatibility)
+LEGACY_YAML=false
+
+# Enable POST_RUN for post-processing runs
+POST_RUN=false
+
+# Enable SINGLE_PRECISION for computing with single-precision floating-point numbers
+SINGLE_PRECISION=false
+
+# Enable EXECUTE_AFTER_COMPILE if the saras executable must be run automatically after building
+EXECUTE_AFTER_COMPILE=true
+
+# If EXECUTE_AFTER_COMPILE is enabled, set number of processors for the run
 PROC=8
-REAL_TYPE="DOUBLE"
-#PLANAR="PLANAR"
-#POST_RUN="POST_RUN"
-EXECUTE_AFTER_COMPILE="EXECUTE"
 
-# NO USER MODIFICATIONS NECESSARY BELOW THIS LINE
+########## NO USER-MODIFICATIONS NECESSARY BELOW THIS LINE ##########
 
 # REMOVE PRE-EXISTING EXECUTATBLES
 rm -f ../saras
@@ -65,27 +77,24 @@ fi
 cd build
 
 # RUN Cmake WITH NECESSARY FLAGS AS SET BY USER
-if [ -z $PLANAR ]; then
-    if [ -z $POST_RUN ]; then
-        if [ "$REAL_TYPE" == "DOUBLE" ]; then
-            CC=mpicc CXX=mpicxx cmake ../../
-        else
-            CC=mpicc CXX=mpicxx cmake ../../ -DREAL_SINGLE=ON
-        fi
-    else
-        CC=mpicc CXX=mpicxx cmake ../../ -DPOST_RUN=ON
-    fi
-else
-    if [ -z $POST_RUN ]; then
-        if [ "$REAL_TYPE" == "DOUBLE" ]; then
-            CC=mpicc CXX=mpicxx cmake ../../ -DPLANAR=ON
-        else
-            CC=mpicc CXX=mpicxx cmake ../../ -DPLANAR=ON -DREAL_SINGLE=ON
-        fi
-    else
-        CC=mpicc CXX=mpicxx cmake ../../ -DPOST_RUN=ON -DPLANAR=ON
-    fi
+# Build command string
+cStr="CC=mpicc CXX=mpicxx cmake ../../"
+if [ "$PLANAR" = true ]; then
+    cStr="$cStr -DPLANAR=ON"
 fi
+if [ "$SINGLE_PRECISION" = true ]; then
+    cStr="$cStr -DREAL_SINGLE=ON"
+fi
+if [ "$LEGACY_YAML" = true ]; then
+    cStr="$cStr -DYAML_LEGACY=ON"
+fi
+if [ "$POST_RUN" = true ]; then
+    cStr="$cStr -DPOST_RUN=ON"
+fi
+
+# Execute command string
+echo $cStr
+eval $cStr
 
 # COMPILE
 make -j16
@@ -94,12 +103,12 @@ make -j16
 cd ../../
 
 # RUN CODE IF REQUESTED BY USER
-if ! [ -z $EXECUTE_AFTER_COMPILE ]; then
-    if [ -z $POST_RUN ]; then
-        echo "localhost slots="$PROC > hostfile
-        mpirun --hostfile hostfile -np $PROC ./saras
-        rm hostfile
+if [ "$EXECUTE_AFTER_COMPILE" = true ]; then
+    echo "localhost slots="$PROC > hostfile
+    if [ "$POST_RUN" = true ]; then
+        mpirun --hostfile hostfile -np $PROC ./saras_post
     else
-        mpirun -np $PROC ./saras_post
+        mpirun --hostfile hostfile -np $PROC ./saras
     fi
+    rm hostfile
 fi
