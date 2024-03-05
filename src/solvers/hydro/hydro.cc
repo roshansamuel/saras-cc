@@ -285,81 +285,143 @@ void hydro::initVForcing() {
  ********************************************************************************************************************************************
  */
 void hydro::initVBCs() {
-    if (inputParams.probType == 3) {
-        // INFLOW AND OUTFLOW BCS
-        V.uLft = new dirichlet(mesh, V.Vx, 0, 1.0);
-        V.uRgt = new neumann(mesh, V.Vx, 1, 0.0);
+#ifdef PLANAR
+    const int nBCs = 4;
+    const std::vector<int> wn = {0, 1, 4, 5};
+#else
+    const int nBCs = 6;
+    const std::vector<int> wn = {0, 1, 2, 3, 4, 5};
+#endif
+
+    if (inputParams.useCustomBC) {
+        auto uBCTypes = inputParams.getBCTypes("V", "Vx");
+        auto uBCVals = inputParams.getBCValues("V", "Vx");
+
+#ifndef PLANAR
+        auto vBCTypes = inputParams.getBCTypes("V", "Vy");
+        auto vBCVals = inputParams.getBCValues("V", "Vy");
+#endif
+
+        auto wBCTypes = inputParams.getBCTypes("V", "Vz");
+        auto wBCVals = inputParams.getBCValues("V", "Vz");
+
+        std::vector<boundary*> ubList, vbList, wbList;
+
+        for (int i=0; i<nBCs; i++) {
+            if (uBCTypes[i])
+                ubList.push_back(new neumann(mesh, V.Vx, wn[i], uBCVals[i]));
+            else
+                ubList.push_back(new dirichlet(mesh, V.Vx, wn[i], uBCVals[i]));
+
+#ifndef PLANAR
+            if (vBCTypes[i])
+                vbList.push_back(new neumann(mesh, V.Vy, wn[i], vBCVals[i]));
+            else
+                vbList.push_back(new dirichlet(mesh, V.Vy, wn[i], vBCVals[i]));
+#endif
+
+            if (wBCTypes[i])
+                wbList.push_back(new neumann(mesh, V.Vz, wn[i], wBCVals[i]));
+            else
+                wbList.push_back(new dirichlet(mesh, V.Vz, wn[i], wBCVals[i]));
+        }
+
+#ifndef PLANAR
+        V.uLft = ubList[0];     V.uRgt = ubList[1];
+        V.uFrn = ubList[2];     V.uBak = ubList[3];
+        V.uBot = ubList[4];     V.uTop = ubList[5];
+
+        V.vLft = vbList[0];     V.vRgt = vbList[1];
+        V.vFrn = vbList[2];     V.vBak = vbList[3];
+        V.vBot = vbList[4];     V.vTop = vbList[5];
+
+        V.wLft = wbList[0];     V.wRgt = wbList[1];
+        V.wFrn = wbList[2];     V.wBak = wbList[3];
+        V.wBot = wbList[4];     V.wTop = wbList[5];
+#else
+        V.uLft = ubList[0];     V.uRgt = ubList[1];
+        V.uBot = ubList[2];     V.uTop = ubList[3];
+
+        V.wLft = wbList[0];     V.wRgt = wbList[1];
+        V.wBot = wbList[2];     V.wTop = wbList[3];
+#endif
     } else {
+        if (inputParams.probType == 3) {
+            // INFLOW AND OUTFLOW BCS
+            V.uLft = new dirichlet(mesh, V.Vx, 0, 1.0);
+            V.uRgt = new neumann(mesh, V.Vx, 1, 0.0);
+        } else {
+            // NO-PENETRATION BCS
+            V.uLft = new dirichlet(mesh, V.Vx, 0, 0.0);
+            V.uRgt = new dirichlet(mesh, V.Vx, 1, 0.0);
+        }
+
+#ifndef PLANAR
+        // NO-SLIP BCS
+        V.uFrn = new dirichlet(mesh, V.Vx, 2, 0.0);
+        V.uBak = new dirichlet(mesh, V.Vx, 3, 0.0);
+#endif
+
+        if (inputParams.probType == 1) {
+            // NO-SLIP BCS FOR LDC
+            V.uBot = new dirichlet(mesh, V.Vx, 4, 0.0);
+            V.uTop = new dirichlet(mesh, V.Vx, 5, 1.0);
+        } else if (inputParams.probType == 8) {
+            // FREE-SLIP BCS
+            V.uBot = new neumann(mesh, V.Vx, 4, 0.0);
+            V.uTop = new neumann(mesh, V.Vx, 5, 0.0);
+        } else {
+            // NO-SLIP BCS
+            V.uBot = new dirichlet(mesh, V.Vx, 4, 0.0);
+            V.uTop = new dirichlet(mesh, V.Vx, 5, 0.0);
+        }
+
+#ifndef PLANAR
+        if (inputParams.probType == 3) {
+            // INFLOW AND OUTFLOW BCS
+            V.vLft = new dirichlet(mesh, V.Vy, 0, 0.0);
+            V.vRgt = new neumann(mesh, V.Vy, 1, 0.0);
+        } else {
+            // NO-SLIP BCS
+            V.vLft = new dirichlet(mesh, V.Vy, 0, 0.0);
+            V.vRgt = new dirichlet(mesh, V.Vy, 1, 0.0);
+        }
+
         // NO-PENETRATION BCS
-        V.uLft = new dirichlet(mesh, V.Vx, 0, 0.0);
-        V.uRgt = new dirichlet(mesh, V.Vx, 1, 0.0);
-    }
+        V.vFrn = new dirichlet(mesh, V.Vy, 2, 0.0);
+        V.vBak = new dirichlet(mesh, V.Vy, 3, 0.0);
 
-#ifndef PLANAR
-    // NO-SLIP BCS
-    V.uFrn = new dirichlet(mesh, V.Vx, 2, 0.0);
-    V.uBak = new dirichlet(mesh, V.Vx, 3, 0.0);
+        if (inputParams.probType == 8) {
+            // FREE-SLIP BCS
+            V.vBot = new neumann(mesh, V.Vy, 4, 0.0);
+            V.vTop = new neumann(mesh, V.Vy, 5, 0.0);
+        } else {
+            // NO-SLIP BCS
+            V.vBot = new dirichlet(mesh, V.Vy, 4, 0.0);
+            V.vTop = new dirichlet(mesh, V.Vy, 5, 0.0);
+        }
 #endif
 
-    if (inputParams.probType == 1) {
-        // NO-SLIP BCS FOR LDC
-        V.uBot = new dirichlet(mesh, V.Vx, 4, 0.0);
-        V.uTop = new dirichlet(mesh, V.Vx, 5, 1.0);
-    } else if (inputParams.probType == 8) {
-        // FREE-SLIP BCS
-        V.uBot = new neumann(mesh, V.Vx, 4, 0.0);
-        V.uTop = new neumann(mesh, V.Vx, 5, 0.0);
-    } else {
-        // NO-SLIP BCS
-        V.uBot = new dirichlet(mesh, V.Vx, 4, 0.0);
-        V.uTop = new dirichlet(mesh, V.Vx, 5, 0.0);
-    }
+        if (inputParams.probType == 3) {
+            // INFLOW AND OUTFLOW BCS
+            V.wLft = new dirichlet(mesh, V.Vz, 0, 0.0);
+            V.wRgt = new neumann(mesh, V.Vz, 1, 0.0);
+        } else {
+            // NO-SLIP BCS
+            V.wLft = new dirichlet(mesh, V.Vz, 0, 0.0);
+            V.wRgt = new dirichlet(mesh, V.Vz, 1, 0.0);
+        }
 
 #ifndef PLANAR
-    if (inputParams.probType == 3) {
-        // INFLOW AND OUTFLOW BCS
-        V.vLft = new dirichlet(mesh, V.Vy, 0, 0.0);
-        V.vRgt = new neumann(mesh, V.Vy, 1, 0.0);
-    } else {
         // NO-SLIP BCS
-        V.vLft = new dirichlet(mesh, V.Vy, 0, 0.0);
-        V.vRgt = new dirichlet(mesh, V.Vy, 1, 0.0);
-    }
-
-    // NO-PENETRATION BCS
-    V.vFrn = new dirichlet(mesh, V.Vy, 2, 0.0);
-    V.vBak = new dirichlet(mesh, V.Vy, 3, 0.0);
-
-    if (inputParams.probType == 8) {
-        // FREE-SLIP BCS
-        V.vBot = new neumann(mesh, V.Vy, 4, 0.0);
-        V.vTop = new neumann(mesh, V.Vy, 5, 0.0);
-    } else {
-        // NO-SLIP BCS
-        V.vBot = new dirichlet(mesh, V.Vy, 4, 0.0);
-        V.vTop = new dirichlet(mesh, V.Vy, 5, 0.0);
-    }
+        V.wFrn = new dirichlet(mesh, V.Vz, 2, 0.0);
+        V.wBak = new dirichlet(mesh, V.Vz, 3, 0.0);
 #endif
 
-    if (inputParams.probType == 3) {
-        // INFLOW AND OUTFLOW BCS
-        V.wLft = new dirichlet(mesh, V.Vz, 0, 0.0);
-        V.wRgt = new neumann(mesh, V.Vz, 1, 0.0);
-    } else {
-        // NO-SLIP BCS
-        V.wLft = new dirichlet(mesh, V.Vz, 0, 0.0);
-        V.wRgt = new dirichlet(mesh, V.Vz, 1, 0.0);
+        // NO-PENETRATION BCS
+        V.wBot = new dirichlet(mesh, V.Vz, 4, 0.0);
+        V.wTop = new dirichlet(mesh, V.Vz, 5, 0.0);
     }
-
-#ifndef PLANAR
-    // NO-SLIP BCS
-    V.wFrn = new dirichlet(mesh, V.Vz, 2, 0.0);
-    V.wBak = new dirichlet(mesh, V.Vz, 3, 0.0);
-#endif
-
-    // NO-PENETRATION BCS
-    V.wBot = new dirichlet(mesh, V.Vz, 4, 0.0);
-    V.wTop = new dirichlet(mesh, V.Vz, 5, 0.0);
 };
 
 

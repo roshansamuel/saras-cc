@@ -87,6 +87,7 @@ void parser::parseYAML() {
     yamlNode["Program"]["Mean Flow Velocity"] >> meanVelocity;
     yamlNode["Program"]["Perturbation Intensity"] >> rfIntensity;
     yamlNode["Program"]["Domain Type"] >> domainType;
+    yamlNode["Program"]["Custom BCs"] >> useCustomBC;
     yamlNode["Program"]["RBC Type"] >> rbcType;
 
     yamlNode["Program"]["LES Model"] >> lesModel;
@@ -191,6 +192,7 @@ void parser::parseYAML() {
     meanVelocity = yamlNode["Program"]["Mean Flow Velocity"].as<real>();
     rfIntensity = yamlNode["Program"]["Perturbation Intensity"].as<real>();
     domainType = yamlNode["Program"]["Domain Type"].as<std::string>();
+    useCustomBC = yamlNode["Program"]["Custom BCs"].as<bool>();
     rbcType = yamlNode["Program"]["RBC Type"].as<int>();
 
     lesModel = yamlNode["Program"]["LES Model"].as<int>();
@@ -645,6 +647,23 @@ void parser::writeParams() {
 
     std::cout << std::endl << "\t******************* END OF parameters.yaml *******************" << std::endl;
     std::cout << std::endl;
+
+    if (useCustomBC) {
+        std::cout << std::endl << "Use of custom BCs is enabled" << std::endl;
+        std::cout << std::endl << "Writing BC parameters from the YAML file for reference" << std::endl << std::endl;
+        std::cout << "\t****************** START OF customBCs.yaml ******************" << std::endl << std::endl;
+
+        std::ifstream inFile;
+        inFile.open("input/customBCs.yaml", std::ifstream::in);
+        std::string line;
+        while (std::getline(inFile, line)) {
+            std::cout << line << std::endl;
+        }
+        inFile.close();
+
+        std::cout << std::endl << "\t******************* END OF customBCs.yaml *******************" << std::endl;
+        std::cout << std::endl;
+    }
 }
 
 /**
@@ -675,4 +694,90 @@ std::vector<real> parser::readTimes() {
     }
 
     return timeList;
+}
+
+/**
+ ********************************************************************************************************************************************
+ * \brief   Function to parse the customBCs YAML file and obtain the list of BC types
+ *
+ *          This function parses the customBCs.yaml file and returns the list of
+ *          BC types (neumann/dirichlet) for a given variable name and field name.
+ ********************************************************************************************************************************************
+ */
+std::vector<int> parser::getBCTypes(std::string vStr, std::string fStr) const {
+    std::vector<int> bcTypes;
+    std::ifstream inFile;
+    int inpType;
+
+    inFile.open("input/customBCs.yaml", std::ifstream::in);
+    if (not inFile.is_open()) {
+        std::cout << "ERROR: Could not read customBCs.yaml. Aborting" << std::endl;
+        MPI_Finalize();
+        exit(0);
+    }
+
+#ifdef YAML_LEGACY
+    YAML::Node yamlNode;
+    YAML::Parser parser(inFile);
+
+    parser.GetNextDocument(yamlNode);
+
+    for (const std::string& sStr : sList) {
+        yamlNode[vStr][fStr][sStr]["BC Type"] >> inpType;
+        bcTypes.push_back(inpType);
+    }
+#else
+    YAML::Node yamlNode = YAML::Load(inFile);
+
+    for (const std::string& sStr : sList) {
+        inpType = yamlNode[vStr][fStr][sStr]["BC Type"].as<int>();
+        bcTypes.push_back(inpType);
+    }
+#endif
+    inFile.close();
+
+    return bcTypes;
+}
+
+/**
+ ********************************************************************************************************************************************
+ * \brief   Function to parse the customBCs YAML file and obtain the list of BC values
+ *
+ *          This function parses the customBCs.yaml file and returns the list of
+ *          BC values corresponding to the BC types for a given variable name and field name.
+ ********************************************************************************************************************************************
+ */
+std::vector<real> parser::getBCValues(std::string vStr, std::string fStr) const {
+    std::vector<real> bcValues;
+    std::ifstream inFile;
+    real inpVal;
+
+    inFile.open("input/customBCs.yaml", std::ifstream::in);
+    if (not inFile.is_open()) {
+        std::cout << "ERROR: Could not read customBCs.yaml. Aborting" << std::endl;
+        MPI_Finalize();
+        exit(0);
+    }
+
+#ifdef YAML_LEGACY
+    YAML::Node yamlNode;
+    YAML::Parser parser(inFile);
+
+    parser.GetNextDocument(yamlNode);
+
+    for (const std::string& sStr : sList) {
+        yamlNode[vStr][fStr][sStr]["BC Value"] >> inpVal;
+        bcValues.push_back(inpVal);
+    }
+#else
+    YAML::Node yamlNode = YAML::Load(inFile);
+
+    for (const std::string& sStr : sList) {
+        inpVal = yamlNode[vStr][fStr][sStr]["BC Value"].as<real>();
+        bcValues.push_back(inpVal);
+    }
+#endif
+    inFile.close();
+
+    return bcValues;
 }

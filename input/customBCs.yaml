@@ -1,7 +1,5 @@
 # YAML File to set custom boundary conditions for SARAS
 #
-# WARNING: THIS FEATURE IS UNDER DEVELOPMENT
-#
 ############################################################
 #
 # For each entry of "BC Type"

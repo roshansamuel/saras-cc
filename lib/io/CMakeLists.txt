@@ -44,10 +44,6 @@ add_library (parser
              parser.cc
 )
 
-add_library (bcparse
-             bcparse.cc
-)
-
 add_library (probes
              probes.cc
 )

@@ -127,41 +127,71 @@ void scalar::initTForcing() {
  ********************************************************************************************************************************************
  */
 void scalar::initTBCs() {
-    // ADIABATIC BC FOR RBC, SST AND RRBC
-    if (inputParams.probType == 5 || inputParams.probType == 6 || inputParams.probType == 8) {
-        T.tLft = new neumann(mesh, T.F, 0, 0.0);
-        T.tRgt = new neumann(mesh, T.F, 1, 0.0);
-
-    // CONDUCTING BC FOR VERTICAL CONVECTION
-    } else if (inputParams.probType == 7) {
-        T.tLft = new dirichlet(mesh, T.F, 0, 1.0);
-        T.tRgt = new dirichlet(mesh, T.F, 1, 0.0);
-    }
-
-#ifndef PLANAR
-    T.tFrn = new neumann(mesh, T.F, 2, 0.0);
-    T.tBak = new neumann(mesh, T.F, 3, 0.0);
-#endif
-
-    // HOT PLATE AT BOTTOM AND COLD PLATE AT TOP FOR RBC AND RRBC
-    if (inputParams.probType == 5 || inputParams.probType == 8) {
-        // CREATE HEATING PATCH IF THE USER SET PARAMETER FOR HEATING PLATE IS TRUE
-        if (inputParams.nonHgBC) {
-#ifndef PLANAR
-            if (rankData.rank == 0) std::cout << "Using non-homogeneous boundary condition (heating plate) on bottom wall" << std::endl << std::endl;
-            T.tBot = new hotPlate(mesh, T.F, 4, inputParams.patchRadius);
+#ifdef PLANAR
+    const int nBCs = 4;
+    const std::vector<int> wn = {0, 1, 4, 5};
 #else
-            if (rankData.rank == 0) std::cout << "WARNING: Non-homogenous BC flag is set to true in input paramters for 2D simulation. IGNORING" << std::endl << std::endl;
+    const int nBCs = 6;
+    const std::vector<int> wn = {0, 1, 2, 3, 4, 5};
 #endif
-        } else {
-            T.tBot = new dirichlet(mesh, T.F, 4, 1.0);
-        }
-        T.tTop = new dirichlet(mesh, T.F, 5, 0.0);
 
-    // COLD PLATE AT BOTTOM AND HOT PLATE AT TOP FOR SST
-    } else if (mesh.inputParams.probType == 6) {
-        T.tBot = new dirichlet(mesh, T.F, 4, 0.0);
-        T.tTop = new dirichlet(mesh, T.F, 5, 1.0);
+    if (inputParams.useCustomBC) {
+        auto tBCTypes = inputParams.getBCTypes("T", "F");
+        auto tBCVals = inputParams.getBCValues("T", "F");
+
+        std::vector<boundary*> tbList;
+
+        for (int i=0; i<nBCs; i++)
+            if (tBCTypes[i])
+                tbList.push_back(new neumann(mesh, T.F, wn[i], tBCVals[i]));
+            else
+                tbList.push_back(new dirichlet(mesh, T.F, wn[i], tBCVals[i]));
+
+#ifndef PLANAR
+        T.tLft = tbList[0];     T.tRgt = tbList[1];
+        T.tFrn = tbList[2];     T.tBak = tbList[3];
+        T.tBot = tbList[4];     T.tTop = tbList[5];
+#else
+        T.tLft = tbList[0];     T.tRgt = tbList[1];
+        T.tBot = tbList[2];     T.tTop = tbList[3];
+#endif
+    } else {
+        // ADIABATIC BC FOR RBC, SST AND RRBC
+        if (inputParams.probType == 5 || inputParams.probType == 6 || inputParams.probType == 8) {
+            T.tLft = new neumann(mesh, T.F, 0, 0.0);
+            T.tRgt = new neumann(mesh, T.F, 1, 0.0);
+
+        // CONDUCTING BC FOR VERTICAL CONVECTION
+        } else if (inputParams.probType == 7) {
+            T.tLft = new dirichlet(mesh, T.F, 0, 1.0);
+            T.tRgt = new dirichlet(mesh, T.F, 1, 0.0);
+        }
+
+#ifndef PLANAR
+        T.tFrn = new neumann(mesh, T.F, 2, 0.0);
+        T.tBak = new neumann(mesh, T.F, 3, 0.0);
+#endif
+
+        // HOT PLATE AT BOTTOM AND COLD PLATE AT TOP FOR RBC AND RRBC
+        if (inputParams.probType == 5 || inputParams.probType == 8) {
+            // CREATE HEATING PATCH IF THE USER SET PARAMETER FOR HEATING PLATE IS TRUE
+            if (inputParams.nonHgBC) {
+#ifndef PLANAR
+                if (rankData.rank == 0) std::cout << "Using non-homogeneous boundary condition (heating plate) on bottom wall" << std::endl << std::endl;
+                T.tBot = new hotPlate(mesh, T.F, 4, inputParams.patchRadius);
+#else
+                if (rankData.rank == 0) std::cout << "WARNING: Non-homogenous BC flag is set to true in input paramters for 2D simulation. IGNORING" << std::endl << std::endl;
+#endif
+            } else {
+                T.tBot = new dirichlet(mesh, T.F, 4, 1.0);
+            }
+            T.tTop = new dirichlet(mesh, T.F, 5, 0.0);
+
+        // COLD PLATE AT BOTTOM AND HOT PLATE AT TOP FOR SST
+        } else if (mesh.inputParams.probType == 6) {
+            T.tBot = new dirichlet(mesh, T.F, 4, 0.0);
+            T.tTop = new dirichlet(mesh, T.F, 5, 1.0);
+        }
     }
 };
 

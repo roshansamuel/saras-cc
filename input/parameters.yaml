@@ -11,7 +11,7 @@
     # 8 = Flows with scalar: Free-slip top-bottom
     "Problem Type": 5
 
-    # Choose from the following initial conditions
+    # Choose from the following initial conditions:
     # 0 = Zero-initial condition
     # 1 = Taylor Green Vortices
     # 2 = Sinusoidal Perturbation (for Channel Flow)
@@ -24,20 +24,25 @@
     "Initial Condition": 8
 
     # Mean flow velocity (for Channel Flow)
-    # If option 3 or 4 is selected above, the perturbation is imposed on a background uniform flow
-    # This mean background velocity can be specified in non-dimensional units corresponding to Re
+    # If option 3 or 4 is selected above, the perturbation is imposed on a background uniform flow.
+    # This mean background velocity can be specified in non-dimensional units corresponding to Re.
     "Mean Flow Velocity": 15
 
     # Intensity of random perturbation (for Channel Flow)
     # If option 3 or 4 is selected above, the intensity of perturbation can be set below.
-    # The intensity is expressed as a percentage of the uniform mean flow velocity
+    # The intensity is expressed as a percentage of the uniform mean flow velocity.
     "Perturbation Intensity": 1
 
-    # Domain type indicates periodicity/non-periodicity (P/N) along X, Y and Z directions
-    # If domain is periodic along X and Y, but non-periodic along Z, Domain Type = PPN
-    # If periodic along all directions, Domain Type = PPP, and so on
-    # For 2D runs, only X and Z direction values are considered
+    # Domain type indicates periodicity/non-periodicity (P/N) along X, Y and Z directions.
+    # If domain is periodic along X and Y, but non-periodic along Z, Domain Type = PPN.
+    # If periodic along all directions, Domain Type = PPP, and so on.
+    # For 2D runs, only X and Z direction values are considered.
     "Domain Type": "NNN"
+
+    # Along the non-periodic directions, it is possible to have fine-control on the BCs.
+    # This is done using the customBCs YAML file found in the input folder.
+    # If the option is false, the code will use default BCs according to problem type.
+    "Custom BCs": true
 
     # For RBC, specify the non-dimensionalization to be used:
     # 1 = small U, large Pr
@@ -46,7 +51,7 @@
     # 4 = large U, small Pr
     "RBC Type": 2
 
-    # Enable/Disable LES by choosing LES Model
+    # Enable/Disable LES by choosing LES Model:
     # 0 = Disable LES
     # 1 = Stretched Spiral Vortex LES (velocity field only)
     # 2 = Stretched Spiral Vortex LES (both velocity and scalar fields)
@@ -64,14 +69,14 @@
     "Y Length": 1.0
     "Z Length": 1.0
 
-    # For Problem Type 5, heating can be applied at bottom wall using a circular heating plate
+    # For Problem Type 5, heating can be applied at bottom wall using a circular heating plate.
     "Heating Plate": false
     # If above value is true, the radius of this plate is specified below.
-    # If the radius exceeds half the domain length specifed above, the solver will run like ordinary RBC
-    # Currently the solver supports this non-homogeneous BC only for 3D runs
+    # If the radius exceeds half the domain length specifed above, the solver will run like ordinary RBC.
+    # Currently the solver supports this non-homogeneous BC only for 3D runs.
     "Plate Radius": 0.25
 
-    # Choose the type of forcing (source term)
+    # Choose the type of forcing (source term):
     # 0 = No forcing
     # 1 = Random forcing (This is yet to be implemented)
     # 2 = Coriolis force 
@@ -81,16 +86,16 @@
     "Force": 3
 
     # If Option 3 or 4 is selected for "Force", specify direction of gravity.
-    # Default direction is negative Z-direction
+    # Default direction is negative Z-direction.
     # The solver will automatically normalize the input vector.
     "Gravity Direction": [0, 0, -1]
 
     # If Option 2 or 4 is selected for "Force", specify axis of rotation.
-    # Default axis is positive Z-direction
+    # Default axis is positive Z-direction.
     # The solver will automatically normalize the input vector.
     "Rotation Axis": [0, 0, 1]
 
-    # If constant pressure gradient is chosen as forcing, set the value of mean pressure gradient
+    # If constant pressure gradient is chosen as forcing, set the value of mean pressure gradient.
     "Mean Pressure Gradient": 1.0
 
 

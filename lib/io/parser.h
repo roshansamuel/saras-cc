@@ -85,6 +85,7 @@ class parser {
         bool nonHgBC;
         bool solveFlag;
         bool readProbes;
+        bool useCustomBC;
         bool restartFlag;
         bool printResidual;
         bool xPer, yPer, zPer;
@@ -116,12 +117,33 @@ class parser {
         parser();
 
         void writeParams();
+        std::vector<int> getBCTypes(std::string vStr, std::string fStr) const;
+        std::vector<real> getBCValues(std::string vStr, std::string fStr) const;
+
         std::vector<real> readTimes();
 
     private:
         std::string meshType;
         std::string domainType;
         std::string probeCoords;
+
+#ifdef PLANAR
+        const std::vector<std::string> sList = {
+            "Left Wall",
+            "Right Wall",
+            "Bottom Wall",
+            "Top Wall"
+        };
+#else
+        const std::vector<std::string> sList = {
+            "Left Wall",
+            "Right Wall",
+            "Front Wall",
+            "Back Wall",
+            "Bottom Wall",
+            "Top Wall"
+        };
+#endif
 
         void parseYAML();
         void checkData();
