@@ -157,7 +157,10 @@ void scalar::initTBCs() {
 #endif
     } else {
         // ADIABATIC BC FOR RBC, SST AND RRBC
-        if (inputParams.probType == 5 || inputParams.probType == 6 || inputParams.probType == 8) {
+        if (inputParams.probType == 5 ||
+            inputParams.probType == 6 ||
+            inputParams.probType == 8 ||
+            inputParams.probType == 9) {
             T.tLft = new neumann(mesh, T.F, 0, 0.0);
             T.tRgt = new neumann(mesh, T.F, 1, 0.0);
 
@@ -173,7 +176,9 @@ void scalar::initTBCs() {
 #endif
 
         // HOT PLATE AT BOTTOM AND COLD PLATE AT TOP FOR RBC AND RRBC
-        if (inputParams.probType == 5 || inputParams.probType == 8) {
+        if (inputParams.probType == 5 ||
+            inputParams.probType == 8 ||
+            inputParams.probType == 9) {
             // CREATE HEATING PATCH IF THE USER SET PARAMETER FOR HEATING PLATE IS TRUE
             if (inputParams.nonHgBC) {
 #ifndef PLANAR
@@ -185,7 +190,11 @@ void scalar::initTBCs() {
             } else {
                 T.tBot = new dirichlet(mesh, T.F, 4, 1.0);
             }
-            T.tTop = new dirichlet(mesh, T.F, 5, 0.0);
+
+            if (inputParams.probType == 9)
+                T.tTop = new plumeOut(mesh, T.F, 5, V.Vz);
+            else
+                T.tTop = new dirichlet(mesh, T.F, 5, 0.0);
 
         // COLD PLATE AT BOTTOM AND HOT PLATE AT TOP FOR SST
         } else if (mesh.inputParams.probType == 6) {

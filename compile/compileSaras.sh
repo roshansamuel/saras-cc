@@ -60,7 +60,7 @@ SINGLE_PRECISION=false
 EXECUTE_AFTER_COMPILE=true
 
 # If EXECUTE_AFTER_COMPILE is enabled, set number of processors for the run
-PROC=8
+PROC=1
 
 ########## NO USER-MODIFICATIONS NECESSARY BELOW THIS LINE ##########
 

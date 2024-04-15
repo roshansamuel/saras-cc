@@ -182,6 +182,26 @@ class hotPlate: public boundary {
  ********************************************************************************************************************************************
  */
 
+class plumeOut: public boundary {
+    public:
+        plumeOut(const grid &mesh, field &inField, const int bcWall, field &wField);
+
+        void imposeBC();
+    private:
+        field &maskField;
+
+        blitz::Array<bool, 3> wallMask;
+        blitz::Array<real, 3> wallData;
+};
+
+/**
+ ********************************************************************************************************************************************
+ *  \class plumeOut boundary.h "lib/boundary/boundary.h"
+ *  \brief The derived class from boundary to apply mixed boundary condition for plume outflow at the top
+ *
+ ********************************************************************************************************************************************
+ */
+
 class nullBC: public boundary {
     public:
         nullBC(const grid &mesh, field &inField, const int bcWall): boundary(mesh, inField, bcWall) { };

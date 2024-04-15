@@ -406,6 +406,10 @@ void hydro::initVBCs() {
             // INFLOW AND OUTFLOW BCS
             V.wLft = new dirichlet(mesh, V.Vz, 0, 0.0);
             V.wRgt = new neumann(mesh, V.Vz, 1, 0.0);
+        } else if (inputParams.probType == 9) {
+            // SPECIAL BCs FOR PLUME TEST
+            V.wLft = new neumann(mesh, V.Vz, 0, 0.0);
+            V.wRgt = new neumann(mesh, V.Vz, 1, 0.0);
         } else {
             // NO-SLIP BCS
             V.wLft = new dirichlet(mesh, V.Vz, 0, 0.0);
@@ -418,9 +422,15 @@ void hydro::initVBCs() {
         V.wBak = new dirichlet(mesh, V.Vz, 3, 0.0);
 #endif
 
-        // NO-PENETRATION BCS
-        V.wBot = new dirichlet(mesh, V.Vz, 4, 0.0);
-        V.wTop = new dirichlet(mesh, V.Vz, 5, 0.0);
+        if (inputParams.probType == 9) {
+            // SPECIAL BCs FOR PLUME TEST
+            V.wBot = new dirichlet(mesh, V.Vz, 4, 0.0);
+            V.wTop = new neumann(mesh, V.Vz, 5, 0.0);
+        } else {
+            // NO-PENETRATION BCS
+            V.wBot = new dirichlet(mesh, V.Vz, 4, 0.0);
+            V.wTop = new dirichlet(mesh, V.Vz, 5, 0.0);
+        }
     }
 };
 

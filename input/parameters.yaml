@@ -9,7 +9,8 @@
     # 6 = Flows with scalar: Heated upper plate
     # 7 = Flows with scalar: Heated sidewall
     # 8 = Flows with scalar: Free-slip top-bottom
-    "Problem Type": 5
+    # 9 = Flows with scalar: Convective BC at top
+    "Problem Type": 9
 
     # Choose from the following initial conditions:
     # 0 = Zero-initial condition
@@ -42,7 +43,7 @@
     # Along the non-periodic directions, it is possible to have fine-control on the BCs.
     # This is done using the customBCs YAML file found in the input folder.
     # If the option is false, the code will use default BCs according to problem type.
-    "Custom BCs": true
+    "Custom BCs": false
 
     # For RBC, specify the non-dimensionalization to be used:
     # 1 = small U, large Pr
@@ -130,9 +131,9 @@
 # Parellelization parameters
 "Parallel":
     "Number of OMP threads": 1
-    "X Number of Procs": 2
-    "Y Number of Procs": 2
-    "Z Number of Procs": 2
+    "X Number of Procs": 1
+    "Y Number of Procs": 1
+    "Z Number of Procs": 1
 
 
 # Solver parameters

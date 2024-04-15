@@ -190,7 +190,10 @@ void eulerCN_d2::timeAdvance(vfield &V, sfield &P, sfield &T) {
         // EVEN WHEN NON-LINEAR TERM IS TURNED OFF, THE MEAN FLOW EFFECTS STILL REMAIN
         // HENCE THE CONTRIBUTION OF VELOCITY TO SCALAR EQUATION MUST BE ADDED
         // THIS CONTRIBUTION IS Uz FOR RBC AND SST, BUT Ux FOR VERTICAL CONVECTION
-        if (mesh.inputParams.probType == 5 || mesh.inputParams.probType == 6) {
+        if (mesh.inputParams.probType == 5 ||
+            mesh.inputParams.probType == 6 ||
+            mesh.inputParams.probType == 8 ||
+            mesh.inputParams.probType == 9) {
             tmpRHS.F += V.Vz.F;
 
         } else if (mesh.inputParams.probType == 7) {

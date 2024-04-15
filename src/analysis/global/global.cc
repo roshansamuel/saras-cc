@@ -204,7 +204,8 @@ void global::initVBCs(vfield &V) {
 
 void global::initTBCs(sfield &T) {
     // ADIABATIC BC FOR RBC, SST AND RRBC
-    if (mesh.inputParams.probType == 5 || mesh.inputParams.probType == 6 || mesh.inputParams.probType == 8) {
+    if (mesh.inputParams.probType == 5 || mesh.inputParams.probType == 6
+     || mesh.inputParams.probType == 8 || mesh.inputParams.probType == 9) {
         T.tLft = new neumann(mesh, T.F, 0, 0.0);
         T.tRgt = new neumann(mesh, T.F, 1, 0.0);
 

@@ -45,5 +45,6 @@ add_library (boundary
              dirichlet.cc
              periodic.cc
              neumann.cc
+             plumeOut.cc
              hotPlate.cc
 )
