@@ -156,18 +156,14 @@ void scalar::initTBCs() {
         T.tBot = tbList[2];     T.tTop = tbList[3];
 #endif
     } else {
-        // ADIABATIC BC FOR RBC, SST AND RRBC
-        if (inputParams.probType == 5 ||
-            inputParams.probType == 6 ||
-            inputParams.probType == 8 ||
-            inputParams.probType == 9) {
-            T.tLft = new neumann(mesh, T.F, 0, 0.0);
-            T.tRgt = new neumann(mesh, T.F, 1, 0.0);
-
-        // CONDUCTING BC FOR VERTICAL CONVECTION
-        } else if (inputParams.probType == 7) {
+        if (inputParams.probType == 7) {
+            // CONDUCTING BC FOR VERTICAL CONVECTION
             T.tLft = new dirichlet(mesh, T.F, 0, 1.0);
             T.tRgt = new dirichlet(mesh, T.F, 1, 0.0);
+        } else {
+            // ADIABATIC BC FOR RBC, SST AND RRBC
+            T.tLft = new neumann(mesh, T.F, 0, 0.0);
+            T.tRgt = new neumann(mesh, T.F, 1, 0.0);
         }
 
 #ifndef PLANAR

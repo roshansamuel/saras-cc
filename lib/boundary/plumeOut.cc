@@ -73,7 +73,7 @@ void plumeOut::imposeBC() {
         for (int iY = dField.fWalls(wallNum).lbound(1); iY <= dField.fWalls(wallNum).ubound(1); iY++) {
             for (int iZ = dField.fWalls(wallNum).lbound(2); iZ <= dField.fWalls(wallNum).ubound(2); iZ++) {
                 if (maskField.F(iX, iY, iZ) > 0) {
-                    dField.F(iX, iY, iZ) = -dField.F(iX, iY, iZ-1);
+                    dField.F(iX, iY, iZ) = dField.F(iX, iY, iZ-1);
                 } else {
                     dField.F(iX, iY, iZ) = 0.0;
                 }
