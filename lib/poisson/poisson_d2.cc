@@ -638,7 +638,14 @@ void multigrid_d2::imposeBC() {
         if (allNeumann) {
             // NEUMANN BOUNDARY CONDITION AT BOTTOM AND TOP WALLS
             if (zfr) lhs(vLevel)(all, 0, -1) = lhs(vLevel)(all, 0, 0);
-            if (zlr) lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2));
+            if (zlr) {
+                // DIRICHLET BOUNDARY CONDITION FOR CONVECTIVE BC AT TOP
+                if (inputParams.probType == 9) {
+                    lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) = -lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2));
+                } else {
+                    lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2) + 1) =  lhs(vLevel)(all, 0, stagCore(vLevel).ubound(2));
+                }
+            }
         } else {
             // DIRICHLET BOUNDARY CONDITION AT BOTTOM AND TOP WALLS
             if (zfr) lhs(vLevel)(all, 0, -1) = -lhs(vLevel)(all, 0, 0);
