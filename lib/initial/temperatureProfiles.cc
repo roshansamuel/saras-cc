@@ -41,6 +41,7 @@
  */
 
 #include "initial.h"
+#include <math.h>
 
 /**
  ********************************************************************************************************************************************
@@ -133,6 +134,57 @@ void sineProfile::initializeField(vfield &uField, sfield &tField) {
         for (int j=tField.F.F.lbound(1); j <= tField.F.F.ubound(1); j++) {
             for (int k=tField.F.F.lbound(2); k <= tField.F.F.ubound(2); k++) {
                 tField.F.F(i, j, k) = (1.0 - 0.2*sin(2.0*M_PI*mesh.z(k)/mesh.zLen) - mesh.z(k)/mesh.zLen);
+            }
+        }
+    }
+#endif
+    uField.Vz = 0.0;
+}
+
+
+/**
+ ********************************************************************************************************************************************
+ * \brief   Function to impose error-function profile on temperature and zero velocity condition
+ *
+ *          Depending on the preprocessor flag PLANAR, the function applies the
+ *          initial conditions for both 2D and 3D cases.
+ *
+ ********************************************************************************************************************************************
+ */
+void erfProfile::initializeField(vfield &uField, sfield &tField) {
+    real bi, delti, delvi;
+    real tRandom;
+
+    // Seed the random number generator with both time and rank to get different random numbers in different MPI sub-domains
+    int randSeed = std::time(0) + mesh.rankData.rank;
+    std::srand(randSeed);
+
+    if (mesh.pf) std::cout << "Imposing error-function temperature profile" << std::endl << std::endl;
+
+    // Hardcoded constants for initial implementation
+    bi = 1.0;
+    delti = 1.0e-1;
+
+    // Get value of T at delta_i of the error-function
+    delvi = bi*(1.0 - std::erf(std::sqrt(M_PI)/2.0));
+
+    uField.Vx = 0.0;
+#ifdef PLANAR
+    for (int i=tField.F.F.lbound(0); i <= tField.F.F.ubound(0); i++) {
+        tRandom = delvi*(real(std::rand())/RAND_MAX - 0.5);
+        for (int k=tField.F.F.lbound(2); k <= tField.F.F.ubound(2); k++) {
+            tField.F.F(i, 0, k) = bi*(1.0 - std::erf((std::sqrt(M_PI)/2.0)*(mesh.z(k)/delti)));
+            if ((k > 1) and (mesh.z(k) > delti) and (mesh.z(k-1) < delti)) tField.F.F(i, 0, k) += tRandom;
+        }
+    }
+#else
+    uField.Vy = 0.0;
+    for (int i=tField.F.F.lbound(0); i <= tField.F.F.ubound(0); i++) {
+        for (int j=tField.F.F.lbound(1); j <= tField.F.F.ubound(1); j++) {
+            tRandom = delvi*(real(std::rand())/RAND_MAX - 0.5);
+            for (int k=tField.F.F.lbound(2); k <= tField.F.F.ubound(2); k++) {
+                tField.F.F(i, j, k) = bi*(1.0 - std::erf((std::sqrt(M_PI)/2.0)*(mesh.z(k)/delti)));
+                if ((k > 1) and (mesh.z(k) > delti) and (mesh.z(k-1) < delti)) tField.F.F(i, 0, k) += tRandom;
             }
         }
     }

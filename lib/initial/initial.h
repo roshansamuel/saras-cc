@@ -201,4 +201,19 @@ class sineProfile: public initial {
  ********************************************************************************************************************************************
  */
 
+class erfProfile: public initial {
+    public:
+        erfProfile(const grid &mesh): initial(mesh) { };
+
+        void initializeField(vfield &uField, sfield &tField);
+};
+
+/**
+ ********************************************************************************************************************************************
+ *  \class erfProfile initial.h "lib/initial/initial.h"
+ *  \brief The derived class from initial to impose error-function profile on temperature
+ *
+ ********************************************************************************************************************************************
+ */
+
 #endif

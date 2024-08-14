@@ -99,6 +99,8 @@ scalar_d2::scalar_d2(const grid &mesh, const parser &solParam, parallel &mpiPara
                 break;
             case 8: initCond = new sineProfile(mesh);
                 break;
+            case 9: initCond = new erfProfile(mesh);
+                break;
             default: initCond = new zeroInitial(mesh);
         }
         initCond->initializeField(V, T);

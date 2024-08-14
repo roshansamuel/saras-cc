@@ -45,7 +45,7 @@
 # USER-SET PARAMETERS
 
 # Enable PLANAR for 2D simulations
-PLANAR=false
+PLANAR=true
 
 # Enable LEGACY_YAML if the version of yaml-cpp is old (for TARANG compatibility)
 LEGACY_YAML=false
