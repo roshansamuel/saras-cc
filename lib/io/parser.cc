@@ -411,6 +411,8 @@ void parser::checkData() {
  ********************************************************************************************************************************************
  */
 void parser::setGrids() {
+    int xGrid, yGrid, zGrid;
+
     // The integer values xGrid, yGrid and zGrid are set as below:
     // 0 - uniform grid
     // 1 - single-sided tangent-hyperbolic stretching
@@ -442,6 +444,8 @@ void parser::setGrids() {
         case 'D': zGrid = 2;
             break;
     }
+
+    xyzGrid = {xGrid, yGrid, zGrid};
 }
 
 /**

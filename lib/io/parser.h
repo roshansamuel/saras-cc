@@ -79,7 +79,6 @@ class parser {
         int nlScheme;
         int lesModel;
         int probType;
-        int xGrid, yGrid, zGrid;
 
         bool useCFL;
         bool nonHgBC;
@@ -111,6 +110,7 @@ class parser {
         real betaX, betaY, betaZ;
         real cnTolerance, mgTolerance, vcTolerance;
 
+        std::vector<int> xyzGrid;
         blitz::TinyVector<real, 3> gAxis, rAxis;
         std::vector<blitz::TinyVector<int, 3> > probesList;
 

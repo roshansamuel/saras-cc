@@ -41,6 +41,8 @@
  */
 
 #include "grid.h"
+#include <vector>
+#include <string>
 
 /**
  ********************************************************************************************************************************************
@@ -115,19 +117,19 @@ grid::grid(const parser &solParam, parallel &parallelData): inputParams(solParam
     bool gridCheck = false;
 
     // DEPENDING ON THE USER-SET PARAMETERS, SWITCH TO TAN-HYP ALONG SELECTED DIRECTIONS
-    if (inputParams.xGrid == 2) {
+    if (inputParams.xyzGrid[0] > 0) {
         createTanHypGrid(0, xGlobal, xiGlo);
         gridCheck = true;
     }
 
 #ifndef PLANAR
-    if (inputParams.yGrid == 2) {
+    if (inputParams.xyzGrid[1] > 0) {
         createTanHypGrid(1, yGlobal, etGlo);
         gridCheck = true;
     }
 #endif
 
-    if (inputParams.zGrid == 2) {
+    if (inputParams.xyzGrid[2] > 0) {
         createTanHypGrid(2, zGlobal, ztGlo);
         gridCheck = true;
     }
@@ -410,6 +412,8 @@ void grid::createTanHypGrid(int dim, blitz::Array<real, 1> xGlo, blitz::Array<re
     blitz::TinyVector<real, 3> dLen;
     blitz::Range lftPts, rgtPts, gmRange;
     blitz::Array<real, 1> df_x, dfxx, dfx2;
+    std::vector<std::string> gTypeStr = {"single-sided", "double-sided"};
+    auto gType = inputParams.xyzGrid[dim] - 1;
 
     dLen = xLen, yLen, zLen;
 
@@ -421,11 +425,11 @@ void grid::createTanHypGrid(int dim, blitz::Array<real, 1> xGlo, blitz::Array<re
 
     if (pf) {
         switch (dim) {
-            case 0: std::cout << "Generating tangent hyperbolic grid along X direction" << std::endl;
+            case 0: std::cout << "Generating " << gTypeStr[gType] << " tangent hyperbolic grid along X direction" << std::endl;
                     break;
-            case 1: std::cout << "Generating tangent hyperbolic grid along Y direction" << std::endl;
+            case 1: std::cout << "Generating " << gTypeStr[gType] << " tangent hyperbolic grid along Y direction" << std::endl;
                     break;
-            case 2: std::cout << "Generating tangent hyperbolic grid along Z direction" << std::endl;
+            case 2: std::cout << "Generating " << gTypeStr[gType] << " tangent hyperbolic grid along Z direction" << std::endl;
                     break;
         }
     }
@@ -436,14 +440,27 @@ void grid::createTanHypGrid(int dim, blitz::Array<real, 1> xGlo, blitz::Array<re
     dfx2.resize(blitz::Range(-padWidths(dim), globalSize(dim) + padWidths(dim) - 1));
 
     for (int i = 0; i < globalSize(dim); i++) {
-        xGlo(i) = dLen(dim)*(1.0 - tanh(thBeta[dim]*(1.0 - 2.0*xiGl(i)))/thb)/2.0;
+        if (gType) {
+            // Double-sided tangent-hyperbolic stretching function
+            xGlo(i) = dLen(dim)*(1.0 - tanh(thBeta[dim]*(1.0 - 2.0*xiGl(i)))/thb)/2.0;
 
-        // Non-dimensionalized physical coordinate
-        real ndx = xGlo(i)/dLen(dim);
+            // Non-dimensionalized physical coordinate
+            real ndx = xGlo(i)/dLen(dim);
 
-        df_x(i) = thb/(btl*(1.0 - pow((1.0 - 2.0*ndx)*thb, 2)));
-        dfxx(i) = -4.0*pow(thb, 3)*(1.0 - 2.0*ndx)/(dLen(dim)*btl*pow(1.0 - pow(thb*(1.0 - 2.0*ndx), 2), 2));
-        dfx2(i) = pow(df_x(i), 2.0);
+            df_x(i) = thb/(btl*(1.0 - pow((1.0 - 2.0*ndx)*thb, 2)));
+            dfxx(i) = -4.0*pow(thb, 3)*(1.0 - 2.0*ndx)/(dLen(dim)*btl*pow(1.0 - pow(thb*(1.0 - 2.0*ndx), 2), 2));
+            dfx2(i) = pow(df_x(i), 2.0);
+        } else {
+            // Single-sided tangent-hyperbolic stretching function
+            xGlo(i) = dLen(dim)*(1.0 - tanh(thBeta[dim]*(1.0 - xiGl(i)))/thb);
+
+            // Non-dimensionalized physical coordinate
+            real ndx = xGlo(i)/dLen(dim);
+
+            df_x(i) = thb/(btl*(1.0 - pow((1.0 - ndx)*thb, 2)));
+            dfxx(i) = -2.0*pow(thb, 3)*(1.0 - ndx)/(dLen(dim)*btl*pow(1.0 - pow(thb*(1.0 - ndx), 2), 2));
+            dfx2(i) = pow(df_x(i), 2.0);
+        }
     }
 
     lftPts = blitz::Range(-padWidths(dim), -1, 1);
@@ -586,6 +603,7 @@ void grid::mgGridMetrics() {
 void grid::mgGridMetrics(int dim) {
     blitz::TinyVector<real, 3> dLen;
     blitz::Array<real, 1> trnsGrid, physGrid, df_x, dfxx, dfx2;
+    auto gType = inputParams.xyzGrid[dim] - 1;
 
     dLen = xLen, yLen, zLen;
 
@@ -607,14 +625,27 @@ void grid::mgGridMetrics(int dim) {
         dfx2.resize(cLen);          dfx2.reindexSelf(-1);
 
         for (int i = 0; i < cLen-2; i++) {
-            physGrid(i) = dLen(dim)*(1.0 - tanh(thBeta(dim)*(1.0 - 2.0*globalMetrics(ls)(i)))/thb)/2.0;
+            if (gType) {
+                // Double-sided tangent-hyperbolic stretching function
+                physGrid(i) = dLen(dim)*(1.0 - tanh(thBeta(dim)*(1.0 - 2.0*globalMetrics(ls)(i)))/thb)/2.0;
 
-            // Non-dimensionalized physical coordinate
-            real ndx = physGrid(i)/dLen(dim);
+                // Non-dimensionalized physical coordinate
+                real ndx = physGrid(i)/dLen(dim);
 
-            df_x(i) = thb/(btl*(1.0 - pow((1.0 - 2.0*ndx)*thb, 2)));
-            dfxx(i) = -4.0*pow(thb, 3)*(1.0 - 2.0*ndx)/(dLen(dim)*btl*pow(1.0 - pow(thb*(1.0 - 2.0*ndx), 2), 2));
-            dfx2(i) = pow(df_x(i), 2.0);
+                df_x(i) = thb/(btl*(1.0 - pow((1.0 - 2.0*ndx)*thb, 2)));
+                dfxx(i) = -4.0*pow(thb, 3)*(1.0 - 2.0*ndx)/(dLen(dim)*btl*pow(1.0 - pow(thb*(1.0 - 2.0*ndx), 2), 2));
+                dfx2(i) = pow(df_x(i), 2.0);
+            } else {
+                // Single-sided tangent-hyperbolic stretching function
+                physGrid(i) = dLen(dim)*(1.0 - tanh(thBeta(dim)*(1.0 - globalMetrics(ls)(i)))/thb);
+
+                // Non-dimensionalized physical coordinate
+                real ndx = physGrid(i)/dLen(dim);
+
+                df_x(i) = thb/(btl*(1.0 - pow((1.0 - ndx)*thb, 2)));
+                dfxx(i) = -2.0*pow(thb, 3)*(1.0 - ndx)/(dLen(dim)*btl*pow(1.0 - pow(thb*(1.0 - ndx), 2), 2));
+                dfx2(i) = pow(df_x(i), 2.0);
+            }
         }
 
         physGrid(-1) = -physGrid(0);
