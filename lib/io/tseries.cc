@@ -103,6 +103,7 @@ tseries::tseries(const grid &mesh, vfield &solverV, const real &solverTime, cons
     oldDiv = 1.0e10;
 
     // Flags to discern ranks that contain the bottom and top walls
+    // Used for computing wall Nusselt number only for now
     bWall = false;      tWall = false;
     int rankKey = 0;
     if (zGravity) {
@@ -111,13 +112,18 @@ tseries::tseries(const grid &mesh, vfield &solverV, const real &solverTime, cons
 #else
         csArea = mesh.xLen*mesh.yLen;
 #endif
+        // Multiply wall area by 2 to account for top and bottom walls
+        // Only one wall is considered if top wall is open
+        int wallCount = 2;
+        if (mesh.inputParams.probType == 9) wallCount = 1;
+        csArea *= wallCount;
 
         if (mesh.rankData.zRank == 0) {
             bWall = true;
             rankKey = 1;
             wallDn = mesh.z(0);
         }
-        if (mesh.rankData.zRank == mesh.rankData.npZ - 1) {
+        if ((mesh.rankData.zRank == mesh.rankData.npZ - 1) and (mesh.inputParams.probType < 9)) {
             tWall = true;
             rankKey = 1;
             wallDn = mesh.zLen - mesh.z(zTop);
@@ -440,7 +446,7 @@ void tseries::writeTSData(const sfield &T) {
     totalThermalEnergy /= totalVol;
 
     NuVol = 1.0 + (totalUzT/totalVol)/tDiff;
-    NuWall = totalDt/(2.0*csArea);
+    NuWall = totalDt/csArea;
     ReynoldsNo = sqrt(2.0*totalKineticEnergy)/mDiff;
 
     if (mesh.inputParams.lesModel) {
