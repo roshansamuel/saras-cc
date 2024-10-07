@@ -62,15 +62,15 @@ neumann::neumann(const grid &mesh, field &inField, const int bcWall, const real 
     switch (wallNum) {
         case 0: hWall = 2*mesh.xGlobal(0);
             break;
-        case 1: hWall = 2*(mesh.xGlobal(mesh.globalSize(0) - 1) - mesh.inputParams.Lx);
+        case 1: hWall = 2*(mesh.xGlobal(mesh.globalSize(0) - 1) - mesh.xLen);
             break;
         case 2: hWall = 2*mesh.yGlobal(0);
             break;
-        case 3: hWall = 2*(mesh.yGlobal(mesh.globalSize(1) - 1) - mesh.inputParams.Ly);
+        case 3: hWall = 2*(mesh.yGlobal(mesh.globalSize(1) - 1) - mesh.yLen);
             break;
         case 4: hWall = 2*mesh.zGlobal(0);
             break;
-        case 5: hWall = 2*(mesh.zGlobal(mesh.globalSize(2) - 1) - mesh.inputParams.Lz);
+        case 5: hWall = 2*(mesh.zGlobal(mesh.globalSize(2) - 1) - mesh.zLen);
             break;
     }
     khWall = fieldValue*hWall;

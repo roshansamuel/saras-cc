@@ -525,7 +525,7 @@ void multigrid_d2::initDirichlet() {
 
     // Compute values at the walls using the (r^2)/4 formula
     // Along X-direction - Left and Right Walls
-    xDist = mesh.inputParams.Lx/2.0;
+    xDist = mesh.xLen/2.0;
     for (int k=0; k<=stagCore(0).ubound(2); ++k) {
         zDist = mesh.z(k) - 0.5;
 
@@ -533,7 +533,7 @@ void multigrid_d2::initDirichlet() {
     }
 
     // Along Z-direction - Top and Bottom Walls
-    zDist = mesh.inputParams.Lz/2.0;
+    zDist = mesh.zLen/2.0;
     for (int i=0; i<=stagCore(0).ubound(0); ++i) {
         xDist = mesh.x(i) - 0.5;
 
