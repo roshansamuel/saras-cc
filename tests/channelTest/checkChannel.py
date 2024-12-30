@@ -77,7 +77,7 @@ def parseYAML(paraFile):
     global Re, dPdX
 
     yamlFile = open(paraFile, 'r')
-    yamlData = yl.load(yamlFile)
+    yamlData = yl.load(yamlFile, Loader=yl.SafeLoader)
 
     zLen = yamlData["Program"]["Z Length"]
     Re = yamlData["Program"]["Reynolds Number"]

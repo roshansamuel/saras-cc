@@ -72,4 +72,4 @@ cd ../../tests/channelTest/
 mpirun -np $PROC ./saras
 
 # Run the python script to read the output file and compare with analytic solution
-python checkChannel.py
+python3 checkChannel.py

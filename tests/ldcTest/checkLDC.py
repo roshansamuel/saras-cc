@@ -55,6 +55,7 @@ from scipy.interpolate import griddata
 import numpy as np
 import h5py as hp
 import yaml as yl
+import os
 
 # Pyplot-specific directives
 plt.rcParams["font.family"] = "Times New Roman"
@@ -83,7 +84,7 @@ def parseYAML(paraFile):
     global xLen, yLen, zLen
 
     yamlFile = open(paraFile, 'r')
-    yamlData = yl.load(yamlFile)
+    yamlData = yl.load(yamlFile, Loader=yl.SafeLoader)
 
     Nx = yamlData["Mesh"]["X Size"] + 1
     Nz = yamlData["Mesh"]["Z Size"] + 1
@@ -99,12 +100,17 @@ def loadGhia():
     v_ghia = np.loadtxt("v_profile_ghia.dat", comments='#')
 
 
-def loadData(timeVal):
+def loadData():
     global Nx, Nz
     global U, W
     global X, Z
 
-    fileName = "output/Soln_{0:09.4f}.h5".format(float(timeVal))
+    datList = os.popen("ls output/*.h5").read().split('\n')[:-1]
+    if not datList:
+        print("No output files found!")
+        exit()
+
+    fileName = datList[-1]
 
     try:
         f = hp.File(fileName, 'r')
@@ -198,7 +204,7 @@ if __name__ == "__main__":
 
     parseYAML("input/parameters.yaml")
 
-    loadData(30.0)
+    loadData()
 
     loadGhia()
 
